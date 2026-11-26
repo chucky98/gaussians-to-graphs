@@ -128,3 +128,40 @@ for (const path of builtPages()) {
     }
   });
 }
+
+test.describe('post table of contents', () => {
+  const post = 'posts/gaussians-and-covariance/';
+
+  test('wide screens: sticky rail with scroll-spy and progress; no inline card', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(post);
+    const rail = page.locator('nav.toc.rail');
+    await expect(rail).toBeVisible();
+    await expect(page.locator('nav.toc.inline')).toBeHidden();
+    await page.evaluate(() => document.getElementById('algorithm')!.scrollIntoView({ block: 'start' }));
+    await expect(rail.locator('a[aria-current="location"]')).toHaveText('Algorithm');
+    await expect(rail).toBeInViewport(); // sticky
+    const t = await page
+      .locator('[data-toc-progress]')
+      .first()
+      .evaluate((e) => getComputedStyle(e).transform);
+    expect(t).not.toBe('matrix(0, 0, 0, 1, 0, 0)');
+    // The rail never overlaps a widget.
+    const r = (await rail.boundingBox())!;
+    for (const w of await page.locator('[data-widget]').all()) {
+      expect((await w.boundingBox())!.x).toBeGreaterThan(r.x + r.width);
+    }
+  });
+
+  test('narrow screens: collapsible card that closes after choosing a section', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.goto(post);
+    await expect(page.locator('nav.toc.rail')).toBeHidden();
+    const card = page.locator('nav.toc.inline');
+    await expect(card.locator('summary')).toContainText('6 sections');
+    await card.locator('summary').click();
+    await card.getByRole('link', { name: /When it breaks/ }).click();
+    await expect(card.locator('details')).not.toHaveAttribute('open');
+    await expect(page.locator('#when-it-breaks')).toBeInViewport();
+  });
+});

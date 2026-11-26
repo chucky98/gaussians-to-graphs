@@ -1,15 +1,27 @@
 ---
+/**
+ * Table of contents for a post.
+ * - variant "rail": sticky list in the left margin (wide screens), with a reading-progress bar
+ *   and the current section highlighted as you scroll.
+ * - variant "inline": a collapsible card above the content (narrow screens).
+ */
 import type { MarkdownHeading } from 'astro';
 interface Props {
   headings: MarkdownHeading[];
+  variant: 'rail' | 'inline';
 }
-const items = Astro.props.headings.filter((h) => h.depth === 2 || h.depth === 3);
+const { headings, variant } = Astro.props;
+const items = headings.filter((h) => h.depth === 2 || h.depth === 3);
+const sections = items.filter((h) => h.depth === 2).length;
 ---
 
-{items.length > 0 && (
-  <nav class="toc ui" aria-label="Table of contents">
-    <details open>
-      <summary>Contents</summary>
+{items.length > 0 &&
+  (variant === 'rail' ? (
+    <nav class="toc rail ui" aria-label="On this page" data-toc>
+      <p class="eyebrow">On this page</p>
+      <div class="progress" aria-hidden="true">
+        <span data-toc-progress />
+      </div>
       <ol>
         {items.map((h) => (
           <li class={`d${h.depth}`}>
@@ -17,41 +29,226 @@ const items = Astro.props.headings.filter((h) => h.depth === 2 || h.depth === 3)
           </li>
         ))}
       </ol>
-    </details>
-  </nav>
-)}
+      <a class="top" href="#main">
+        Back to top <span aria-hidden="true">↑</span>
+      </a>
+    </nav>
+  ) : (
+    <nav class="toc inline ui" aria-label="Contents" data-toc>
+      <details>
+        <summary>
+          <span class="label">Contents</span>
+          <span class="count">
+            {sections} section{sections === 1 ? '' : 's'}
+          </span>
+          <svg class="chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+            <path d="M4 6l4 4 4-4" />
+          </svg>
+        </summary>
+        <ol>
+          {items.map((h) => (
+            <li class={`d${h.depth}`}>
+              <a href={`#${h.slug}`}>{h.text}</a>
+            </li>
+          ))}
+        </ol>
+      </details>
+    </nav>
+  ))}
+
+<script>
+  // Scroll-spy: highlight the section being read and fill the progress bar.
+  const navs = Array.from(document.querySelectorAll<HTMLElement>('[data-toc]'));
+  const links = navs.flatMap((n) => Array.from(n.querySelectorAll<HTMLAnchorElement>('a[href^="#"]:not(.top)')));
+  const ids = [...new Set(links.map((a) => decodeURIComponent(a.hash.slice(1))))];
+  const headings = ids.map((id) => document.getElementById(id)).filter((h): h is HTMLElement => h !== null);
+  const bars = Array.from(document.querySelectorAll<HTMLElement>('[data-toc-progress]'));
+  const article = document.querySelector<HTMLElement>('article');
+  let queued = false;
+
+  function update(): void {
+    queued = false;
+    const line = window.innerHeight * 0.3;
+    let active: HTMLElement | null = null;
+    for (const h of headings) if (h.getBoundingClientRect().top <= line) active = h;
+    for (const a of links) {
+      if (active && a.hash === `#${encodeURIComponent(active.id)}`) a.setAttribute('aria-current', 'location');
+      else a.removeAttribute('aria-current');
+    }
+    if (article && bars.length > 0) {
+      const r = article.getBoundingClientRect();
+      const total = r.height - window.innerHeight;
+      const p = total > 0 ? Math.min(1, Math.max(0, -r.top / total)) : 1;
+      for (const b of bars) b.style.transform = `scaleX(${p})`;
+    }
+  }
+  function schedule(): void {
+    if (!queued) {
+      queued = true;
+      requestAnimationFrame(update);
+    }
+  }
+  if (headings.length > 0) {
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    update();
+  }
+  // Close the inline card after choosing a section, so the content is visible.
+  for (const d of document.querySelectorAll<HTMLDetailsElement>('.toc.inline details')) {
+    d.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('a')) d.open = false;
+    });
+  }
+</script>
 
 <style>
-  .toc {
-    font-size: 0.82rem;
-    line-height: 1.4;
-  }
-  summary {
-    cursor: pointer;
-    font-weight: 600;
-    color: var(--c-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    font-size: 0.75rem;
-    padding: 0.3rem 0;
-  }
-  ol {
+  .toc ol {
     list-style: none;
+    margin: 0;
     padding: 0;
-    margin: 0.4rem 0 0;
+    counter-reset: toc;
   }
-  li {
-    margin: 0.3rem 0;
+  .toc li.d2 {
+    counter-increment: toc;
   }
-  li.d3 {
-    padding-left: 0.9rem;
-  }
-  a {
-    color: var(--c-muted);
+  .toc a {
     text-decoration: none;
   }
-  a:hover {
+
+  /* ---- rail ---- */
+  .rail {
+    font-size: 0.92rem;
+    line-height: 1.4;
+  }
+  .eyebrow {
+    margin: 0 0 0.6rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--c-muted);
+  }
+  .progress {
+    height: 3px;
+    background: var(--c-border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 0.9rem;
+  }
+  .progress span {
+    display: block;
+    height: 100%;
+    background: var(--c-link);
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  .rail ol {
+    border-left: 2px solid var(--c-border);
+  }
+  .rail a {
+    display: block;
+    padding: 0.35rem 0 0.35rem 0.9rem;
+    margin-left: -2px;
+    border-left: 2px solid transparent;
+    color: var(--c-muted);
+  }
+  .rail li.d2 > a::before {
+    content: counter(toc) '\00a0\00a0';
+    font-variant-numeric: tabular-nums;
+    color: var(--c-muted);
+    font-weight: 500;
+  }
+  .rail li.d3 > a {
+    padding-left: 2rem;
+    font-size: 0.84rem;
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
+  }
+  .rail a:hover {
     color: var(--c-fg);
-    text-decoration: underline;
+  }
+  .rail a[aria-current] {
+    color: var(--c-fg);
+    font-weight: 600;
+    border-left-color: var(--c-link);
+  }
+  .top {
+    display: inline-block;
+    margin-top: 1rem;
+    font-size: 0.82rem;
+    color: var(--c-muted);
+  }
+  .top:hover {
+    color: var(--c-fg);
+  }
+
+  /* ---- inline card ---- */
+  .inline details {
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    background: var(--c-surface);
+  }
+  .inline summary {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.8rem 1rem;
+    cursor: pointer;
+    list-style: none;
+    font-size: 1rem;
+    font-weight: 600;
+    min-height: 44px;
+  }
+  .inline summary::-webkit-details-marker {
+    display: none;
+  }
+  .count {
+    font-weight: 400;
+    font-size: 0.85rem;
+    color: var(--c-muted);
+  }
+  .chev {
+    margin-left: auto;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 0.15s;
+  }
+  .inline details[open] .chev {
+    transform: rotate(180deg);
+  }
+  .inline details[open] summary {
+    border-bottom: 1px solid var(--c-border);
+  }
+  .inline ol {
+    padding: 0.5rem 1rem 0.75rem;
+    font-size: 0.97rem;
+    line-height: 1.4;
+  }
+  .inline a {
+    display: block;
+    padding: 0.4rem 0;
+    color: var(--c-fg);
+  }
+  .inline li.d2 > a::before {
+    content: counter(toc) '.\00a0\00a0';
+    color: var(--c-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .inline li.d3 > a {
+    padding-left: 1.6rem;
+    font-size: 0.9rem;
+    color: var(--c-muted);
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+  }
+  .inline a:hover {
+    color: var(--c-link);
+  }
+  .inline a[aria-current] {
+    color: var(--c-link);
+    font-weight: 600;
   }
 </style>
