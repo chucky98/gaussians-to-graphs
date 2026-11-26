@@ -83,9 +83,22 @@ export const notationGroups: readonly NotationGroup[] = [
       { tex: '\\mathbf{u}_k', meaning: 'control input / odometry' },
       { tex: 'x_k,\\ y_k,\\ \\theta_k', meaning: 'components of a planar pose: position (m) and heading (rad)' },
       { tex: 'd_k,\\ \\Delta\\theta_k', meaning: 'odometry reading: distance driven, then turn' },
-      { tex: '\\alpha', meaning: 'odometry noise level (error std per √m driven)' },
+      {
+        tex: '\\alpha',
+        meaning: 'odometry noise level (error std per √m driven; per 1 m move in the corridor of Post 10)',
+      },
       { tex: '\\ell', meaning: 'total distance driven' },
       { tex: '\\mathbf{z}_k', meaning: 'measurement' },
+      { tex: '\\mathbf{z}_{1:k},\\ \\mathbf{u}_{1:k}', meaning: 'all measurements / controls from time 1 to k' },
+      {
+        tex: '\\overline{\\bel}(\\mathbf{x}_k)',
+        meaning: 'predicted belief: after the motion, before the measurement at time k',
+      },
+      { tex: '\\eta', meaning: 'normalizing constant that makes a belief sum (or integrate) to 1' },
+      {
+        tex: '\\varepsilon',
+        meaning: 'kidnapping probability per move in a histogram filter (Post 10)',
+      },
       { tex: '\\mathbf{F}_k,\\ f(\\cdot)', meaning: 'linear state transition / nonlinear motion model' },
       { tex: '\\mathbf{B}_k', meaning: 'control-input matrix' },
       { tex: '\\mathbf{H}_k,\\ h(\\cdot)', meaning: 'linear measurement matrix / nonlinear measurement model' },
@@ -163,6 +176,14 @@ export const notationConflicts: readonly { tex: string; note: string }[] = [
   {
     tex: 'x_k\\ \\text{vs.}\\ \\mathbf{x}_k',
     note: 'An italic x_k is the x-coordinate of a planar pose; a bold x_k is the whole state vector.',
+  },
+  {
+    tex: '\\eta\\ \\text{vs.}\\ \\boldsymbol{\\eta}',
+    note: 'A scalar η normalizes a belief (Post 10); the bold vector η is the right-hand side of the Gauss–Newton system (Part 4).',
+  },
+  {
+    tex: '\\varepsilon\\ \\text{vs.}\\ \\epsilon_k',
+    note: 'A bare ε (Post 10) is a kidnapping probability; ε with a time index is the NEES of a Kalman filter (Post 13).',
   },
   {
     tex: '\\alpha\\ \\text{(odometry)}\\ \\text{vs.}\\ \\alpha\\ \\text{(UKF)}',

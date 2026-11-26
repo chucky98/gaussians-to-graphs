@@ -253,9 +253,13 @@ Typography: scalars are italic ($x$), vectors are bold lowercase ($\mathbf{x}$),
 | $\mathbf{u}_k$ | control input / odometry |
 | $x_k, y_k, \theta_k$ | components of a planar pose: position and heading (italic; the bold $\mathbf{x}_k$ is the whole state) |
 | $d_k, \Delta\theta_k$ | odometry reading: distance driven, then turn ("move, then turn" model) |
-| $\alpha$ | odometry noise level, error standard deviation per $\sqrt{\text{m}}$ (Part 0; the UKF's $\alpha$ is a different parameter) |
+| $\alpha$ | odometry noise level, error standard deviation per $\sqrt{\text{m}}$ (Part 0; per 1 m move in post 10; the UKF's $\alpha$ is a different parameter) |
 | $\ell$ | total distance driven |
 | $\mathbf{z}_k$ | measurement |
+| $\mathbf{z}_{1:k}$, $\mathbf{u}_{1:k}$ | all measurements / controls from time 1 to $k$ |
+| $\overline{\bel}(\mathbf{x}_k)$ | predicted belief: after the motion, before the measurement at time $k$ (post 10) |
+| $\eta$ | normalizing constant of a belief (scalar; the bold $\boldsymbol{\eta}$ of Part 4 is the Gauss–Newton right-hand side) |
+| $\varepsilon$ | kidnapping probability per move in a histogram filter (post 10; not the NEES $\epsilon_k$) |
 | $\mathbf{F}_k$, $f(\cdot)$ | linear state transition / nonlinear motion model |
 | $\mathbf{B}_k$ | control-input matrix |
 | $\mathbf{H}_k$, $h(\cdot)$ | linear measurement matrix / nonlinear measurement model |
@@ -315,7 +319,7 @@ Typography: scalars are italic ($x$), vectors are bold lowercase ($\mathbf{x}$),
 | $\rho(\cdot)$ | robust kernel |
 | $\mathbb{E}$, $\operatorname{Cov}$, $(\cdot)^\top$, $\mathbf{I}$ | expectation, covariance, transpose, identity |
 
-Conflict notes, to be explained on the `/notation` page: $w^{[i]}$ (particle weight, scalar, superscript) vs $\mathbf{w}_k$ (process noise, bold); $\lambda$ for LM damping vs eigenvalues; $\rho$ (correlation, Part 0) vs $\rho(\cdot)$ (robust kernel); $\mathbf{z}$ (whitened vector, Part 0) vs $\mathbf{z}_k$ (measurement). Eigenvalues are written $\lambda_1, \lambda_2$ and appear only in Part 0, so context makes the meaning clear.
+Conflict notes, to be explained on the `/notation` page: $\eta$ (belief normalizer) vs $\boldsymbol{\eta}$ (Gauss–Newton); $\varepsilon$ (kidnapping probability) vs $\epsilon_k$ (NEES); $w^{[i]}$ (particle weight, scalar, superscript) vs $\mathbf{w}_k$ (process noise, bold); $\lambda$ for LM damping vs eigenvalues; $\rho$ (correlation, Part 0) vs $\rho(\cdot)$ (robust kernel); $\mathbf{z}$ (whitened vector, Part 0) vs $\mathbf{z}_k$ (measurement). Eigenvalues are written $\lambda_1, \lambda_2$ and appear only in Part 0, so context makes the meaning clear.
 
 ### 6.2 Colors and line styles (semantic tokens)
 
