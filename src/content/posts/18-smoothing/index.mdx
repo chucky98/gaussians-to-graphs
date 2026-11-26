@@ -1,0 +1,148 @@
+---
+number: 18
+title: 'Looking Back: Filtering vs. Smoothing vs. Batch'
+description: A filter only knows the past. A smoother revisits every estimate with later data too, and for linear-Gaussian problems it equals the batch solution.
+part: 2
+status: published
+date: 2026-11-26
+prerequisites: [kalman-filter]
+objectives:
+  - Distinguish filtering, p(x_k | data up to k), from smoothing, p(x_k | data up to N), and say when each is the right question.
+  - Apply the Rauch–Tung–Striebel smoother as a backward pass over stored Kalman filter results.
+  - Explain why, for linear-Gaussian models, the smoothed trajectory equals the batch MAP solution, and why that matters for Part 4.
+  - Use a fixed-lag smoother to trade a short delay for most of the smoother's accuracy.
+references:
+  - key: rauch1965
+    text: 'Rauch, Tung, Striebel. "Maximum likelihood estimates of linear dynamic systems." *AIAA Journal* 3(8), 1965.'
+  - key: sarkka2013
+    text: Särkkä. *Bayesian Filtering and Smoothing.* Cambridge University Press, 2013. Ch. 8 (Bayesian smoothing equations and the Rauch–Tung–Striebel smoother).
+  - key: barfoot2024
+    text: Barfoot. *State Estimation for Robotics*, 2nd ed. Cambridge University Press, 2024. Ch. 3 (linear-Gaussian estimation, batch MAP and its equivalence with the RTS smoother).
+  - key: simon2006
+    text: Simon. *Optimal State Estimation.* Wiley, 2006. Ch. 9 (optimal smoothing, including fixed-lag smoothing).
+widgets: [FilterVsSmoother]
+symbols:
+  - tex: '\hat{\mathbf{x}}_{k\mid N},\ \mathbf{P}_{k\mid N}'
+    meaning: smoothed estimate of time k from all N steps
+    match: ['\mathbf{P}_{k\mid N}']
+  - tex: '\hat{\mathbf{x}}_{k\mid k},\ \mathbf{P}_{k\mid k}'
+    meaning: filtered estimate of time k
+    match: ['\mathbf{P}_{k\mid k}']
+  - tex: '\hat{\mathbf{x}}_{k\mid k-1},\ \mathbf{P}_{k\mid k-1}'
+    meaning: prediction of time k + 1 from time k (here written k+1 | k)
+    match: ['\mathbf{P}_{k+1\mid k}']
+  - tex: '\mathbf{C}_k'
+    meaning: RTS smoother gain
+  - tex: 'L'
+    meaning: lag of a fixed-lag smoother
+    match: ['L']
+---
+
+import FilterVsSmoother from '../../../components/widgets/FilterVsSmoother/FilterVsSmoother.svelte';
+
+In [Post 11](../kalman-filter-1d/), the corridor robot lost its position fixes for ten steps. The Kalman filter coasted on odometry, its uncertainty grew to ± 0.69 m, and at the end of the gap it was 0.58 m off. That was the best possible answer *at the time*. But after the shift, someone reviewing an incident asks a different question: where was the robot during those ten steps, knowing everything we know now, including the fixes that arrived after the gap?
+
+<FilterVsSmoother client:visible />
+
+The dashed curve is the filter's error at each step; the green curve is the **smoother**'s, which revisits every step using all the data. Over the run its error is less than half the filter's, and inside the gap it bridges smoothly from one side to the other instead of drifting. The small circles are the **batch** solution, which solves for the whole trajectory at once as one least-squares problem: they sit exactly on the smoother.
+
+## Intuition
+
+A filter answers "where am I *now*?" At step $k$ it can only use the data up to step $k$. A smoother answers "where *was* I at step $k$?" and may use data from after step $k$ as well.
+
+Later data helps because the robot's motion links its positions together. A fix at step 26 says where the robot is at step 26; the motion model says that, 6 m earlier, it was about 6 m back. So the fix pulls the estimate of step 20 too. Inside the gap, the filter only has information from the left, the last fix before the gap plus odometry, and it drifts. The smoother has fixes on both sides and interpolates between them. Its uncertainty is largest in the middle of the gap, farthest from data on either side, while the filter's is largest at the end.
+
+## The math
+
+### Filtering, smoothing, batch
+
+With data $\mathbf{z}_{1:N}$ for steps $1, \ldots, N$, the three questions are:
+
+- **filtering**: $p(\mathbf{x}_k \mid \mathbf{z}_{1:k})$, with mean $\hat{\mathbf{x}}_{k\mid k}$ and covariance $\mathbf{P}_{k\mid k}$;
+- **smoothing**: $p(\mathbf{x}_k \mid \mathbf{z}_{1:N})$ for every $k \le N$, with mean $\hat{\mathbf{x}}_{k\mid N}$ and covariance $\mathbf{P}_{k\mid N}$;
+- **batch**: the most probable whole trajectory, $\arg\max p(\mathbf{x}_{0:N} \mid \mathbf{z}_{1:N})$.
+
+For the last step, $k = N$, filtering and smoothing coincide: there is no later data.
+
+### The Rauch–Tung–Striebel smoother
+
+Run the Kalman filter forward and store, for every step, the filtered estimate $(\hat{\mathbf{x}}_{k\mid k}, \mathbf{P}_{k\mid k})$ and the prediction of the next step $(\hat{\mathbf{x}}_{k+1\mid k}, \mathbf{P}_{k+1\mid k})$. Then sweep backwards from $k = N - 1$ to 0:
+
+$$
+\begin{aligned}
+\mathbf{C}_k &= \mathbf{P}_{k\mid k}\,\mathbf{F}\T\,\mathbf{P}_{k+1\mid k}^{-1}, \\
+\hat{\mathbf{x}}_{k\mid N} &= \hat{\mathbf{x}}_{k\mid k} + \mathbf{C}_k\,(\hat{\mathbf{x}}_{k+1\mid N} - \hat{\mathbf{x}}_{k+1\mid k}), \\
+\mathbf{P}_{k\mid N} &= \mathbf{P}_{k\mid k} + \mathbf{C}_k\,(\mathbf{P}_{k+1\mid N} - \mathbf{P}_{k+1\mid k})\,\mathbf{C}_k\T.
+\end{aligned}
+\tag{1}
+$$
+
+Read the middle line as another "old estimate plus gain times surprise". The surprise is how much the smoothed estimate of step $k+1$ differs from what the filter predicted for it from step $k$. The **smoother gain** $\mathbf{C}_k$ says how much of that correction belongs to step $k$: a lot if the filter was unsure about step $k$ (large $\mathbf{P}_{k\mid k}$), little if the step from $k$ to $k+1$ itself was uncertain (large $\mathbf{P}_{k+1\mid k}$, much of it from $\mathbf{Q}$). Since $\mathbf{P}_{k+1\mid N} \preceq \mathbf{P}_{k+1\mid k}$, the last line can only shrink the covariance: smoothing never makes an estimate less certain.
+
+<Derivation title="Where (1) comes from">
+Two facts suffice. First, the Markov property: once $\mathbf{x}_{k+1}$ is known, the later data $\mathbf{z}_{k+1:N}$ say nothing more about $\mathbf{x}_k$. Second, given the data up to step $k$, the pair $(\mathbf{x}_k, \mathbf{x}_{k+1})$ is jointly Gaussian with covariance
+
+$$
+\begin{bmatrix} \mathbf{P}_{k\mid k} & \mathbf{P}_{k\mid k}\mathbf{F}\T \\ \mathbf{F}\mathbf{P}_{k\mid k} & \mathbf{P}_{k+1\mid k} \end{bmatrix}.
+$$
+
+Conditioning on $\mathbf{x}_{k+1}$, as in [Post 3](../conditioning-and-marginalizing/), gives $\E[\mathbf{x}_k \mid \mathbf{x}_{k+1}, \mathbf{z}_{1:k}] = \hat{\mathbf{x}}_{k\mid k} + \mathbf{C}_k(\mathbf{x}_{k+1} - \hat{\mathbf{x}}_{k+1\mid k})$ with exactly the gain $\mathbf{C}_k$ of (1), and a conditional covariance $\mathbf{P}_{k\mid k} - \mathbf{C}_k\mathbf{P}_{k+1\mid k}\mathbf{C}_k\T$. By the first fact this is also the distribution given all the data and $\mathbf{x}_{k+1}$. Averaging it over the smoothed distribution of $\mathbf{x}_{k+1}$, with mean $\hat{\mathbf{x}}_{k+1\mid N}$ and covariance $\mathbf{P}_{k+1\mid N}$, gives the mean and covariance in (1).
+</Derivation>
+
+### Smoothing is batch estimation
+
+For a linear-Gaussian model, the batch problem is one weighted least-squares problem over all the states at once, with a residual for the prior, one for every motion step and one for every measurement: the structure of [Post 5](../least-squares/) and [Post 6](../mle-and-map/). Its solution is a Gaussian over the whole trajectory, and the RTS smoother computes exactly its means and marginal covariances, in two passes of cost linear in $N$.
+
+<Callout type="key">
+The Kalman filter answers "where am I now?"; the RTS smoother, a backward pass over the stored filter results, answers "where was I?" with all the data. For linear-Gaussian models the smoothed trajectory is exactly the batch least-squares solution, which is the idea Part 4 builds on: SLAM back-ends solve the batch problem directly, as optimization.
+</Callout>
+
+### Fixed-lag smoothing
+
+A smoother needs the future, which a robot driving in real time does not have. A **fixed-lag** smoother compromises: it reports the estimate of step $k$ only after $L$ more steps of data have arrived, $\hat{\mathbf{x}}_{k\mid k+L}$. A delay of a few steps often recovers most of the benefit, because the influence of later data fades with distance in time.
+
+## Play with it
+
+<TryThis>
+1. With all 40 steps of data, the filter's position error is 0.250 m (root mean square over the run) and the smoother's is 0.111 m. Inside the gap the difference is largest: 0.385 m against 0.155 m. The batch circles agree with the smoother to within $10^{-13}$ m: the readout calls them identical.
+2. Look at the lower chart. The filter's standard deviation climbs through the gap and peaks at its end (0.354 m at step 25). The smoother's rises and falls again, with its peak near the middle (0.200 m at step 20); at step 25, the first fix after the gap is close, and it is down to 0.166 m.
+3. Drag the data slider back to step 25 and then forward one step at a time. Until step 25, the smoother has no data after the gap and agrees with the filter there. At step 26 the first new fix arrives, and the smoothed estimate of step 20, six steps back, jumps: its error drops from 0.41 m to 0.13 m.
+4. Show the fixed-lag smoother. With a lag of 1 step its error is 0.212 m, with 3 steps 0.171 m, with 10 steps 0.121 m, close to the full smoother's 0.111 m.
+</TryThis>
+
+## Algorithm
+
+<AlgorithmBox title="Rauch–Tung–Striebel smoother" source="src/lib/filters/rts.ts">
+1. **Forward:** run the Kalman filter over all the data, storing $\hat{\mathbf{x}}_{k\mid k}$, $\mathbf{P}_{k\mid k}$, $\hat{\mathbf{x}}_{k+1\mid k}$ and $\mathbf{P}_{k+1\mid k}$ for every step.
+2. **Initialize** the backward pass with the last filtered estimate: $\hat{\mathbf{x}}_{N\mid N}$, $\mathbf{P}_{N\mid N}$.
+3. **Backward,** for $k = N-1, \ldots, 0$: compute $\mathbf{C}_k$ with a Cholesky solve against $\mathbf{P}_{k+1\mid k}$ (never an explicit inverse), then $\hat{\mathbf{x}}_{k\mid N}$ and $\mathbf{P}_{k\mid N}$ by (1); symmetrize.
+4. **Fixed lag $L$:** at time $t$, run steps 2–3 over the data up to $t$ and report step $t - L$.
+</AlgorithmBox>
+
+The unit tests check DESIGN's invariant for this post: the RTS smoother equals the batch solution for every state, means and covariances, on a two-dimensional constant-velocity problem with a gap in the data. They also check that the smoother never increases a variance, that a fixed lag of 0 is the filter and a lag of $N$ is the full smoother, and that all of this holds with control inputs.
+
+## When it breaks
+
+### It needs the future
+
+A smoother is not a better real-time filter. A robot deciding where to steer now must use the filtered estimate; the smoothed one is for mapping, for analysis after the fact, and for anything that can afford a delay. Fixed-lag smoothing is the middle ground, and its lag is a design decision: the right trade-off between delay and accuracy depends on the application.
+
+### Storage
+
+The RTS smoother keeps every filtered estimate and covariance. For a pose this is nothing; for a state with thousands of variables over hours of data, it adds up. Part 4's solvers avoid storing dense covariances by working with the sparse information form instead (Post 19).
+
+### Nonlinear models
+
+The RTS pass inherits the filter's linearization. With an EKF forward pass, each smoothed estimate reuses Jacobians computed at the *filtered* estimate, which may be far from the smoothed one, and the smoother cannot fix errors that came from linearizing at the wrong point. Iterating, re-linearizing the whole trajectory at the smoothed estimates and solving again, is exactly nonlinear least squares over the trajectory ([Post 9](../nonlinear-least-squares/)), which Part 4 develops into factor graphs.
+
+### A wrong model
+
+Like the filter, the smoother trusts its $\mathbf{Q}$ and $\mathbf{R}$. A $\mathbf{Q}$ that is too small makes it trust the motion model too much and over-smooth genuine changes; one that is too large makes it follow each measurement and smooth little. The consistency checks of [Post 13](../tuning-and-consistency/) apply to the filter that feeds it.
+
+## Summary
+
+- Filtering estimates the current state from past data; smoothing re-estimates every past state from all the data, and is never less certain.
+- The RTS smoother is a backward pass over stored Kalman filter results, with gain $\mathbf{C}_k = \mathbf{P}_{k\mid k}\mathbf{F}\T\mathbf{P}_{k+1\mid k}^{-1}$.
+- For linear-Gaussian models the smoothed trajectory equals the batch least-squares (MAP) solution, computed in time linear in $N$.
+- In a gap, the filter drifts and its uncertainty grows to the end; the smoother interpolates and its uncertainty peaks in the middle.
+- Fixed-lag smoothing trades a delay of $L$ steps for most of the smoother's gain.

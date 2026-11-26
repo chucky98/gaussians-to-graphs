@@ -250,6 +250,9 @@ Typography: scalars are italic ($x$), vectors are bold lowercase ($\mathbf{x}$),
 | $\mathbf{x}_k$ | state at time $k$ (in SLAM: may include poses and landmarks) |
 | $\hat{\mathbf{x}}_{k\mid k-1}$, $\mathbf{P}_{k\mid k-1}$ | predicted mean and covariance |
 | $\hat{\mathbf{x}}_{k\mid k}$, $\mathbf{P}_{k\mid k}$ | updated (posterior) mean and covariance |
+| $\hat{\mathbf{x}}_{k\mid N}$, $\mathbf{P}_{k\mid N}$ | smoothed mean and covariance, using all $N$ steps of data (post 18) |
+| $\mathbf{C}_k$ | RTS smoother gain (post 18) |
+| $L$ | lag of a fixed-lag smoother (post 18) |
 | $\mathbf{u}_k$ | control input / odometry |
 | $x_k, y_k, \theta_k$ | components of a planar pose: position and heading (italic; the bold $\mathbf{x}_k$ is the whole state) |
 | $d_k, \Delta\theta_k$ | odometry reading: distance driven, then turn ("move, then turn" model) |
@@ -330,7 +333,7 @@ Typography: scalars are italic ($x$), vectors are bold lowercase ($\mathbf{x}$),
 | $\rho(\cdot)$ | robust kernel |
 | $\mathbb{E}$, $\operatorname{Cov}$, $(\cdot)^\top$, $\mathbf{I}$ | expectation, covariance, transpose, identity |
 
-Conflict notes, to be explained on the `/notation` page: $\beta, \kappa, \lambda$ in post 16 (UT parameters) vs forgetting factor, prior weight and LM damping; $\theta$ (heading, from post 14) vs $\theta$ (bearing in post 4); $v$ (speed) vs $\mathbf{v}_k$ (measurement noise); $M$ (Monte Carlo runs) vs $\mathbf{M}_k$ (control noise); $\eta$ (belief normalizer) vs $\boldsymbol{\eta}$ (Gauss–Newton); $\varepsilon$ (kidnapping probability) vs $\epsilon_k$ (NEES); $w^{[i]}$ (particle weight, scalar, superscript) vs $\mathbf{w}_k$ (process noise, bold); $\lambda$ for LM damping vs eigenvalues; $\rho$ (correlation, Part 0) vs $\rho(\cdot)$ (robust kernel); $\mathbf{z}$ (whitened vector, Part 0) vs $\mathbf{z}_k$ (measurement). Eigenvalues are written $\lambda_1, \lambda_2$ and appear only in Part 0, so context makes the meaning clear.
+Conflict notes, to be explained on the `/notation` page: $\mathbf{C}_k$ (smoother gain) vs $\mathbf{C}$ (rotation); $L$ (lag) vs $\mathbf{L}$ (Cholesky factor); $\beta, \kappa, \lambda$ in post 16 (UT parameters) vs forgetting factor, prior weight and LM damping; $\theta$ (heading, from post 14) vs $\theta$ (bearing in post 4); $v$ (speed) vs $\mathbf{v}_k$ (measurement noise); $M$ (Monte Carlo runs) vs $\mathbf{M}_k$ (control noise); $\eta$ (belief normalizer) vs $\boldsymbol{\eta}$ (Gauss–Newton); $\varepsilon$ (kidnapping probability) vs $\epsilon_k$ (NEES); $w^{[i]}$ (particle weight, scalar, superscript) vs $\mathbf{w}_k$ (process noise, bold); $\lambda$ for LM damping vs eigenvalues; $\rho$ (correlation, Part 0) vs $\rho(\cdot)$ (robust kernel); $\mathbf{z}$ (whitened vector, Part 0) vs $\mathbf{z}_k$ (measurement). Eigenvalues are written $\lambda_1, \lambda_2$ and appear only in Part 0, so context makes the meaning clear.
 
 ### 6.2 Colors and line styles (semantic tokens)
 
