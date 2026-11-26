@@ -24,7 +24,7 @@ export const siteConfig = {
    * In GoatCounter's settings, "Allow adding visitor counts on your website" must be enabled.
    */
   stats: {
-    goatcounterCode: '' as string,
+    goatcounterCode: 'chucky98' as string,
   },
 } as const;
 

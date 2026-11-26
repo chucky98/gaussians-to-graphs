@@ -1,4 +1,4 @@
-import { test } from '@playwright/test';
+import { test } from './fixtures';
 import { builtPages } from './pages';
 
 /** Screenshots for review (CI artifacts). No pixel-diff assertions (DESIGN §8.3). */

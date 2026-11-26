@@ -91,7 +91,7 @@
 
 ## Follow-ups / known issues
 
-- **Owner action (statistics):** create a free GoatCounter site at https://www.goatcounter.com (pick a site code), and in its Settings enable "Allow adding visitor counts on your website". Then give me the code; I set `goatcounterCode` and verify the live counters.
+- **Owner action (statistics):** GoatCounter site `chucky98` is configured and counting. In GoatCounter → Settings, enable "Allow adding visitor counts on your website"; until then the public counters return 403 and the About section shows "could not be loaded".
 
 - **Owner action:** install the giscus GitHub App on `chucky98/gaussians-to-graphs` (https://github.com/apps/giscus). Then set `giscus.enabled = true` in `src/lib/site/config.ts`.
 - When posts 11, 12, 13, 15, 16, 17, 19, 22, 23, 25, 27, 28, 29 are published: link the plain-text references to them from earlier posts.
