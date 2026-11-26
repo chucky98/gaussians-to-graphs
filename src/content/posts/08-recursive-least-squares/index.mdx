@@ -1,0 +1,156 @@
+---
+number: 8
+title: Learning One Measurement at a Time
+description: Calibrate a robot's motor while it drives. Recursive least squares gives the batch answer one measurement at a time; forgetting tracks a sagging battery.
+part: 1
+status: published
+date: 2026-11-26
+prerequisites: [least-squares, mle-and-map]
+objectives:
+  - Turn the batch least-squares solution into a recursive update with constant cost per measurement.
+  - Explain the gain and the covariance update, and the "old estimate plus gain times surprise" pattern.
+  - Show that recursive least squares reproduces the batch answer exactly, with or without a prior.
+  - Use a forgetting factor to track parameters that change, and know what it costs.
+references:
+  - key: simon2006
+    text: Simon. *Optimal State Estimation.* Wiley, 2006. §3.3 (recursive least squares estimation).
+  - key: ljung1999
+    text: 'Ljung. *System Identification: Theory for the User*, 2nd ed. Prentice Hall, 1999. Ch. 11 (recursive estimation methods, including forgetting factors).'
+  - key: astrom1995
+    text: Åström, Wittenmark. *Adaptive Control*, 2nd ed. Addison-Wesley, 1995. Ch. 2 (real-time parameter estimation, including forgetting factors).
+widgets: [RLSStream]
+symbols:
+  - tex: '\mathbf{a}_k'
+    meaning: regressor, (1, duty) for measurement k
+  - tex: '\mathbf{K}_k'
+    meaning: gain vector
+  - tex: '\boldsymbol{\nu}_k,\ \mathbf{S}_k'
+    meaning: 'here: the innovation ν_k (scalar surprise)'
+    match: ['\nu_k']
+  - tex: '\mathbf{P}_{k\mid k}'
+    meaning: 'here P_k: covariance of the estimate'
+    match: ['\mathbf{P}_k']
+  - tex: '\beta'
+    meaning: forgetting factor (memory ≈ 1/(1 − β))
+---
+
+import RLSStream from '../../../components/widgets/RLSStream/RLSStream.svelte';
+
+A small robot's drive motor turns a duty-cycle command into wheel speed: roughly a straight line, with a gain set by the motor and the battery, and an offset from friction. The datasheet gives a rough value. The real one you have to measure, and you would rather not stop the robot to do it. Every time the robot drives, the wheel encoder reports a speed for whatever command was sent. Can the robot refine its calibration *as it goes*, one measurement at a time, without storing the whole history?
+
+<RLSStream client:visible />
+
+It can, and the answer is not an approximation. After every measurement, the recursive estimate (solid line) is *exactly* the least-squares fit of all the data seen so far (the dotted line, which is hidden underneath). The readout confirms it: the two differ by less than $10^{-9}$.
+
+## Intuition
+
+Each new measurement brings a small surprise: the measured speed differs a little from what the current calibration predicts. The recursive update has a simple shape:
+
+> new estimate = old estimate + gain × surprise.
+
+The **gain** decides how much a single surprise is allowed to move the estimate. Early on, when the estimate rests on little data, the gain is large: one measurement can change a lot. Later, when hundreds of measurements back the estimate, the gain is small, and a single noisy reading barely matters. The estimate's own uncertainty, which the band shows, is what sets the gain. It shrinks with every measurement.
+
+This pattern will reappear, unchanged, as the update step of the Kalman filter. Recursive least squares is the Kalman filter for a state that never moves.
+
+## The math
+
+### The batch answer, written in information form
+
+Measurement $k$ is a wheel speed $y_k$ for a duty cycle $u_k$, with the model
+
+$$
+y_k = \mathbf{a}_k\T\mathbf{x} + v_k, \qquad \mathbf{a}_k = \begin{bmatrix} 1 \\ u_k \end{bmatrix}, \qquad v_k \sim \N(0, \sigma^2),
+$$
+
+where $\mathbf{x} = (x_1, x_2)$ holds the offset and the gain. The vector $\mathbf{a}_k$, the **regressor**, is row $k$ of the design matrix $\mathbf{A}$ from [Post 5](../least-squares/). Start from the datasheet as a Gaussian prior $\N(\hat{\mathbf{x}}_0, \mathbf{P}_0)$, as in [Post 6](../mle-and-map/). The MAP estimate after $k$ measurements solves the normal equations
+
+$$
+\Big( \mathbf{P}_0^{-1} + \sum_{j=1}^{k} \frac{\mathbf{a}_j\mathbf{a}_j\T}{\sigma^2} \Big)\, \hat{\mathbf{x}}_k = \mathbf{P}_0^{-1}\hat{\mathbf{x}}_0 + \sum_{j=1}^{k} \frac{\mathbf{a}_j\,y_j}{\sigma^2} .
+$$
+
+The matrix in brackets is the information matrix of [Post 3](../conditioning-and-marginalizing/). Its inverse $\mathbf{P}_k$ is the covariance of the estimate. Each new measurement simply *adds* $\mathbf{a}_k\mathbf{a}_k\T/\sigma^2$ to the information. To get $\hat{\mathbf{x}}_k$ we would have to solve this system again from scratch at every step, which is wasteful.
+
+### The recursion
+
+A matrix identity known as the **Sherman–Morrison formula** turns "add a rank-one term to the information" into a cheap update of the covariance. The result is **recursive least squares** (RLS):
+
+$$
+\begin{aligned}
+\nu_k &= y_k - \mathbf{a}_k\T\hat{\mathbf{x}}_{k-1} && \text{(innovation: the surprise)} \\
+\mathbf{K}_k &= \frac{\mathbf{P}_{k-1}\mathbf{a}_k}{\sigma^2 + \mathbf{a}_k\T\mathbf{P}_{k-1}\mathbf{a}_k} && \text{(gain)} \\
+\hat{\mathbf{x}}_k &= \hat{\mathbf{x}}_{k-1} + \mathbf{K}_k\,\nu_k && \text{(correct the estimate)} \\
+\mathbf{P}_k &= \mathbf{P}_{k-1} - \mathbf{K}_k\,\mathbf{a}_k\T\mathbf{P}_{k-1} && \text{(shrink the uncertainty)}
+\end{aligned}
+\tag{1}
+$$
+
+<Derivation title="From the normal equations to equation (1)">
+Write $\boldsymbol{\Omega}_k = \mathbf{P}_k^{-1} = \boldsymbol{\Omega}_{k-1} + \mathbf{a}_k\mathbf{a}_k\T/\sigma^2$. The Sherman–Morrison formula for the inverse of a matrix plus a rank-one term gives
+
+$$
+\mathbf{P}_k = \mathbf{P}_{k-1} - \frac{\mathbf{P}_{k-1}\mathbf{a}_k\mathbf{a}_k\T\mathbf{P}_{k-1}}{\sigma^2 + \mathbf{a}_k\T\mathbf{P}_{k-1}\mathbf{a}_k} = \mathbf{P}_{k-1} - \mathbf{K}_k\mathbf{a}_k\T\mathbf{P}_{k-1},
+$$
+
+which is the last line of (1). The right-hand side of the normal equations grows by $\mathbf{a}_k y_k/\sigma^2$, so $\hat{\mathbf{x}}_k = \mathbf{P}_k(\boldsymbol{\Omega}_{k-1}\hat{\mathbf{x}}_{k-1} + \mathbf{a}_k y_k/\sigma^2)$. Substituting $\boldsymbol{\Omega}_{k-1} = \boldsymbol{\Omega}_k - \mathbf{a}_k\mathbf{a}_k\T/\sigma^2$ gives $\hat{\mathbf{x}}_k = \hat{\mathbf{x}}_{k-1} + \mathbf{P}_k\mathbf{a}_k(y_k - \mathbf{a}_k\T\hat{\mathbf{x}}_{k-1})/\sigma^2$. A last line of algebra shows $\mathbf{P}_k\mathbf{a}_k/\sigma^2 = \mathbf{K}_k$.
+</Derivation>
+
+Each step costs a handful of multiplications of $2 \times 2$ matrices, however long the robot has been driving, and needs no history. The denominator of the gain balances two uncertainties: $\sigma^2$, the noise of the new measurement, against $\mathbf{a}_k\T\mathbf{P}_{k-1}\mathbf{a}_k$, the uncertainty of the current prediction. Trust the side that is more certain.
+
+<Callout type="key">
+Recursive least squares is exact: after every step it equals the batch solution with all data so far. The gain is the ratio of the estimate's uncertainty to the total uncertainty of the prediction, so it shrinks as information accumulates.
+</Callout>
+
+### Forgetting
+
+A batch fit treats a measurement from an hour ago exactly like one from a second ago. That is right if the motor never changes, and wrong if the battery is sagging. A **forgetting factor** $\beta$, slightly below 1, discounts each measurement by $\beta$ for every newer one that arrives, so a measurement $j$ steps old has weight $\beta^{j}$. The recursion changes only slightly: $\sigma^2$ becomes $\beta\sigma^2$ in the gain, and the covariance is divided by $\beta$ after the update, which slowly inflates the uncertainty again. The effective memory is about $1/(1-\beta)$ measurements: $\beta = 0.95$ remembers roughly the last 20.
+
+Inflating $\mathbf{P}$ between measurements is the same idea as the *prediction step* of the Kalman filter (Posts 11 and 12): admitting that the quantity may have changed since you last looked.
+
+## Play with it
+
+The first widget has a steady battery and no forgetting ($\beta = 1$). It starts at the end of the run; press **Replay** to watch the measurements arrive.
+
+<TryThis>
+1. Watch the gain estimate in the lower chart. After 1 measurement it is $0.228 \pm 0.098$ rad/s per %, after 10 it is $0.247 \pm 0.031$, and after all 120 it is $0.248 \pm 0.006$. The true gain is 0.250. The band shrinks roughly like $1/\sqrt{k}$.
+2. Step through one measurement at a time and watch the *RLS − batch* readout: at every step the recursive and batch answers are identical.
+3. Set $\beta$ to 0.95. With a steady battery, forgetting only hurts: the final gain is $0.236 \pm 0.017$, about three times less precise, because the estimate now rests on about 20 recent measurements instead of all of them.
+</TryThis>
+
+Now the battery sags at measurement 60, and the true gain drops by 20%, from 0.250 to 0.200.
+
+<RLSStream client:visible preset="sag" />
+
+<TryThis>
+1. With $\beta = 1$ the estimate creeps down far too slowly, because 60 old measurements outvote the new ones. At the end it reads $0.223 \pm 0.006$: its 95% band does not even contain the true 0.200. The estimate is confidently wrong.
+2. Set $\beta$ to 0.95. The estimate follows the drop and ends at $0.189 \pm 0.017$, a band that contains the truth. Over the last 40 measurements, the average gain error falls from 14.5% with $\beta = 1$ to 3.8%.
+3. Push $\beta$ down to 0.85, a memory of about 7 measurements. The average error over the last 40 rises again, to 6.7%: now there is too little data in memory and the noise wins. Forgetting is a dial with a sweet spot.
+</TryThis>
+
+## Algorithm
+
+<AlgorithmBox title="Recursive least squares with forgetting" source="src/lib/filters/rls.ts">
+1. Start from a prior estimate $\hat{\mathbf{x}}_0$ and covariance $\mathbf{P}_0$ (the datasheet, generously uncertain).
+2. For each new measurement $(\mathbf{a}_k, y_k)$: compute the innovation $\nu_k = y_k - \mathbf{a}_k\T\hat{\mathbf{x}}_{k-1}$.
+3. Compute $\mathbf{P}_{k-1}\mathbf{a}_k$ and the gain $\mathbf{K}_k = \mathbf{P}_{k-1}\mathbf{a}_k / (\beta\sigma^2 + \mathbf{a}_k\T\mathbf{P}_{k-1}\mathbf{a}_k)$.
+4. Update $\hat{\mathbf{x}}_k = \hat{\mathbf{x}}_{k-1} + \mathbf{K}_k\nu_k$ and $\mathbf{P}_k = (\mathbf{P}_{k-1} - \mathbf{K}_k(\mathbf{P}_{k-1}\mathbf{a}_k)\T)/\beta$; symmetrize $\mathbf{P}_k$.
+</AlgorithmBox>
+
+The unit tests check the defining property: after every step, RLS equals the batch solution of the same weighted problem, both with $\beta = 1$ and with forgetting.
+
+## When it breaks
+
+**Forgetting without excitation.** If the robot drives at one fixed duty cycle for a long time, every new measurement says the same thing, and nothing pins down the direction of $\mathbf{x}$ that separates offset from gain. With $\beta < 1$, the uncertainty in that direction is inflated at every step and never reduced. It can grow until the estimate becomes erratic, an effect known as *covariance windup*. Practical systems cap $\mathbf{P}$ or forget only in excited directions.
+
+**Correlated parameters.** Here the duty cycle never drops below 20%, so the line is never observed near zero, and the offset is only weakly separated from the gain. With forgetting the offset wanders: with a steady battery and $\beta = 0.95$ it ends at $-0.08$ rad/s against a true $-1.00$, even though its predicted speeds stay within 0.63 rad/s of the truth over the whole 20–100% range, less than the measurement noise. Parameters that the data cannot tell apart need either more varied data or stronger priors.
+
+**A prior that is too confident.** A small $\mathbf{P}_0$ means a small initial gain. The estimate then refuses to move away from the datasheet value, just like the overconfident prior of [Post 6](../mle-and-map/).
+
+**Rounding errors.** Equation (1) subtracts from $\mathbf{P}$ at every step, and over thousands of steps rounding can make $\mathbf{P}$ slightly non-symmetric or even indefinite. Symmetrizing after each update helps; Post 13 shows the more robust Joseph form used in Kalman filters.
+
+## Summary
+
+- Recursive least squares updates the estimate after each measurement at constant cost: new estimate = old estimate + gain × innovation.
+- The gain $\mathbf{K}_k = \mathbf{P}_{k-1}\mathbf{a}_k/(\sigma^2 + \mathbf{a}_k\T\mathbf{P}_{k-1}\mathbf{a}_k)$ weighs the estimate's uncertainty against the measurement noise, and $\mathbf{P}_k$ shrinks with every measurement.
+- RLS is exact: it reproduces the batch MAP solution after every step.
+- A forgetting factor $\beta < 1$ discounts old data with a memory of about $1/(1-\beta)$ measurements. It lets the estimate track change, at the cost of more noise when nothing changes.
+- RLS is the Kalman filter's update step for a state that does not move; forgetting is a crude version of its prediction step.

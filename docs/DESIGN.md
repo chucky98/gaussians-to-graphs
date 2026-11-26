@@ -287,6 +287,8 @@ Typography: scalars are italic ($x$), vectors are bold lowercase ($\mathbf{x}$),
 | $\kappa$ | prior weight in MAP; 1 is ordinary Bayes, 0 ignores the prior (post 6) |
 | $\bar{z}$ | average of the measurements (post 7) |
 | $\mathcal{I}$ | Fisher information of one measurement (post 7) |
+| $\mathbf{a}_k$ | regressor, row $k$ of the design matrix $\mathbf{A}$ (post 8) |
+| $\beta$ | forgetting factor in recursive least squares; memory $\approx 1/(1-\beta)$ (post 8) |
 | $p(\cdot)$, $\mathrm{bel}(\mathbf{x}_k)$ | density; belief |
 | $n_x, n_z$ | state and measurement dimensions |
 | $\mathcal{X}^{[i]}$, $W^{[i]}_m, W^{[i]}_c$ | sigma points and their mean/covariance weights |

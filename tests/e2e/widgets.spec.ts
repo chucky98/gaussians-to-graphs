@@ -264,3 +264,29 @@ test.describe('post 07 widgets', () => {
     await expect(u.locator('[data-readout="crlb"]')).toHaveText('1.04');
   });
 });
+
+test.describe('post 08 widgets', () => {
+  test('RLSStream: RLS equals batch; the sag preset is overconfident at β = 1 and tracks at β = 0.95', async ({
+    page,
+  }) => {
+    await page.goto('posts/recursive-least-squares/');
+    const w = page.locator('[data-widget="RLSStream"]').first();
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="gain"]')).toHaveText('0.248 ± 0.006');
+    await expect(w.locator('[data-readout="diff"]')).toHaveText('identical (< 10⁻⁹)');
+    const k = w.getByRole('slider', { name: 'Measurements processed' });
+    await k.focus();
+    await k.press('Home');
+    await k.press('ArrowRight');
+    await expect(w.locator('[data-readout="gain"]')).toHaveText('0.228 ± 0.098');
+    await expect(w.locator('[data-readout="diff"]')).toHaveText('identical (< 10⁻⁹)');
+
+    const s = page.locator('[data-widget="RLSStream"]').nth(1);
+    await s.scrollIntoViewIfNeeded();
+    await expect(s.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(s.locator('[data-readout="gain"]')).toHaveText('0.223 ± 0.006');
+    await s.getByRole('slider', { name: 'forgetting factor beta' }).fill('0.95');
+    await expect(s.locator('[data-readout="gain"]')).toHaveText('0.189 ± 0.017');
+  });
+});

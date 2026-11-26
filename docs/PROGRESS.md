@@ -1,8 +1,8 @@
 # Progress
 
-## Current phase: 1 — Parts 0 and 1 (Part 0 complete; Part 1 in progress: posts 05–07 published)
+## Current phase: 1 — Parts 0 and 1 (Part 0 complete; Part 1 in progress: posts 05–08 published)
 
-## Next task: post 08 `recursive-least-squares` (RLSStream: online motor calibration with a battery-sag jump)
+## Next task: post 09 `nonlinear-least-squares` (CostLandscape: UWB indoor positioning, Gauss–Newton vs Levenberg–Marquardt)
 
 ## Posts
 
@@ -15,7 +15,8 @@
 | 05    | least-squares                    | published | LineFit                       | ~2,300 words. Road from phone GPS fixes; multipath outlier; weights from reported accuracy. Projection figure.              |
 | 06    | mle-and-map                      | published | BayesGrid1D                   | ~2,100 words. Distance to a wall: odometry prior + ultrasonic readings; two-doorway bimodal prior.                          |
 | 07    | estimator-quality                | published | EstimatorShootout             | ~2,200 words. GPS receiver on a benchmark; open sky vs reflections (10% at ±30 m); CRLB by numerical Fisher information.    |
-| 08–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                             |                                                                                                                             |
+| 08    | recursive-least-squares          | published | RLSStream                     | ~2,300 words. Online motor calibration; battery sag; forgetting factor sweet spot.                                          |
+| 09–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                             |                                                                                                                             |
 
 ## Infrastructure checklist
 
@@ -80,6 +81,7 @@
 - 2026-11-26 — **BayesGrid1D "prior strength" is a prior exponent κ** (posterior ∝ prior^κ × likelihood). For a Gaussian prior this equals shrinking σ₀ by √κ; κ = 0 gives MLE. Notation: 𝓛, μ₀, σ₀, κ.
 - 2026-11-26 — **`math/estimators.ts`** (mean, median, shrinkage; Gaussian and contaminated noise densities; numerical Fisher information by Simpson's rule; CRLB). EstimatorShootout precomputes means/medians once per (noise, seed) (~120 ms on a noise/seed change, a discrete click); the n and κ sliders then cost ~2 ms.
 - 2026-11-26 — **Post 07 uses m (not n) for the sample size and κ for the shrinkage weight**, so it matches posts 05–06: shrinkage towards a guess is the MAP estimate of post 06 with a prior worth κ measurements. Axes gained `xTickValues`/`yTickValues`/`yFormat` for log–log plots.
+- 2026-11-26 — **`filters/rls.ts`** (RLS with forgetting, and `batchSolution` of the same exponentially weighted MAP problem). Invariant tests: RLS = batch after every step for β = 1 and β < 1; vague prior → ordinary LS. Written with K, P and ν so post 08 bridges to the Kalman filter. Notation: aₖ (regressor), β (forgetting factor).
 
 ## Follow-ups / known issues
 
