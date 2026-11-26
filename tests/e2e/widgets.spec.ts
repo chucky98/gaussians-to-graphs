@@ -357,3 +357,43 @@ test.describe('post 10 widgets', () => {
     await expect(t.locator('[data-readout="truth"]')).toHaveText('20.6 m');
   });
 });
+
+test.describe('post 11 widgets', () => {
+  test('GaussianProduct and Tracker1D: gain, steady state, outage', async ({ page }) => {
+    await page.goto('posts/kalman-filter-1d/');
+    const g = page.locator('[data-widget="GaussianProduct"]');
+    await g.scrollIntoViewIfNeeded();
+    await expect(g.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(g.locator('[data-readout="gain"]')).toHaveText('0.74');
+    await expect(g.locator('[data-readout="mean"]')).toHaveText('12.59 m');
+    await g.getByRole('slider', { name: 'Reading σ₂' }).fill('2');
+    await expect(g.locator('[data-readout="gain"]')).toHaveText('0.06');
+    await expect(g.locator('[data-readout="mean"]')).toHaveText('12.05 m');
+    const handle = g.getByRole('slider', { name: 'Reading (drag sideways)' });
+    await handle.focus();
+    await handle.press('ArrowRight');
+    await expect(g.getByRole('slider', { name: 'Reading z' })).toHaveValue('12.85');
+
+    const t = page.locator('[data-widget="Tracker1D"]').first();
+    await t.scrollIntoViewIfNeeded();
+    await expect(t.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(t.locator('[data-readout="steady"]')).toHaveText('K = 0.282, σ = 0.159 m');
+    const time = t.getByRole('slider', { name: /Time/ });
+    await time.focus();
+    await time.press('Home');
+    await t.locator('[data-action="step"]').click();
+    await t.locator('[data-action="step"]').click();
+    await expect(t.locator('[data-readout="time"]')).toHaveText('step 1: updated');
+    await expect(t.locator('[data-readout="gain"]')).toHaveText('0.918');
+
+    const o = page.locator('[data-widget="Tracker1D"]').nth(1);
+    await o.scrollIntoViewIfNeeded();
+    await expect(o.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    const ot = o.getByRole('slider', { name: /Time/ });
+    await ot.fill('52');
+    await expect(o.locator('[data-readout="time"]')).toHaveText('step 26: updated');
+    await expect(o.locator('[data-readout="gain"]')).toHaveText('0.601');
+    await ot.fill('50');
+    await expect(o.locator('[data-readout="gain"]')).toHaveText('no fix');
+  });
+});
