@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { test, expect } from './fixtures';
 import AxeBuilder from '@axe-core/playwright';
 import { builtPages, postPages } from './pages';
 
@@ -210,17 +211,20 @@ test.describe('symbols card and margin notes', () => {
 });
 
 test.describe('site statistics', () => {
-  test('while no GoatCounter code is configured: no counting script, no statistics section, honest privacy text', async ({
+  test('About ends with public statistics, most read first, and the privacy text mentions the counting', async ({
     page,
   }) => {
     await page.goto('about/');
-    const enabled = (await page.locator('#site-statistics').count()) > 0;
-    if (enabled) {
-      // Once switched on, the section must exist and the privacy text must mention the counting.
-      await expect(page.locator('main')).toContainText('GoatCounter');
+    const s = page.locator('#site-statistics');
+    if ((await s.count()) === 0) {
+      await expect(page.locator('script[data-goatcounter]')).toHaveCount(0);
+      await expect(page.locator('main')).toContainText('uses no analytics');
       return;
     }
-    await expect(page.locator('script[data-goatcounter]')).toHaveCount(0);
-    await expect(page.locator('main')).toContainText('uses no analytics');
+    await expect(page.locator('main')).toContainText('GoatCounter');
+    await expect(s.locator('[data-stats-total]')).toHaveText('1,234');
+    await expect(s.locator('tbody tr').first().locator('[data-views]')).toHaveText('56');
+    // It is the last thing on the page.
+    expect(await page.locator('main .prose > *').last().getAttribute('id')).toBe('site-statistics');
   });
 });
