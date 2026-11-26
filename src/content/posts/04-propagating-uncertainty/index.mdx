@@ -89,7 +89,7 @@ $$
 \mathbf{y} \approx \N\!\left( f(\boldsymbol{\mu}),\ \mathbf{J}\boldsymbol{\Sigma}\mathbf{J}\T \right). \tag{2}
 $$
 
-This is first-order propagation of uncertainty. It is exactly what the extended Kalman filter (Post 15) does at every step.
+This is first-order propagation of uncertainty. It is exactly what the extended Kalman filter ([Post 15](../extended-kalman-filter/)) does at every step.
 
 For the polar conversion, $f(r, \theta) = (r\cos\theta, r\sin\theta)$ and
 
@@ -157,7 +157,7 @@ Every analytic Jacobian in this series is checked in the unit tests against cent
 
 **Flat spots.** Where the slope of $f$ is zero, as for $x^2$ at 0 or $\sin x$ at $\pi/2$, linearization predicts no output uncertainty at all. A filter that believes this becomes overconfident and stops listening to new measurements.
 
-**Linearizing at the wrong point.** Equation (2) uses the Jacobian at the *mean*. If the mean itself is badly wrong, the tangent is taken at the wrong place and the whole approximation can be off. Post 15 shows an extended Kalman filter diverging for exactly this reason.
+**Linearizing at the wrong point.** Equation (2) uses the Jacobian at the *mean*. If the mean itself is badly wrong, the tangent is taken at the wrong place and the whole approximation can be off. [Post 15](../extended-kalman-filter/) shows an extended Kalman filter diverging for exactly this reason.
 
 **The summary is not the distribution.** Even a perfect mean and covariance describe a banana poorly: the fitted ellipse in the widget covers empty space inside the arc and misses the ends. Two better tools come later in the series. The unscented transform (Post 16) chooses a handful of sample points cleverly instead of thousands at random. Post 22 shows that describing pose uncertainty in the right coordinates turns the banana back into an ellipse.
 
