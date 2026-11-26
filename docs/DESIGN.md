@@ -308,6 +308,7 @@ Typography: scalars are italic ($x$), vectors are bold lowercase ($\mathbf{x}$),
 | $\mathcal{X}^{[i]}$, $W^{[i]}_m, W^{[i]}_c$ | sigma points and their mean/covariance weights |
 | $\alpha, \beta, \kappa, \lambda$ (UT) | unscented-transform spread, distribution and scaling parameters, $\lambda = \alpha^2(n+\kappa) - n$ (post 16) |
 | $\mathbf{x}^{[i]}$, $w^{[i]}$ | particle $i$ and its (scalar) weight; $N_p$ particles; $N_{\text{eff}}$ effective sample size |
+| $w_{\text{slow}}, w_{\text{fast}}$ | long- and short-term average measurement likelihood in augmented MCL (post 17) |
 | $\epsilon_k$, $\epsilon_{\nu,k}$ | NEES and NIS |
 | $M$, $\bar{\epsilon}_k$ | number of Monte Carlo runs; a statistic averaged over them (post 13) |
 | $d_M$ | Mahalanobis distance |

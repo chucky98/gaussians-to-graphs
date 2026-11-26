@@ -1,0 +1,169 @@
+---
+number: 17
+title: Particle Filters and Monte Carlo Localization
+description: Represent the belief by thousands of sampled poses, move them, weight them by the readings, resample. Localize a robot that has no idea where it is.
+part: 2
+status: published
+date: 2026-11-26
+prerequisites: [bayes-filter, robot-models-2d]
+objectives:
+  - Represent a belief by weighted samples, and carry out the Bayes filter's two steps by sampling the motion model and weighting by the likelihood.
+  - Explain resampling, compare multinomial, stratified and systematic resampling, and use the effective sample size to decide when to resample.
+  - Recognize weight degeneracy and sample impoverishment, and the practical remedies, including a deliberately wide measurement model.
+  - Solve global localization with Monte Carlo localization, and recover from kidnapping by injecting random particles.
+references:
+  - key: thrun2005
+    text: Thrun, Burgard, Fox. *Probabilistic Robotics.* MIT Press, 2005. §4.3 (the particle filter, resampling, low-variance sampling) and §8.3 (Monte Carlo localization, including augmented MCL for kidnapping, §8.3.5).
+  - key: arulampalam2002
+    text: 'Arulampalam, Maskell, Gordon, Clapp. "A tutorial on particle filters for online nonlinear/non-Gaussian Bayesian tracking." *IEEE Transactions on Signal Processing* 50(2), 2002. §IV (particle filtering, degeneracy, resampling).'
+  - key: dellaert1999
+    text: 'Dellaert, Fox, Burgard, Thrun. "Monte Carlo localization for mobile robots." *Proc. IEEE International Conference on Robotics and Automation*, 1999.'
+  - key: douc2005
+    text: 'Douc, Cappé, Moulines. "Comparison of resampling schemes for particle filtering." *Proc. International Symposium on Image and Signal Processing and Analysis*, 2005.'
+widgets: [MCL]
+symbols:
+  - tex: '\mathbf{x}^{[i]},\ w^{[i]},\ N_p,\ N_{\text{eff}}'
+    meaning: particle i, its weight, number of particles, effective sample size
+    match: ['w^{[i]}']
+  - tex: '\bel(\mathbf{x}_k)'
+    meaning: belief, here approximated by the weighted particles
+    match: ['\bel(']
+  - tex: 'w_{\text{slow}},\ w_{\text{fast}}'
+    meaning: long- and short-term average likelihood (augmented MCL)
+    match: ['w_{\text{fast}}']
+  - tex: 'p(\cdot),\ \bel(\mathbf{x}_k)'
+    meaning: 'p(z | x): the measurement likelihood used as the weight'
+    match: ['p(\mathbf{z}_k']
+---
+
+import MCL from '../../../components/widgets/MCL/MCL.svelte';
+
+The delivery robot has been switched off, carried somewhere in the hall of [Post 15](../extended-kalman-filter/), and switched on again. It does not know where it is or which way it is facing. As it drives its usual loop, its wheel odometry reports how it moves, with the usual noise. Its lidar picks out the reflective markers within 10 m, but the markers are identical: a reading says "a marker 4.2 m away, 30° to the left", not which one. An EKF is hopeless here: it needs a starting guess, and any guess would be a wild one. The histogram filter of [Post 10](../bayes-filter/) would work in principle, but at 10 cm and 5° resolution this hall has 1.9 million cells.
+
+<MCL client:visible />
+
+Each pink dot is a guess at the robot's pose: a **particle**. At the start, 2,000 of them are spread uniformly over the hall with random headings. Press **Play** and watch them move, thin out, and gather around the robot within a couple of seconds.
+
+## Intuition
+
+A belief does not have to be a formula. It can be a crowd of guesses, more of them where the robot is more likely to be. Such a crowd can have any shape: a uniform spread, several clusters, a banana. The Bayes filter's two steps become simple operations on the crowd.
+
+**Moving** each guess by the motion model, with its own random noise, spreads the crowd the way the robot's uncertainty spreads; that is sampling the motion model, as in [Post 14](../robot-models-2d/).
+
+**Sensing** does not move the guesses. It gives each one a **weight**: how well would the readings fit if the robot were there? Guesses near the robot get large weights; guesses in places where the readings make no sense get tiny ones.
+
+**Resampling** then copies the heavy guesses and drops the light ones, so the crowd concentrates its effort where the probability is. Survival of the fittest, with the readings as the judge.
+
+## The math
+
+### Weighted samples
+
+The belief is approximated by $N_p$ particles $\mathbf{x}^{[i]}$ with weights $w^{[i]}$ that sum to 1:
+
+$$
+\bel(\mathbf{x}_k) \approx \sum_{i=1}^{N_p} w^{[i]}\, \delta(\mathbf{x}_k - \mathbf{x}^{[i]}),
+$$
+
+where $\delta$ is a point mass. Any expectation becomes a weighted sum: the estimated position is $\sum_i w^{[i]}\mathbf{x}^{[i]}$, and the probability of a region is the total weight of the particles inside it.
+
+### Predict and update
+
+Each step:
+
+$$
+\begin{aligned}
+\mathbf{x}^{[i]} &\sim p(\mathbf{x}_k \mid \mathbf{x}^{[i]}, \mathbf{u}_k) && \text{(move each particle by a sampled motion)} \\
+w^{[i]} &\propto w^{[i]}\; p(\mathbf{z}_k \mid \mathbf{x}^{[i]}) && \text{(weight by the likelihood of the readings)}
+\end{aligned}
+$$
+
+followed by normalizing the weights. The first line samples the prediction (1) of Post 10; the second is its update (2), Bayes' rule applied to each particle.
+
+<Derivation title="Why weighting by the likelihood is right">
+The particles after the motion step are samples from the predicted belief $\overline{\bel}(\mathbf{x}_k)$, but we want samples from the posterior $\bel(\mathbf{x}_k) = \eta\, p(\mathbf{z}_k \mid \mathbf{x}_k)\,\overline{\bel}(\mathbf{x}_k)$. **Importance sampling** handles exactly this mismatch: to use samples from one distribution (the *proposal*) as if they came from another (the *target*), weight each by the ratio target/proposal. Here that ratio is $\eta\, p(\mathbf{z}_k \mid \mathbf{x}_k)$, and since $\eta$ is the same for all particles it disappears when the weights are normalized. With $N_p \to \infty$, weighted sums over the particles converge to expectations under the posterior.
+</Derivation>
+
+### The likelihood of anonymous readings
+
+For a reading $\mathbf{z} = (r, \phi)$ and a particle at pose $\mathbf{x}^{[i]}$, any of the 8 markers could have produced it. Treating each as equally likely, plus a small floor $c$ for clutter (reflections, people), gives
+
+$$
+p(\mathbf{z} \mid \mathbf{x}^{[i]}) = c + \frac{1}{8}\sum_{j=1}^{8} \N\big(\mathbf{z};\ h(\mathbf{x}^{[i]}, \mathbf{m}_j),\ \mathbf{R}\big),
+$$
+
+with the range–bearing model $h$ of Post 14, and a product over the readings of one scan. A particle in the wrong place can still explain *some* readings, by matching them to the wrong markers; only a pose that explains all of them, scan after scan, keeps a large weight. That is how identical markers still pin down a unique position.
+
+### Effective sample size and resampling
+
+After a few updates most weights are tiny and a handful of particles carry the belief: **weight degeneracy**. The **effective sample size**
+
+$$
+N_{\text{eff}} = \frac{1}{\sum_{i} \big(w^{[i]}\big)^2}
+$$
+
+measures this: it is $N_p$ when all weights are equal and 1 when one particle has all the weight. When $N_{\text{eff}}$ falls below $N_p/2$, the filter **resamples**: it draws $N_p$ new particles from the old ones with probabilities $w^{[i]}$, and resets all weights to $1/N_p$. Three common schemes draw the same expected number of copies, $N_p w^{[i]}$, with different randomness:
+
+- **multinomial**: $N_p$ independent draws, so the counts vary the most;
+- **stratified**: one draw in each of $N_p$ equal slices of $[0, 1)$;
+- **systematic** (Thrun's low-variance sampler): one random offset $u$, then the points $(u + j)/N_p$, so particle $i$ is copied either $\lfloor N_p w^{[i]} \rfloor$ or $\lceil N_p w^{[i]} \rceil$ times.
+
+<Callout type="key">
+A particle filter carries the belief as weighted samples. Predict by sampling the motion model, update by multiplying each weight by the likelihood, and resample when the effective sample size $N_{\text{eff}}$ drops. Any shape of belief can be represented, at a cost that grows with the number of particles.
+</Callout>
+
+## Play with it
+
+Step through the start of the run with **Step**, watching the **effective sample size** readout and the chart below the map.
+
+<TryThis>
+1. The first scan is brutal: the effective sample size falls from 2,000 to 40. Almost all the weight lands on a few dozen particles whose surroundings happen to match the first readings, in several parts of the hall. After resampling, the next scans thin those clusters out, and by step 3 (1.5 s) 98% of the weight lies within 1 m of the robot.
+2. Let it run. The cloud stays tight around the robot for the rest of the loop; the solid line in the chart shows the effective sample size dipping at each resampling.
+3. Reduce the particles to 500 and replay. On this seed the cloud locks onto a wrong place and stays there, ending the run 11.2 m from the robot. A particle filter needs enough particles near the truth *at the start*, and that is a matter of luck: across 30 seeds, 500 particles succeed in 16 runs and 2,000 in 28. (With 200, this particular seed happens to succeed; small particle sets are not just worse, they are unpredictable.)
+4. Try the other resampling schemes. In this problem they make little difference: with 500 particles, systematic, stratified and multinomial succeed in 16, 17 and 17 runs out of 30. Systematic resampling is the usual default because it is the cheapest and adds the least extra randomness.
+</TryThis>
+
+## Algorithm
+
+<AlgorithmBox title="Monte Carlo localization (one step)" source="src/lib/filters/pf.ts">
+1. **Move:** for each particle, draw a noisy control $(v + \delta v, \omega + \delta\omega)$ and apply the motion model.
+2. **Weight:** multiply each weight by $p(\mathbf{z}_k \mid \mathbf{x}^{[i]})$, the product over the scan's readings, working with logarithms to avoid underflow; give particles outside the walls (practically) zero weight. Normalize.
+3. **Resample** if $N_{\text{eff}} < N_p/2$: draw $N_p$ indices with the chosen scheme, copy those particles, reset the weights to $1/N_p$.
+4. **Estimate:** the weighted mean, or better, the densest cluster when the belief has several.
+</AlgorithmBox>
+
+The MCL scenario is in `src/lib/demos/mcl.ts`; the widget runs it in a Web Worker so the page stays responsive. The unit tests check the properties in DESIGN's test list: normalized weights sum to 1; systematic resampling copies each particle $\lfloor N_p w^{[i]} \rfloor$ or $\lceil N_p w^{[i]} \rceil$ times; every scheme preserves the expected counts; and on a one-dimensional linear-Gaussian problem, a particle filter with 5,000 particles tracks the Kalman filter's mean to within a tenth of its standard deviation.
+
+## When it breaks
+
+### Kidnapping
+
+This copy of the widget opens 30 s into the run, at the moment the robot is picked up and put down half a lap further on. The filter is not told.
+
+<MCL client:visible start={60} kidnap={60} />
+
+<TryThis>
+1. Press **Play**. All 2,000 particles are now in the wrong place, and nothing will ever put one near the robot again: resampling only copies existing particles. At the end of the run the estimate is 15.2 m from the robot. The same trap caught the histogram filter of Post 10.
+2. Switch on **Add random particles** and replay from the kidnapping. This is *augmented MCL*: the filter tracks a long-term average $w_{\text{slow}}$ and a short-term average $w_{\text{fast}}$ of how well the readings fit its particles, and when $w_{\text{fast}}$ drops below $w_{\text{slow}}$ it replaces a share $1 - w_{\text{fast}}/w_{\text{slow}}$ of the particles at each resampling by random poses. Here the injection starts 31 steps after the kidnapping, once the readings have fitted badly for long enough, and by step 103 (51.5 s) the cloud has re-formed around the robot.
+</TryThis>
+
+The price of injection is a filter that is never entirely sure: random particles are added whenever the readings fit worse than usual, even if the robot was not kidnapped. With the rates used here, this cost is small; across 30 seeds without kidnapping, the augmented filter localizes in 29 runs.
+
+### A measurement model that is too sharp
+
+The real lidar here has 0.1 m and 2° of noise, but the filter's model assumes 0.5 m and 10°, and a little extra motion noise. With 2,000 particles over 260 m² and all headings, almost no particle starts within 0.1 m and 2° of the truth, so under the true model even the best particles get negligible weight, and the crowd collapses onto whatever happens to fit. Across 30 seeds, using the true noise levels succeeds in only 8 runs; the widened model in 28. Widening the likelihood, and adding noise when moving particles, are standard practice: they make up for the finite number of particles.
+
+### Sample impoverishment
+
+Resampling replaces diversity by copies. If a particle is copied 50 times and the motion adds little noise, the crowd soon consists of a few distinct poses, and the belief is only as good as those few. The motion noise in step 1 is what spreads the copies again. Resampling only when $N_{\text{eff}}$ is low, rather than at every step, also keeps more diversity.
+
+### High dimensions
+
+Particles cover a space; the number needed grows quickly with its dimension. A pose has three dimensions, which is manageable. A robot that also maps 50 landmarks has more than a hundred, and a plain particle filter is hopeless there. Mapping methods use particles only for the robot's path and handle the landmarks analytically, or abandon particles for optimization (Part 4).
+
+## Summary
+
+- A particle filter represents the belief by $N_p$ weighted samples and can represent any shape, including several hypotheses at once.
+- Predict by sampling the motion model; update by multiplying each weight by $p(\mathbf{z}_k \mid \mathbf{x}^{[i]})$; this is importance sampling.
+- Weights degenerate; resample when $N_{\text{eff}} = 1/\sum_i (w^{[i]})^2$ falls below $N_p/2$. Systematic resampling is the cheapest and lowest-variance scheme.
+- Monte Carlo localization solves global localization, even with identical landmarks, given enough particles and a measurement model wide enough for them.
+- A plain particle filter cannot recover from kidnapping; injecting random particles when $w_{\text{fast}}$ drops below $w_{\text{slow}}$ can.
