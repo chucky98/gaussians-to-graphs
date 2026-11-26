@@ -1,0 +1,229 @@
+---
+number: 2
+title: Gaussians and Covariance
+description: The bell curve in one and many dimensions, what a covariance matrix means, why it draws an ellipse, and how to measure distance in units of uncertainty.
+part: 0
+status: published
+date: 2026-11-26
+prerequisites: [where-am-i]
+objectives:
+  - Write down the 1D and n-dimensional Gaussian densities and say what each part of the formula does.
+  - Read a covariance matrix as variances, covariances and a correlation coefficient.
+  - Draw the confidence ellipse of a 2D Gaussian from the eigenvalues and eigenvectors of its covariance.
+  - Compute a Mahalanobis distance and explain why it is the right way to measure distance under uncertainty.
+  - Pick the correct chi-square threshold for a confidence region in n dimensions.
+references:
+  - key: thrun2005
+    text: Thrun, Burgard, Fox. *Probabilistic Robotics.* MIT Press, 2005. §2.2 (the normal distribution).
+  - key: barfoot2024
+    text: Barfoot. *State Estimation for Robotics*, 2nd ed. Cambridge University Press, 2024. §2.2 (Gaussian probability density functions).
+  - key: barshalom2001
+    text: Bar-Shalom, Li, Kirubarajan. *Estimation with Applications to Tracking and Navigation.* Wiley, 2001. Ch. 1 (review of probability, including the chi-square distribution).
+widgets: [Gaussian1D, CovarianceEllipse]
+---
+
+import Gaussian1D from '../../../components/widgets/Gaussian1D/Gaussian1D.svelte';
+import CovarianceEllipse from '../../../components/widgets/CovarianceEllipse/CovarianceEllipse.svelte';
+
+A robot's GPS receiver reports that the robot is at $x = 3.2$ metres along a corridor. Nobody believes that number to the millimetre. The useful question is how far off it might be, and how likely each error is. A single number cannot say that; a whole curve can.
+
+Almost every estimator in this series answers that question with the same curve: the Gaussian, or bell curve. Here it is. Drag the two handles, or use the sliders.
+
+<Gaussian1D client:visible />
+
+The curve is a *probability density*. The area under it between two points is the probability that the true value lies between them, and the total area is always 1. Move the curve around and stretch it, and you will notice that the percentages in the table do not move. That observation is the first idea of this post, and it generalizes all the way to the ellipses we draw later.
+
+## Intuition
+
+A Gaussian belief has two ingredients. The **mean** is the best single guess, where the curve peaks. The **standard deviation** is the typical size of the error, the width of the curve. Doubling the standard deviation makes the curve twice as wide and half as tall, because the area must stay 1.
+
+With two unknowns, such as a robot's $x$ and $y$ position, the belief becomes a hill over the plane. Seen from above, its contour lines are ellipses. Two new things appear that a single number cannot express. The hill can be wider in one direction than another, and it can be *tilted*. A tilted ellipse says the two errors are linked. If the robot is probably too far east, it is probably also too far north. This link is called correlation, and it is the reason SLAM works at all. In Post 23 we will see that correlations between landmarks are what let one re-observed landmark improve all the others.
+
+The rest of this post makes these pictures precise: one matrix, the covariance, holds the width, the elongation and the tilt, and its eigenvectors tell us where the ellipse's axes point.
+
+## The math
+
+### One dimension
+
+A scalar random variable $x$ is Gaussian with mean $\mu$ and variance $\sigma^2$, written $x \sim \N(\mu, \sigma^2)$, if its density is
+
+$$
+p(x) = \frac{1}{\sigma\sqrt{2\pi}} \exp\!\left( -\frac{(x-\mu)^2}{2\sigma^2} \right).
+$$
+
+The exponent is a parabola that is zero at $x = \mu$, so the density peaks there. Dividing by $\sigma^2$ measures the distance from the mean in units of $\sigma$. The factor in front, $1/(\sigma\sqrt{2\pi})$, is exactly what makes the total area 1. It is also the peak height, which is why a wider curve is lower. In the widget, setting $\sigma = 2$ halves the peak height, from 0.399 to 0.199.
+
+The mean is the expected value, $\mu = \E[x]$, and the variance is the expected squared deviation, $\sigma^2 = \E[(x - \mu)^2]$. The standard deviation $\sigma$ has a geometric meaning too. The curve changes from bending downwards to bending upwards exactly at $x = \mu \pm \sigma$. These are its two *inflection points*, and the right-hand handle in the widget sits on one of them.
+
+Why do the percentages never change? Substitute $z = (x - \mu)/\sigma$. Then $z \sim \N(0, 1)$, the standard normal, and the event "$x$ is within $k$ standard deviations of $\mu$" is the event $\lvert z \rvert \le k$, which does not mention $\mu$ or $\sigma$ at all. Its probability is the same for every Gaussian:
+
+| Region | Probability |
+|---|---|
+| $\mu \pm \sigma$ | 68.27% |
+| $\mu \pm 2\sigma$ | 95.45% |
+| $\mu \pm 3\sigma$ | 99.73% |
+
+This is the 68–95–99.7 rule. Remember that it is a statement about *one* dimension. It does not carry over to the plane unchanged, as we will see shortly.
+
+### Many dimensions
+
+Stack $n$ unknowns into a vector $\mathbf{x} \in \R^n$. Its mean is the vector $\boldsymbol{\mu} = \E[\mathbf{x}]$, and its spread is described by the **covariance matrix**
+
+$$
+\boldsymbol{\Sigma} = \Cov(\mathbf{x}) = \E\!\left[ (\mathbf{x} - \boldsymbol{\mu})(\mathbf{x} - \boldsymbol{\mu})\T \right] \in \R^{n \times n}.
+$$
+
+Entry $(i, j)$ of $\boldsymbol{\Sigma}$ is the expected product of the errors in components $i$ and $j$. The diagonal holds the variances of each component, and the off-diagonal entries hold the covariances between pairs. Because the product of two errors does not depend on their order, $\boldsymbol{\Sigma}$ is symmetric. It is also positive semidefinite: for any direction $\mathbf{a}$, the variance of $\mathbf{a}\T\mathbf{x}$ is $\mathbf{a}\T\boldsymbol{\Sigma}\mathbf{a}$, and a variance cannot be negative.
+
+The Gaussian density in $n$ dimensions, $\mathbf{x} \sim \N(\boldsymbol{\mu}, \boldsymbol{\Sigma})$, is
+
+$$
+p(\mathbf{x}) = \frac{1}{\sqrt{(2\pi)^n \det \boldsymbol{\Sigma}}} \exp\!\left( -\tfrac12 (\mathbf{x} - \boldsymbol{\mu})\T \boldsymbol{\Sigma}^{-1} (\mathbf{x} - \boldsymbol{\mu}) \right). \tag{1}
+$$
+
+It has the same structure as the 1D formula. The exponent is a quadratic bowl centred on the mean; the matrix $\boldsymbol{\Sigma}^{-1}$ plays the role of $1/\sigma^2$; and $\det \boldsymbol{\Sigma}$ plays the role of $\sigma^2$ in the normalizing constant. For this formula to make sense, $\boldsymbol{\Sigma}$ must be invertible, so from here on we assume it is positive *definite*.
+
+In two dimensions, with components $x$ and $y$, it is convenient to write the covariance with the two standard deviations $\sigma_x, \sigma_y$ and a **correlation coefficient** $\rho$:
+
+$$
+\boldsymbol{\Sigma} = \begin{bmatrix} \sigma_x^2 & \rho\,\sigma_x\sigma_y \\ \rho\,\sigma_x\sigma_y & \sigma_y^2 \end{bmatrix}, \qquad -1 \lt \rho \lt 1.
+$$
+
+The correlation $\rho = \Cov(x, y) / (\sigma_x \sigma_y)$ is the covariance with the units divided out. At $\rho = 0$ the errors are unrelated; as $\rho$ approaches $\pm 1$, knowing $x$ pins down $y$ more and more.
+
+### Why an ellipse?
+
+The density (1) is constant wherever the exponent is constant, so its contour lines are the sets
+
+$$
+(\mathbf{x} - \boldsymbol{\mu})\T \boldsymbol{\Sigma}^{-1} (\mathbf{x} - \boldsymbol{\mu}) = \gamma
+$$
+
+for some level $\gamma \gt 0$. To see their shape, diagonalize the covariance. Every symmetric matrix has orthonormal eigenvectors, so
+
+$$
+\boldsymbol{\Sigma} = \mathbf{V} \begin{bmatrix} \lambda_1 & 0 \\ 0 & \lambda_2 \end{bmatrix} \mathbf{V}\T, \qquad \mathbf{V} = \begin{bmatrix} \mathbf{v}_1 & \mathbf{v}_2 \end{bmatrix},
+$$
+
+where $\mathbf{v}_1, \mathbf{v}_2$ are unit eigenvectors and $\lambda_1 \ge \lambda_2 \gt 0$ are the eigenvalues. Measure the offset from the mean along the eigenvectors, $u_i = \mathbf{v}_i\T(\mathbf{x} - \boldsymbol{\mu})$. In these rotated coordinates the quadratic form loses its cross term:
+
+$$
+\frac{u_1^2}{\lambda_1} + \frac{u_2^2}{\lambda_2} = \gamma .
+$$
+
+That is the equation of an ellipse with its axes along $\mathbf{v}_1$ and $\mathbf{v}_2$ and semi-axis lengths $\sqrt{\gamma\lambda_1}$ and $\sqrt{\gamma\lambda_2}$. So:
+
+<Callout type="key">
+The eigenvectors of $\boldsymbol{\Sigma}$ point along the axes of the uncertainty ellipse, and the square roots of the eigenvalues are the standard deviations along those axes. Along $\mathbf{v}_1$ the uncertainty is largest; along $\mathbf{v}_2$ it is smallest.
+</Callout>
+
+In the rotated coordinates $u_1$ and $u_2$ are uncorrelated, with variances $\lambda_1$ and $\lambda_2$. A correlated Gaussian is an uncorrelated one, seen in tilted axes. For the 2D case there is a closed form for the tilt: the major axis makes an angle $\theta$ with the $x$-axis, where
+
+$$
+\tan 2\theta = \frac{2\rho\,\sigma_x\sigma_y}{\sigma_x^2 - \sigma_y^2}.
+$$
+
+### Mahalanobis distance
+
+The left-hand side of the contour equation deserves its own name. The **Mahalanobis distance** of a point $\mathbf{x}$ from the Gaussian is
+
+$$
+d_M(\mathbf{x}) = \sqrt{ (\mathbf{x} - \boldsymbol{\mu})\T \boldsymbol{\Sigma}^{-1} (\mathbf{x} - \boldsymbol{\mu}) }.
+$$
+
+It is distance measured in standard deviations, taking the direction into account. In one dimension it reduces to $\lvert x - \mu \rvert / \sigma$. In several dimensions it divides by a large number in directions where the uncertainty is large and by a small number where it is small. Every point on one contour ellipse has the same Mahalanobis distance, so the ellipses are the "circles" of this distance.
+
+Here is why it is the natural distance. Factor the covariance as $\boldsymbol{\Sigma} = \mathbf{L}\mathbf{L}\T$, with $\mathbf{L}$ lower triangular (the Cholesky factor). If $\mathbf{z} = \mathbf{L}^{-1}(\mathbf{x} - \boldsymbol{\mu})$, then $\mathbf{z} \sim \N(\mathbf{0}, \mathbf{I})$: its components are independent standard normals. Substituting $\boldsymbol{\Sigma}^{-1} = \mathbf{L}^{-\top}\mathbf{L}^{-1}$ gives
+
+$$
+d_M(\mathbf{x})^2 = \mathbf{z}\T\mathbf{z} = z_1^2 + \dots + z_n^2 .
+$$
+
+The Mahalanobis distance is the ordinary Euclidean length after the uncertainty has been "whitened" into a round, unit-variance cloud. Running the same map backwards, $\mathbf{x} = \boldsymbol{\mu} + \mathbf{L}\mathbf{z}$, is how we draw samples from any Gaussian, starting from standard normal numbers.
+
+### Confidence regions and the chi-square quantile
+
+Which ellipse should we draw? We want the region that contains the true value with a chosen probability $p$, say 95%. Since $d_M^2$ is a sum of $n$ squared independent standard normals, it follows a **chi-square distribution with $n$ degrees of freedom**, written $\chi^2_n$. The region $d_M^2 \le \gamma$ therefore contains probability $p$ exactly when $\gamma$ is the $p$-quantile of $\chi^2_n$, which we write $\chi^2_n(p)$.
+
+In two dimensions the quantile has a closed form.
+
+<Derivation title="The 2D chi-square quantile">
+Write $\mathbf{z} = (z_1, z_2)$ in polar coordinates, $z_1 = r\cos\varphi$, $z_2 = r\sin\varphi$. The density of $\mathbf{z}$ is $\frac{1}{2\pi} e^{-r^2/2}$ and the area element is $r\,\mathrm{d}r\,\mathrm{d}\varphi$. Integrating over the angle, the probability that $r^2 = d_M^2 \le \gamma$ is
+
+$$
+P(d_M^2 \le \gamma) = \int_0^{\sqrt{\gamma}} r\, e^{-r^2/2} \,\mathrm{d}r = 1 - e^{-\gamma/2}.
+$$
+
+Setting this equal to $p$ and solving gives $\gamma = -2\ln(1 - p)$. For $p = 0.95$ that is $\gamma = -2 \ln 0.05 \approx 5.991$.
+</Derivation>
+
+So the 95% ellipse in the plane is the contour $d_M = \sqrt{5.991} \approx 2.45$. Its semi-axes are $2.45\sqrt{\lambda_1}$ and $2.45\sqrt{\lambda_2}$, not $1.96$ times them as the one-dimensional rule would suggest. Unless a caption says otherwise, every covariance ellipse in this series shows this 95% region.
+
+## Play with it
+
+The widget below draws $\N(\mathbf{0}, \boldsymbol{\Sigma})$ for a covariance you control with $\sigma_x$, $\sigma_y$ and $\rho$. You can also drag the handles at the ends of the two axes, which rotates and stretches the ellipse directly; the sliders and the matrix follow. The lines through the centre are the eigenvectors, scaled to the semi-axes of the ellipse. The dots are 1000 samples, drawn as $\mathbf{L}\mathbf{z}$ from fixed standard-normal draws $\mathbf{z}$, and the panel counts how many fall inside the ellipse.
+
+<CovarianceEllipse client:visible />
+
+With the default settings, $\boldsymbol{\Sigma}$ has $\sigma_x = 2$, $\sigma_y = 1$ and $\rho = 0.6$. Its eigenvalues are $\lambda_1 \approx 4.42$ and $\lambda_2 \approx 0.58$, and the major axis is tilted by about $19^\circ$. Of the 1000 samples, 945 lie inside the 95% ellipse. That is not exactly 950, because a finite sample fluctuates; switch to 5000 samples and the count is 4729, or 94.6%.
+
+<TryThis>
+1. Set $\rho$ to 0. The matrix becomes diagonal, the ellipse lines up with the axes, and the eigenvalues become exactly $\sigma_x^2 = 4$ and $\sigma_y^2 = 1$. Without correlation, the eigenvectors are just the coordinate axes.
+2. Now set $\rho$ to $-0.6$. The ellipse tilts by the same $19^\circ$, but the other way: a positive error in $x$ now comes with a negative error in $y$.
+3. Set $\sigma_x$ and $\sigma_y$ both to 1 and $\rho$ to 0.9. The ellipse lies at exactly $45^\circ$, with $\lambda_1 = 1.9$ and $\lambda_2 = 0.1$. Knowing $x$ now almost fixes $y$: the cloud is nearly a line.
+4. Change "Probability inside the ellipse" to the 39.3% option, the so-called "1σ ellipse" whose semi-axes are $\sqrt{\lambda_1}$ and $\sqrt{\lambda_2}$. Only 399 of the 1000 samples are inside. Then drag the ellipse into any shape you like and notice that the count does not change: the samples move with the ellipse, because $d_M^2 = \mathbf{z}\T\mathbf{z}$ does not depend on $\boldsymbol{\Sigma}$.
+</TryThis>
+
+Now the distance. The next copy of the widget hides the samples and shows two points, A at $(3, 0)$ and B at $(0, 3)$. Both are exactly 3 units from the centre. The dash-dot ellipse through each point is the contour of equal Mahalanobis distance.
+
+<CovarianceEllipse client:visible preset="mahalanobis" />
+
+<TryThis>
+1. Compare the two points in the table. Their Euclidean distances are both 3.00, but A has $d_M = 1.87$ and lies inside the 95% ellipse, while B has $d_M = 3.75$ and lies outside it. B sits across the narrow direction of the ellipse, where errors are small, so the same offset is far less plausible.
+2. Set $\rho$ to 0. The Mahalanobis distances become $3/\sigma_x = 1.5$ and $3/\sigma_y = 3$: with no correlation, each axis is simply measured in its own standard deviations.
+3. Drag A along its own dash-dot ellipse. Its Euclidean distance changes as you go, but its Mahalanobis distance stays fixed.
+</TryThis>
+
+## Algorithm
+
+Two small recipes cover everything the widgets do. Both use a factorization of $\boldsymbol{\Sigma}$ rather than its inverse.
+
+<AlgorithmBox title="Draw the p-confidence ellipse of a 2D Gaussian" source="src/lib/math/gaussian.ts">
+1. Compute the eigen-decomposition $\boldsymbol{\Sigma} = \mathbf{V}\operatorname{diag}(\lambda_1, \lambda_2)\mathbf{V}\T$.
+2. Set $\gamma = \chi^2_2(p) = -2\ln(1 - p)$.
+3. For angles $t \in [0, 2\pi)$, output $\boldsymbol{\mu} + \mathbf{V} \begin{bmatrix} \sqrt{\gamma\lambda_1}\cos t \\ \sqrt{\gamma\lambda_2}\sin t \end{bmatrix}$.
+</AlgorithmBox>
+
+<AlgorithmBox title="Sample from N(μ, Σ) and test points against a confidence region" source="src/lib/math/gaussian.ts">
+1. Compute the Cholesky factor $\mathbf{L}$ with $\boldsymbol{\Sigma} = \mathbf{L}\mathbf{L}\T$.
+2. To sample: draw $\mathbf{z}$ with independent $\N(0, 1)$ entries and return $\mathbf{x} = \boldsymbol{\mu} + \mathbf{L}\mathbf{z}$.
+3. To test a point $\mathbf{x}$: solve $\mathbf{L}\mathbf{y} = \mathbf{x} - \boldsymbol{\mu}$ by forward substitution, then $d_M^2 = \mathbf{y}\T\mathbf{y}$. The point is inside the $p$-region if $d_M^2 \le \chi^2_n(p)$.
+</AlgorithmBox>
+
+The unit tests for this code check, among other things, that about 95% of 100,000 samples land inside the 95% ellipse and that every point on a drawn ellipse has $d_M^2 = \chi^2_2(0.95)$.
+
+## When it breaks
+
+**Using one-dimensional numbers in two dimensions.** The "1σ ellipse", the contour $d_M = 1$, contains only 39.3% of the probability in the plane, not 68%. The 95% threshold grows with dimension:
+
+| Dimension $n$ | $\chi^2_n(0.95)$ | 95% region in standard deviations, $\sqrt{\chi^2_n(0.95)}$ |
+|---|---|---|
+| 1 | 3.841 | 1.96 |
+| 2 | 5.991 | 2.45 |
+| 3 | 7.815 | 2.80 |
+
+Drawing a "2σ ellipse" and calling it 95% overstates your confidence. The real figure is $1 - e^{-2} \approx 86.5\%$.
+
+**Correlation near ±1.** The determinant of the 2D covariance is $\sigma_x^2\sigma_y^2(1 - \rho^2)$. As $\lvert\rho\rvert \to 1$ it goes to zero, the ellipse collapses onto a line, $\boldsymbol{\Sigma}^{-1}$ ceases to exist, and the Cholesky factorization fails. Filters meet this when two quantities become almost perfectly linked, and rounding errors can then push $\boldsymbol{\Sigma}$ to be slightly indefinite. The widget caps $\rho$ at $\pm 0.95$ for this reason; Post 13 covers the numerical hygiene that keeps real filters safe.
+
+**Mixing units.** Euclidean distance between, say, a position in metres and a heading in radians has no meaning. The Mahalanobis distance is unitless, because each direction is divided by its own standard deviation. Use it whenever you ask "is this measurement surprising?"; the gating tests of Post 25 are exactly that question.
+
+**Things that are not Gaussian.** The percentages in this post hold for Gaussians only. A distribution with two peaks, or one bent into a banana by a nonlinear function, can have the same mean and covariance as a Gaussian and still put its probability in very different places. Post 4 shows how that happens.
+
+## Summary
+
+- A Gaussian is fully described by its mean and covariance. The probability within $k$ standard deviations is the same for every 1D Gaussian: 68.27%, 95.45% and 99.73% for $k = 1, 2, 3$.
+- The covariance matrix $\boldsymbol{\Sigma}$ is symmetric and positive semidefinite. Its diagonal holds variances, its off-diagonal entries hold covariances, and the correlation $\rho$ sets the tilt.
+- Contours of a 2D Gaussian are ellipses whose axes are the eigenvectors of $\boldsymbol{\Sigma}$, with semi-axes $\sqrt{\gamma\lambda_i}$.
+- The Mahalanobis distance $d_M$ measures distance in standard deviations along each direction; $d_M^2$ follows a $\chi^2_n$ distribution.
+- The $p$-confidence region is $d_M^2 \le \chi^2_n(p)$. In 2D the 95% threshold is 5.991, so the ellipse reaches 2.45 standard deviations along each axis.

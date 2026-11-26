@@ -1,0 +1,74 @@
+---
+import { neighbors } from '../../lib/site/syllabus';
+import { url, postPath } from '../../lib/site/url';
+import { publishedSlugs } from '../../lib/site/posts';
+
+interface Props {
+  slug: string;
+}
+const { prev, next } = neighbors(Astro.props.slug, await publishedSlugs());
+---
+
+<nav class="series-nav ui" aria-label="Series">
+  {prev ? (
+    <a class="prev" href={url(postPath(prev.slug))} rel="prev">
+      <span class="dir">← Previous</span>
+      <span class="t">
+        {prev.number}. {prev.title}
+      </span>
+    </a>
+  ) : (
+    <span />
+  )}
+  {next ? (
+    <a class="next" href={url(postPath(next.slug))} rel="next">
+      <span class="dir">Next →</span>
+      <span class="t">
+        {next.number}. {next.title}
+      </span>
+    </a>
+  ) : (
+    <a class="next" href={`${url('')}#syllabus`}>
+      <span class="dir">Next</span>
+      <span class="t">More posts are on the way. See the syllabus.</span>
+    </a>
+  )}
+</nav>
+
+<style>
+  .series-nav {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+    margin: var(--space-6) 0;
+  }
+  a {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    text-decoration: none;
+    color: var(--c-fg);
+  }
+  a:hover {
+    background: var(--c-surface);
+  }
+  .next {
+    text-align: right;
+  }
+  .dir {
+    font-size: 0.78rem;
+    color: var(--c-muted);
+  }
+  .t {
+    font-weight: 600;
+    font-size: 0.92rem;
+  }
+  @media (max-width: 560px) {
+    .series-nav {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

@@ -1,0 +1,50 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SyllabusMap from '../components/layout/SyllabusMap.astro';
+import { siteConfig } from '../lib/site/config';
+import { url } from '../lib/site/url';
+---
+
+<BaseLayout>
+  <div class="prose home">
+    <header class="hero">
+      <h1>{siteConfig.title}</h1>
+      <p class="tagline ui">{siteConfig.tagline}</p>
+      <p class="pitch">{siteConfig.pitch}</p>
+    </header>
+
+    <section class="how" aria-labelledby="how-title">
+      <h2 id="how-title">How to read this series</h2>
+      <p>
+        The posts are ordered so that each one builds only on those before it, and every post lists its prerequisites at
+        the top. If you know undergraduate calculus, matrix multiplication and basic probability, you can start at the
+        beginning. Each post explains an idea in words first, then in mathematics, and then lets you play with it. Every
+        symbol is defined where it first appears and collected on the <a href={url('notation/')}>notation page</a>.
+      </p>
+    </section>
+
+    <SyllabusMap />
+  </div>
+</BaseLayout>
+
+<style>
+  .home {
+    padding: var(--space-6) var(--gutter);
+    max-width: calc(var(--w-text) + 2 * var(--gutter));
+  }
+  .hero h1 {
+    font-size: 2.4em;
+    margin-bottom: 0.2em;
+  }
+  .tagline {
+    color: var(--c-muted);
+    font-size: 1rem;
+    margin-bottom: 1.2em;
+  }
+  .pitch {
+    font-size: 1.1em;
+  }
+  .how h2 {
+    font-size: 1.2em;
+  }
+</style>

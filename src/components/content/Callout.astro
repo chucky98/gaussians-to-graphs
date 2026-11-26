@@ -1,0 +1,71 @@
+---
+interface Props {
+  type?: 'intuition' | 'warning' | 'note' | 'key';
+  title?: string;
+}
+const { type = 'note', title } = Astro.props;
+const defaults = { intuition: 'Intuition', warning: 'Watch out', note: 'Note', key: 'Key idea' } as const;
+const icons = { intuition: '~', warning: '!', note: 'i', key: '★' } as const;
+---
+
+<aside class:list={['callout', type]} aria-label={title ?? defaults[type]}>
+  <p class="label ui">
+    <span class="icon" aria-hidden="true">
+      {icons[type]}
+    </span>
+    {title ?? defaults[type]}
+  </p>
+  <div class="body">
+    <slot />
+  </div>
+</aside>
+
+<style>
+  .callout {
+    border: 1px solid var(--c-border);
+    border-left-width: 4px;
+    border-radius: var(--radius);
+    padding: var(--space-3) var(--space-4);
+    margin: var(--space-5) 0;
+    background: var(--c-surface);
+  }
+  .intuition {
+    border-left-color: var(--c-prior);
+  }
+  .warning {
+    border-left-color: var(--c-bad);
+    border-left-style: double;
+    border-left-width: 6px;
+  }
+  .note {
+    border-left-color: var(--c-axis);
+  }
+  .key {
+    border-left-color: var(--c-post);
+    border-left-width: 6px;
+  }
+  .label {
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 0.35rem;
+    color: var(--c-muted);
+    display: flex;
+    gap: 0.45rem;
+    align-items: center;
+  }
+  .icon {
+    display: inline-grid;
+    place-items: center;
+    width: 1.2rem;
+    height: 1.2rem;
+    border-radius: 50%;
+    border: 1.5px solid currentColor;
+    font-size: 0.7rem;
+    line-height: 1;
+  }
+  .body :global(> :last-child) {
+    margin-bottom: 0;
+  }
+</style>

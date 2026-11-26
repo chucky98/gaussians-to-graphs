@@ -1,0 +1,47 @@
+{
+  // Everything (Node, npm packages, Playwright browsers, Claude Code, gh) lives in this container.
+  // The host only needs Docker Desktop + VS Code + the "Dev Containers" extension.
+  "name": "gaussians-to-graphs",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22-bookworm",
+
+  "features": {
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  "remoteUser": "node",
+
+  "mounts": [
+    // Claude Code login, settings and history survive container rebuilds
+    "source=g2g-claude-config,target=/home/node/.claude,type=volume",
+    // gh CLI login survives rebuilds
+    "source=g2g-gh-config,target=/home/node/.config/gh,type=volume",
+    // node_modules stays in a Docker volume, not in your project folder on the host
+    "source=g2g-node-modules,target=${containerWorkspaceFolder}/node_modules,type=volume"
+  ],
+
+  "containerEnv": {
+    "CLAUDE_CONFIG_DIR": "/home/node/.claude"
+  },
+
+  // Astro dev server / preview
+  "forwardPorts": [4321],
+  "portsAttributes": {
+    "4321": { "label": "Astro", "onAutoForward": "notify" }
+  },
+
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "anthropic.claude-code",
+        "astro-build.astro-vscode",
+        "svelte.svelte-vscode",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "unifiedjs.vscode-mdx"
+      ]
+    }
+  }
+}

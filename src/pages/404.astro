@@ -1,0 +1,21 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { url } from '../lib/site/url';
+---
+
+<BaseLayout title="Page not found" noindex>
+  <div class="prose page">
+    <h1>Page not found</h1>
+    <p>
+      This page doesn’t exist, or it hasn’t been written yet. The <a href={url('')}>home page</a> lists every post in
+      the series, including the ones that are still on the way.
+    </p>
+  </div>
+</BaseLayout>
+
+<style>
+  .page {
+    padding: var(--space-6) var(--gutter);
+    max-width: calc(var(--w-text) + 2 * var(--gutter));
+  }
+</style>

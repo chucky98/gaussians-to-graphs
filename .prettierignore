@@ -1,0 +1,11 @@
+dist/
+.astro/
+node_modules/
+test-results/
+playwright-report/
+package-lock.json
+public/
+docs/DESIGN.md
+CLAUDE.md
+# MDX posts: Prettier's MDX parser does not understand $math$ and would corrupt it.
+src/content/**/*.mdx

@@ -1,0 +1,148 @@
+---
+import katex from 'katex';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { notationConflicts, notationGroups } from '../lib/site/notation';
+import { katexMacros } from '../../scripts/katex-macros';
+
+const tex = (s: string) => katex.renderToString(s, { macros: { ...katexMacros }, throwOnError: true, strict: 'error' });
+---
+
+<BaseLayout title="Notation" description="The symbols used throughout the series, in one table.">
+  <div class="prose page" data-pagefind-body>
+    <h1>Notation</h1>
+    <p>
+      Every post uses the same symbols for the same things. Scalars are italic (<Fragment set:html={tex('x')} />
+      ), vectors are bold lowercase (<Fragment set:html={tex('\\mathbf{x}')} />
+      ), and matrices are bold uppercase (<Fragment set:html={tex('\\mathbf{P}')} />
+      ). The time index is <Fragment set:html={tex('k')} />. A hat marks an estimate (
+      <Fragment set:html={tex('\\hat{\\mathbf{x}}')} />) and a tilde a measured quantity (
+      <Fragment set:html={tex('\\tilde{\\mathbf{u}}')} />
+      ).
+    </p>
+    {notationGroups.map((g) => (
+      <section>
+        <h2>{g.title}</h2>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Symbol</th>
+                <th scope="col">Meaning</th>
+              </tr>
+            </thead>
+            <tbody>
+              {g.rows.map((r) => (
+                <tr>
+                  <td class="sym" set:html={tex(r.tex)} />
+                  <td>{r.meaning}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    ))}
+    <section>
+      <h2>Symbols that look alike</h2>
+      <dl class="conflicts">
+        {notationConflicts.map((c) => (
+          <>
+            <dt set:html={tex(c.tex)} />
+            <dd>{c.note}</dd>
+          </>
+        ))}
+      </dl>
+    </section>
+    <section>
+      <h2>Colors and line styles</h2>
+      <p>
+        The figures use one visual language. Color is never the only cue: each meaning also has its own line style or
+        marker.
+      </p>
+      <div class="table-scroll">
+        <table class="ui">
+          <thead>
+            <tr>
+              <th scope="col">Style</th>
+              <th scope="col">Meaning</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              ['truth', 'Ground truth: thin solid line, hollow markers'],
+              ['prior', 'Prior or prediction: dashed line, dashed ellipse'],
+              ['meas', 'Measurement, likelihood or loop closure: dash-dot'],
+              ['post', 'Posterior or estimate: thick solid line, solid ellipse'],
+              ['sample', 'Monte Carlo samples or particles: small dots'],
+              ['bad', 'Error, outlier or divergence: thick line, warning sign'],
+              ['odom', 'Dead reckoning (odometry only): dotted line'],
+            ].map(([k, label]) => (
+              <tr>
+                <td>
+                  <svg width="64" height="16" viewBox="0 0 64 16" aria-hidden="true" class={`sw ${k}`}>
+                    {k === 'sample' ? (
+                      [8, 20, 31, 44, 56].map((x, i) => <circle cx={x} cy={i % 2 ? 6 : 10} r="2.2" />)
+                    ) : (
+                      <line x1="2" y1="8" x2="62" y2="8" />
+                    )}
+                  </svg>
+                </td>
+                <td>{label}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p>Covariance ellipses show the 95% region unless a caption says otherwise.</p>
+    </section>
+  </div>
+</BaseLayout>
+
+<style>
+  .page {
+    padding: var(--space-5) var(--gutter);
+    max-width: calc(var(--w-text) + 2 * var(--gutter));
+  }
+  .sym {
+    white-space: nowrap;
+    width: 40%;
+  }
+  .conflicts dt {
+    margin-top: var(--space-4);
+  }
+  .conflicts dd {
+    margin: 0.25rem 0 0 1.25rem;
+  }
+  .sw line {
+    stroke-width: var(--stroke-base);
+    fill: none;
+  }
+  .sw.truth line {
+    stroke: var(--c-truth);
+    stroke-width: var(--stroke-thin);
+  }
+  .sw.prior line {
+    stroke: var(--c-prior);
+    stroke-dasharray: var(--dash-prior);
+  }
+  .sw.meas line {
+    stroke: var(--c-meas);
+    stroke-dasharray: var(--dash-meas);
+  }
+  .sw.post line {
+    stroke: var(--c-post);
+    stroke-width: var(--stroke-thick);
+  }
+  .sw.bad line {
+    stroke: var(--c-bad);
+    stroke-width: var(--stroke-thick);
+  }
+  .sw.odom line {
+    stroke: var(--c-odom);
+    stroke-dasharray: var(--dash-odom);
+  }
+  .sw.sample circle {
+    fill: var(--c-sample);
+    opacity: 0.7;
+  }
+</style>

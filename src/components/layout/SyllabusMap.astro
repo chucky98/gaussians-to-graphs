@@ -1,0 +1,131 @@
+---
+import { parts, syllabus } from '../../lib/site/syllabus';
+import { url, postPath } from '../../lib/site/url';
+import { publishedSlugs } from '../../lib/site/posts';
+
+interface Props {
+  /** Heading level for part titles. */
+  level?: 2 | 3;
+  id?: string;
+}
+const { level = 2, id = 'syllabus' } = Astro.props;
+const published = await publishedSlugs();
+const H = level === 2 ? 'h2' : 'h3';
+const H3 = level === 2 ? 'h3' : 'h4';
+---
+
+<section class="syllabus ui" id={id} aria-labelledby={`${id}-title`}>
+  <H id={`${id}-title`} class="title">
+    Syllabus
+  </H>
+  <p class="legend">
+    {published.size} of {syllabus.length} posts published. Posts marked <em>coming soon</em> are planned and not yet
+    written.
+  </p>
+  {parts.map((part) => {
+    const posts = syllabus.filter((e) => e.part === part.number);
+    return (
+      <div class="part">
+        <H3 class="part-title">
+          <span class="part-num">Part {part.number}</span> {part.title}
+        </H3>
+        <ol class="posts">
+          {posts.map((e) => {
+            const isPub = published.has(e.slug);
+            return (
+              <li class:list={['post', { soon: !isPub }]} data-published={isPub ? 'true' : 'false'}>
+                <span class="num" aria-hidden="true">
+                  {String(e.number).padStart(2, '0')}
+                </span>
+                <div>
+                  {isPub ? (
+                    <a class="post-title" href={url(postPath(e.slug))}>
+                      <span class="visually-hidden">Post {e.number}: </span>
+                      {e.title}
+                    </a>
+                  ) : (
+                    <span class="post-title">
+                      <span class="visually-hidden">Post {e.number}: </span>
+                      {e.title} <span class="badge">coming soon</span>
+                    </span>
+                  )}
+                  <p class="desc">{e.description}</p>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+    );
+  })}
+</section>
+
+<style>
+  .syllabus {
+    margin: var(--space-6) 0;
+  }
+  .title {
+    font-family: var(--font-body);
+  }
+  .legend {
+    color: var(--c-muted);
+    font-size: var(--fs-small);
+  }
+  .part-title {
+    font-family: var(--font-ui);
+    font-size: 1.05rem;
+    margin: var(--space-6) 0 var(--space-3);
+  }
+  .part-num {
+    color: var(--c-muted);
+    font-weight: 500;
+    margin-right: 0.35em;
+  }
+  .posts {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    border-top: 1px solid var(--c-border);
+  }
+  .post {
+    display: grid;
+    grid-template-columns: 2.25rem 1fr;
+    gap: var(--space-2);
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--c-border);
+  }
+  .num {
+    font-variant-numeric: tabular-nums;
+    color: var(--c-muted);
+    font-size: var(--fs-small);
+    padding-top: 0.1rem;
+  }
+  .post-title {
+    font-weight: 600;
+    font-size: 0.98rem;
+  }
+  a.post-title {
+    color: var(--c-link);
+  }
+  .soon .post-title {
+    color: var(--c-muted);
+    font-weight: 500;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 500;
+    border: 1px solid var(--c-border);
+    border-radius: 999px;
+    padding: 0 0.5em;
+    margin-left: 0.3em;
+    vertical-align: 0.1em;
+    font-style: italic;
+  }
+  .desc {
+    margin: 0.15rem 0 0;
+    font-size: var(--fs-small);
+    color: var(--c-muted);
+    line-height: 1.45;
+  }
+</style>

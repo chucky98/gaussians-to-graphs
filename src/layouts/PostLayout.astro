@@ -1,0 +1,237 @@
+---
+import type { MarkdownHeading } from 'astro';
+import BaseLayout from './BaseLayout.astro';
+import TOC from '../components/layout/TOC.astro';
+import SeriesNav from '../components/layout/SeriesNav.astro';
+import Giscus from '../components/layout/Giscus.astro';
+import { entryBySlug, parts } from '../lib/site/syllabus';
+import { url, postPath } from '../lib/site/url';
+import { issueUrl } from '../lib/site/config';
+import { inlineMd } from '../lib/site/inline-md';
+import { publishedSlugs, type Post } from '../lib/site/posts';
+
+interface Props {
+  post: Post;
+  headings: MarkdownHeading[];
+  minutes: number;
+}
+const { post, headings, minutes } = Astro.props;
+const d = post.data;
+const part = parts.find((p) => p.number === d.part);
+const published = await publishedSlugs();
+const prereqs = d.prerequisites.map((s) => entryBySlug(s)).filter((e) => e !== undefined);
+const fmt = (date: Date) =>
+  date.toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+const pageUrl = new URL(url(postPath(post.id)), Astro.site).toString();
+---
+
+<BaseLayout title={d.title} description={d.description} type="article" publishedTime={d.date}>
+  <div class="post-grid">
+    <aside class="toc-col">
+      <div class="toc-sticky">
+        <TOC headings={headings} />
+      </div>
+    </aside>
+    <article class="prose" data-pagefind-body>
+      <header class="post-header">
+        <p class="kicker ui">
+          Part {d.part}
+          {part ? `: ${part.title}` : ''} · Post {d.number}
+          {d.status === 'draft' && <strong class="draft"> · DRAFT</strong>}
+        </p>
+        <h1>{d.title}</h1>
+        <p class="meta ui">
+          <time datetime={d.date.toISOString()}>{fmt(d.date)}</time>
+          {d.updated && (
+            <>
+              {' '}
+              · updated <time datetime={d.updated.toISOString()}>{fmt(d.updated)}</time>
+            </>
+          )}
+          · {minutes} min read
+        </p>
+      </header>
+
+      <div class="boxes ui">
+        <section class="box prereqs" aria-labelledby="prereqs-title">
+          <h2 id="prereqs-title">Prerequisites</h2>
+          {prereqs.length === 0 ? (
+            <p>None. This is a good place to start.</p>
+          ) : (
+            <ul>
+              {prereqs.map((e) => (
+                <li>
+                  {published.has(e.slug) ? (
+                    <a href={url(postPath(e.slug))}>
+                      {e.number}. {e.title}
+                    </a>
+                  ) : (
+                    <span>
+                      {e.number}. {e.title} <em class="soon">(coming soon)</em>
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+        <section class="box objectives" aria-labelledby="objectives-title">
+          <h2 id="objectives-title">After this post you can</h2>
+          <ul>
+            {d.objectives.map((o) => (
+              <li set:html={inlineMd(o)} />
+            ))}
+          </ul>
+        </section>
+      </div>
+
+      <div class="mobile-toc">
+        <TOC headings={headings} />
+      </div>
+
+      <div class="content">
+        <slot />
+      </div>
+
+      {d.references.length > 0 && (
+        <section class="references" aria-labelledby="references-title">
+          <h2 id="references-title">References</h2>
+          <ol>
+            {d.references.map((r) => (
+              <li id={`ref-${r.key}`}>
+                <span set:html={inlineMd(r.text)} />
+                {r.url && (
+                  <>
+                    {' '}
+                    <a href={r.url}>Link</a>
+                  </>
+                )}
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
+      <p class="issue ui">
+        Found a mistake or something unclear? <a href={issueUrl(d.title, pageUrl)}>Report an issue on GitHub</a>.
+      </p>
+
+      <div data-pagefind-ignore>
+        <SeriesNav slug={post.id} />
+        <Giscus />
+      </div>
+    </article>
+  </div>
+</BaseLayout>
+
+<style>
+  .post-grid {
+    display: grid;
+    grid-template-columns: 1fr min(var(--w-text), 100% - 2 * var(--gutter)) 1fr;
+    padding: var(--space-5) 0;
+    counter-reset: sidenote;
+  }
+  .prose {
+    grid-column: 2;
+    min-width: 0;
+    max-width: none;
+    /* auto margins (from the global .prose rule) would disable grid stretching */
+    margin-inline: 0;
+  }
+  .toc-col {
+    display: none;
+  }
+  /* Wide widgets reach 140px into each margin; the sticky TOC needs ~260px beside that. */
+  @media (min-width: 1500px) {
+    .toc-col {
+      display: block;
+      grid-column: 1;
+      grid-row: 1;
+      justify-self: end;
+      width: 220px;
+      margin-right: 2.5rem;
+    }
+    .toc-sticky {
+      position: sticky;
+      top: var(--space-5);
+      max-height: calc(100vh - 2 * var(--space-5));
+      overflow-y: auto;
+    }
+    .mobile-toc {
+      display: none;
+    }
+  }
+  .kicker {
+    color: var(--c-muted);
+    font-size: var(--fs-small);
+    margin: 0;
+  }
+  .draft {
+    color: var(--c-bad-text);
+  }
+  .post-header h1 {
+    margin: 0.2em 0 0.3em;
+  }
+  .meta {
+    color: var(--c-muted);
+    font-size: var(--fs-small);
+  }
+  .boxes {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+    margin: var(--space-5) 0;
+    font-size: 0.9rem;
+  }
+  @media (min-width: 640px) {
+    .boxes {
+      grid-template-columns: 1fr 1.6fr;
+    }
+  }
+  .box {
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    padding: var(--space-3) var(--space-4);
+    background: var(--c-surface);
+  }
+  .box h2 {
+    font-family: var(--font-ui);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--c-muted);
+    margin: 0 0 0.4rem;
+  }
+  .box ul {
+    margin: 0;
+    padding-left: 1.1em;
+  }
+  .box li {
+    margin: 0.2em 0;
+    line-height: 1.45;
+  }
+  .box p {
+    margin: 0;
+  }
+  .mobile-toc {
+    margin-bottom: var(--space-5);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    padding: var(--space-2) var(--space-4);
+  }
+  .soon {
+    color: var(--c-muted);
+  }
+  .references {
+    margin-top: var(--space-7);
+    font-size: 0.92em;
+  }
+  .references li {
+    margin: 0.5em 0;
+  }
+  .issue {
+    margin-top: var(--space-6);
+    font-size: var(--fs-small);
+    color: var(--c-muted);
+  }
+</style>

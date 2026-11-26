@@ -1,0 +1,91 @@
+---
+import ThemeToggle from './ThemeToggle.astro';
+import Search from './Search.astro';
+import { siteConfig } from '../../lib/site/config';
+import { url } from '../../lib/site/url';
+
+const path = Astro.url.pathname;
+const links = [
+  { href: `${url('')}#syllabus`, label: 'Syllabus', match: url('') },
+  { href: url('notation/'), label: 'Notation', match: url('notation/') },
+  { href: url('about/'), label: 'About', match: url('about/') },
+];
+---
+
+<header class="site-header ui">
+  <div class="inner">
+    <a class="brand" href={url('')}>
+      <img src={url('favicon.svg')} alt="" width="26" height="26" />
+      <span>{siteConfig.title}</span>
+    </a>
+    <nav aria-label="Main">
+      <ul>
+        {links.map((l) => (
+          <li>
+            <a href={l.href} aria-current={path === l.match && l.label !== 'Syllabus' ? 'page' : undefined}>
+              {l.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+    <div class="tools">
+      <Search />
+      <ThemeToggle />
+    </div>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    border-bottom: 1px solid var(--c-border);
+    background: var(--c-bg);
+  }
+  .inner {
+    max-width: var(--w-page);
+    margin: 0 auto;
+    padding: var(--space-3) var(--gutter);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3) var(--space-5);
+  }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--c-fg);
+    text-decoration: none;
+    margin-right: auto;
+  }
+  nav ul {
+    list-style: none;
+    display: flex;
+    gap: var(--space-4);
+    margin: 0;
+    padding: 0;
+  }
+  nav a {
+    color: var(--c-fg);
+    text-decoration: none;
+    font-size: var(--fs-ui);
+    padding: 0.4rem 0;
+    display: inline-block;
+  }
+  nav a:hover,
+  nav a[aria-current='page'] {
+    text-decoration: underline;
+    text-underline-offset: 0.3em;
+  }
+  .tools {
+    display: flex;
+    gap: var(--space-2);
+  }
+  @media (max-width: 560px) {
+    .brand {
+      width: 100%;
+    }
+  }
+</style>
