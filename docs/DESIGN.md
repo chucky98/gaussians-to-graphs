@@ -255,6 +255,11 @@ Typography: scalars are italic ($x$), vectors are bold lowercase ($\mathbf{x}$),
 | $d_k, \Delta\theta_k$ | odometry reading: distance driven, then turn ("move, then turn" model) |
 | $\alpha$ | odometry noise level, error standard deviation per $\sqrt{\text{m}}$ (Part 0; per 1 m move in post 10; the UKF's $\alpha$ is a different parameter) |
 | $\ell$ | total distance driven |
+| $v, \omega$ | speed and turn rate, the controls of the velocity (unicycle) motion model (post 14) |
+| $\sigma_v, \sigma_\omega$ | control noise standard deviations (post 14) |
+| $\mathbf{M}_k$, $\mathbf{V}_k$ | control-noise covariance and the Jacobian $\partial f/\partial\mathbf{u}$ mapping it into state space (post 14) |
+| $\delta_{\text{rot1}}, \delta_{\text{trans}}, \delta_{\text{rot2}}$ | odometry reading: rotate, translate, rotate (post 14) |
+| $r, \phi$ | range and bearing of a landmark; bearing relative to the robot's heading (Part 2 on) |
 | $\mathbf{z}_k$ | measurement |
 | $\mathbf{z}_{1:k}$, $\mathbf{u}_{1:k}$ | all measurements / controls from time 1 to $k$ |
 | $\overline{\bel}(\mathbf{x}_k)$ | predicted belief: after the motion, before the measurement at time $k$ (post 10) |
@@ -323,7 +328,7 @@ Typography: scalars are italic ($x$), vectors are bold lowercase ($\mathbf{x}$),
 | $\rho(\cdot)$ | robust kernel |
 | $\mathbb{E}$, $\operatorname{Cov}$, $(\cdot)^\top$, $\mathbf{I}$ | expectation, covariance, transpose, identity |
 
-Conflict notes, to be explained on the `/notation` page: $\eta$ (belief normalizer) vs $\boldsymbol{\eta}$ (Gauss–Newton); $\varepsilon$ (kidnapping probability) vs $\epsilon_k$ (NEES); $w^{[i]}$ (particle weight, scalar, superscript) vs $\mathbf{w}_k$ (process noise, bold); $\lambda$ for LM damping vs eigenvalues; $\rho$ (correlation, Part 0) vs $\rho(\cdot)$ (robust kernel); $\mathbf{z}$ (whitened vector, Part 0) vs $\mathbf{z}_k$ (measurement). Eigenvalues are written $\lambda_1, \lambda_2$ and appear only in Part 0, so context makes the meaning clear.
+Conflict notes, to be explained on the `/notation` page: $\theta$ (heading, from post 14) vs $\theta$ (bearing in post 4); $v$ (speed) vs $\mathbf{v}_k$ (measurement noise); $M$ (Monte Carlo runs) vs $\mathbf{M}_k$ (control noise); $\eta$ (belief normalizer) vs $\boldsymbol{\eta}$ (Gauss–Newton); $\varepsilon$ (kidnapping probability) vs $\epsilon_k$ (NEES); $w^{[i]}$ (particle weight, scalar, superscript) vs $\mathbf{w}_k$ (process noise, bold); $\lambda$ for LM damping vs eigenvalues; $\rho$ (correlation, Part 0) vs $\rho(\cdot)$ (robust kernel); $\mathbf{z}$ (whitened vector, Part 0) vs $\mathbf{z}_k$ (measurement). Eigenvalues are written $\lambda_1, \lambda_2$ and appear only in Part 0, so context makes the meaning clear.
 
 ### 6.2 Colors and line styles (semantic tokens)
 

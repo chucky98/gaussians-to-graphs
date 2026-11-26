@@ -442,3 +442,29 @@ test.describe('post 13 widgets', () => {
     await expect(w.locator('[data-readout="nees"]')).toContainText('18.51');
   });
 });
+
+test.describe('post 14 widgets', () => {
+  test('MotionModelSampler and RangeBearing: defaults, banana, dragging the robot', async ({ page }) => {
+    await page.goto('posts/robot-models-2d/');
+    const m = page.locator('[data-widget="MotionModelSampler"]');
+    await m.scrollIntoViewIfNeeded();
+    await expect(m.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(m.locator('[data-readout="inside"]')).toHaveText('89.8%');
+    await expect(m.locator('[data-readout="heading"]')).toHaveText('14°');
+    await m.getByLabel('Preset').selectOption('banana');
+    await expect(m.locator('[data-readout="inside"]')).toHaveText('75.8%');
+    await expect(m.locator('[data-readout="shift"]')).toHaveText('1.34 m');
+
+    const r = page.locator('[data-widget="RangeBearing"]');
+    await r.scrollIntoViewIfNeeded();
+    await expect(r.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(r.locator('[data-readout="table"] tbody tr')).toHaveCount(5);
+    await expect(r.locator('[data-readout="jacobian"]')).toContainText('-0.151');
+    await r.getByRole('slider', { name: 'Maximum range' }).fill('6');
+    await expect(r.locator('[data-readout="table"] tbody tr')).toHaveCount(3);
+    const robot = r.getByRole('slider', { name: /Robot position/ });
+    await robot.focus();
+    await robot.press('ArrowRight');
+    await expect(robot).toHaveAttribute('aria-valuetext', /x 4\.10 metres/);
+  });
+});
