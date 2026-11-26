@@ -1,7 +1,24 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { repoUrl, siteConfig } from '../lib/site/config';
-import { url } from '../lib/site/url';
+import { repoUrl, siteConfig, statsEnabled } from '../lib/site/config';
+import { url, postPath } from '../lib/site/url';
+import { counterUrl } from '../lib/site/stats';
+import { visiblePosts } from '../lib/site/posts';
+
+const stats = statsEnabled();
+const code = siteConfig.stats.goatcounterCode;
+const posts = stats ? (await visiblePosts()).filter((p) => p.data.status === 'published') : [];
+const counters = stats
+  ? {
+      total: counterUrl(code, 'TOTAL'),
+      posts: posts.map((p) => ({
+        number: p.data.number,
+        title: p.data.title,
+        href: url(postPath(p.id)),
+        counter: counterUrl(code, url(postPath(p.id))),
+      })),
+    }
+  : null;
 ---
 
 <BaseLayout title="About" description="What this site is, who it is for, and how it is built.">
@@ -34,9 +51,9 @@ import { url } from '../lib/site/url';
     <p>
       The code and the text are written with Claude Code, Anthropic’s AI coding assistant, under the direction and
       review of the site’s owner. Every post goes through automated checks before it is published: unit tests for the
-      mathematics, including identities such as “the Kalman filter equals batch least squares”, a script that checks
-      each claim the text makes about a figure against that figure’s default settings, and browser tests on phone and
-      desktop widths. If you find an error, please <a href={`${repoUrl}/issues/new`}>open an issue</a>.
+      mathematics, including identities such as “recursive least squares equals batch least squares”, a script that
+      checks each claim the text makes about a figure against that figure’s default settings, and browser tests on phone
+      and desktop widths. If you find an error, please <a href={`${repoUrl}/issues/new`}>open an issue</a>.
     </p>
     <h2>Licenses</h2>
     <p>
@@ -45,11 +62,116 @@ import { url } from '../lib/site/url';
       <a href={repoUrl}>GitHub</a>.
     </p>
     <h2>Privacy</h2>
-    <p>The site sets no cookies and uses no analytics. Your theme choice is stored only in your own browser.</p>
+    {stats ? (
+      <p>
+        The site sets no cookies. It counts page views with <a href="https://www.goatcounter.com">GoatCounter</a>, which
+        stores no personal data and does not track you across sites; the totals are public, below. Your theme choice is
+        stored only in your own browser.
+      </p>
+    ) : (
+      <p>The site sets no cookies and uses no analytics. Your theme choice is stored only in your own browser.</p>
+    )}
+    {counters && (
+      <section
+        class="stats ui"
+        id="site-statistics"
+        aria-labelledby="stats-title"
+        data-counters={JSON.stringify(counters)}
+      >
+        <h2 id="stats-title">Site statistics</h2>
+        <p class="total">
+          Page views so far: <strong data-stats-total>…</strong>
+        </p>
+        <table>
+          <caption class="visually-hidden">Page views per post</caption>
+          <thead>
+            <tr>
+              <th scope="col">Post</th>
+              <th scope="col" class="num">
+                Views
+              </th>
+            </tr>
+          </thead>
+          <tbody data-stats-rows>
+            {counters.posts.map((p) => (
+              <tr data-counter={p.counter}>
+                <td>
+                  <a href={p.href}>
+                    {p.number}. {p.title}
+                  </a>
+                </td>
+                <td class="num" data-views>
+                  …
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p class="note" data-stats-note>
+          Counted by GoatCounter since statistics were switched on; reloads and bots may be included.
+        </p>
+      </section>
+    )}
   </div>
 </BaseLayout>
 
+<script>
+  // Fill in the public counters. Any failure leaves the section readable and says so.
+  import { parseCount as parse } from '../lib/site/stats';
+
+  const section = document.querySelector<HTMLElement>('#site-statistics');
+  if (section) {
+    const get = async (href: string): Promise<number | null> => {
+      try {
+        const res = await fetch(href, { mode: 'cors' });
+        if (res.status === 404) return 0; // GoatCounter answers 404 for pages without views yet
+        if (!res.ok) return null;
+        return parse(((await res.json()) as { count?: unknown }).count);
+      } catch {
+        return null;
+      }
+    };
+    const fmt = (n: number | null) => (n === null ? '—' : n.toLocaleString('en-GB'));
+    const { total } = JSON.parse(section.dataset.counters!) as { total: string };
+    void get(total).then((n) => {
+      section.querySelector('[data-stats-total]')!.textContent = fmt(n);
+      if (n === null)
+        section.querySelector('[data-stats-note]')!.textContent = 'The statistics could not be loaded right now.';
+    });
+    const body = section.querySelector<HTMLElement>('[data-stats-rows]')!;
+    const rows = Array.from(body.querySelectorAll<HTMLTableRowElement>('tr[data-counter]'));
+    void Promise.all(
+      rows.map(async (row) => {
+        const n = await get(row.dataset.counter!);
+        row.querySelector('[data-views]')!.textContent = fmt(n);
+        return { row, n: n ?? -1 };
+      }),
+    ).then((list) => {
+      list.sort((a, b) => b.n - a.n);
+      for (const { row } of list) body.append(row); // most read first
+    });
+  }
+</script>
+
 <style>
+  .stats {
+    margin-top: var(--space-7);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--c-border);
+    font-size: var(--fs-small);
+    color: var(--c-muted);
+  }
+  .stats h2 {
+    font-size: 1.05rem;
+    color: var(--c-fg);
+  }
+  .stats .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .stats .note {
+    font-size: 0.8rem;
+  }
   .page {
     padding: var(--space-5) var(--gutter);
     max-width: calc(var(--w-text) + 2 * var(--gutter));

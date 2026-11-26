@@ -86,8 +86,12 @@
 - 2026-11-26 — **`graph/solver.ts` (dense GN and LM with Marquardt scaling, accept/reject, ×10 / ÷10 λ), `math/contour.ts` (marching squares), `models/ranging.ts`.** Tests: GN solves a linear problem in one step; noise-free trilateration reaches cost ≈ 0; LM is monotone; Jacobian = finite differences. Manifold and sparse versions arrive in Phase 4.
 - 2026-11-26 — **CostLandscape presets were found by scanning ~1,600 start points**, not guessed: with corner anchors GN never fails, so the divergence preset uses collinear (south-wall) anchors and a start in line with them, where Λ is nearly singular. New primitive `Landmark`.
 - 2026-11-26 — **Phase 1 complete.** Part 1 uses real-world scenarios throughout (GPS road fixes, ultrasonic ranging, survey benchmark, motor calibration, UWB positioning).
+- 2026-11-26 — **Public site statistics (owner request: public counters only, at the end of About).** GoatCounter (cookieless, no personal data; consistent with DESIGN §1.2's "no tracking cookies"). The counting script loads only in production builds and only when `siteConfig.stats.goatcounterCode` is set; the About page then shows total views and views per post (most read first) from GoatCounter's public JSON counters, and its privacy text says so. With no code configured nothing loads and the privacy text stays "no analytics". Verified with mocked endpoints (numbers, sorting, failure message); the real CORS behaviour can only be confirmed once the account exists.
+- 2026-11-26 — **About page accuracy fix:** it cited "the Kalman filter equals batch least squares" as an existing test; that test arrives with Part 2, so it now cites "recursive least squares equals batch least squares".
 
 ## Follow-ups / known issues
+
+- **Owner action (statistics):** create a free GoatCounter site at https://www.goatcounter.com (pick a site code), and in its Settings enable "Allow adding visitor counts on your website". Then give me the code; I set `goatcounterCode` and verify the live counters.
 
 - **Owner action:** install the giscus GitHub App on `chucky98/gaussians-to-graphs` (https://github.com/apps/giscus). Then set `giscus.enabled = true` in `src/lib/site/config.ts`.
 - When posts 11, 12, 13, 15, 16, 17, 19, 22, 23, 25, 27, 28, 29 are published: link the plain-text references to them from earlier posts.
