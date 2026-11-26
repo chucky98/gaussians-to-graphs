@@ -242,3 +242,25 @@ test.describe('post 06 widgets', () => {
     await expect(d.locator('[data-readout="far"]')).toHaveText('100.0%');
   });
 });
+
+test.describe('post 07 widgets', () => {
+  test('EstimatorShootout: defaults; more fixes; near buildings the median wins', async ({ page }) => {
+    await page.goto('posts/estimator-quality/');
+    const w = page.locator('[data-widget="EstimatorShootout"]').first();
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="rmse-mean"]')).toHaveText('0.95');
+    await expect(w.locator('[data-readout="rmse-shrink"]')).toHaveText('0.93');
+    const nSlider = w.getByRole('slider', { name: 'Fixes per experiment' });
+    await nSlider.focus();
+    await nSlider.press('End');
+    await expect(w.locator('[data-readout="rmse-mean"]')).toHaveText('0.30');
+
+    const u = page.locator('[data-widget="EstimatorShootout"]').nth(1);
+    await u.scrollIntoViewIfNeeded();
+    await expect(u.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(u.locator('[data-readout="rmse-mean"]')).toHaveText('3.16');
+    await expect(u.locator('[data-readout="rmse-median"]')).toHaveText('1.27');
+    await expect(u.locator('[data-readout="crlb"]')).toHaveText('1.04');
+  });
+});

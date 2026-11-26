@@ -285,6 +285,8 @@ Typography: scalars are italic ($x$), vectors are bold lowercase ($\mathbf{x}$),
 | $\mathcal{L}(\cdot)$ | likelihood: $p(\text{data} \mid \text{parameter})$ read as a function of the parameter |
 | $\mu_0, \sigma_0$ | mean and standard deviation of a Gaussian prior (Part 1) |
 | $\kappa$ | prior weight in MAP; 1 is ordinary Bayes, 0 ignores the prior (post 6) |
+| $\bar{z}$ | average of the measurements (post 7) |
+| $\mathcal{I}$ | Fisher information of one measurement (post 7) |
 | $p(\cdot)$, $\mathrm{bel}(\mathbf{x}_k)$ | density; belief |
 | $n_x, n_z$ | state and measurement dimensions |
 | $\mathcal{X}^{[i]}$, $W^{[i]}_m, W^{[i]}_c$ | sigma points and their mean/covariance weights |

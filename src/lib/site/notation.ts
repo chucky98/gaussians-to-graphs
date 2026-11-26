@@ -63,6 +63,8 @@ export const notationGroups: readonly NotationGroup[] = [
       { tex: '\\mathcal{L}(\\cdot)', meaning: 'likelihood: p(data | parameter) read as a function of the parameter' },
       { tex: '\\mu_0,\\ \\sigma_0', meaning: 'mean and standard deviation of a Gaussian prior' },
       { tex: '\\kappa', meaning: 'prior weight in MAP (1 = ordinary Bayes, 0 = ignore the prior)' },
+      { tex: '\\bar{z}', meaning: 'average of the measurements' },
+      { tex: '\\mathcal{I}', meaning: 'Fisher information (of one measurement)' },
     ],
   },
   {
