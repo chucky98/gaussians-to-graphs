@@ -99,6 +99,7 @@
 - 2026-11-26 — **Notation additions (post 11):** K∞, P∞ (steady-state gain and updated variance). Scalar forms (x̂, P, K, Q, R, ν) of the table's bold symbols are used in post 11, per the typography rule.
 - 2026-11-26 — **Cross-links:** posts 03, 08 and 10 now link Post 11.
 - 2026-11-26 — **Wide equations in posts 10–11 stacked to fit at 375 px.** Caught by axe on post 11 (a display overflowing at 1280 px is a non-focusable scrollable region).
+- 2026-11-26 — **Scrolling display equations are keyboard-accessible.** `MathScroll.astro` (in `PostLayout`) makes every `.katex-display` that actually overflows a focusable, labelled region (axe "scrollable-region-focusable", WCAG 2.1.1), and re-checks on resize and after fonts load; non-overflowing displays stay out of the tab order. The axe test now also runs every post at 375 px. Writing rule unchanged: stack wide equations with `aligned` where it reads well.
 - 2026-11-26 — **About page accuracy fix:** it cited "the Kalman filter equals batch least squares" as an existing test; that test arrives with Part 2, so it now cites "recursive least squares equals batch least squares".
 
 ## Follow-ups / known issues
@@ -109,7 +110,6 @@
 - When posts 12, 13, 15, 16, 17, 19, 22, 23, 25, 27, 28, 29 are published: link the plain-text references to them from earlier posts.
 - Client-side KaTeX (77 KB gz) still loads for widgets with TeX labels or MatrixView. Consider rendering static TeX at build time and showing live numbers as plain text.
 - `Plot2D` pan/zoom is not implemented yet (no Phase 0 widget needs it). Primitives still to build when first needed: Landmark, Heatmap, Spy.
-- **Display math at 375 px (posts 02–09):** about 15 displays scroll horizontally on phones (allowed by DESIGN §6.4, but a scrolling display is not keyboard-focusable, which axe flags as serious when it happens on desktop). Posts 10–11 were stacked with `aligned` to fit. Phase 5: stack the rest, or give `.katex-display` `tabindex="0"` when it overflows.
 - Lighthouse has not been run (optional per §8.4).
 - Post 01's DriftFan "close the loop" follow-up remains scheduled for Phase 4.
 

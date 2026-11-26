@@ -72,13 +72,21 @@ for (const path of postPages()) {
   });
 
   test(`/${path} has no serious or critical accessibility violations`, async ({ page }) => {
-    for (const scheme of ['light', 'dark'] as const) {
+    // Desktop in both themes, and a phone (where wide equations scroll) in light.
+    for (const [scheme, width] of [
+      ['light', 1280],
+      ['dark', 1280],
+      ['light', 375],
+    ] as const) {
+      await page.setViewportSize({ width, height: 800 });
       await page.emulateMedia({ colorScheme: scheme });
       await page.goto(path);
       await visitWidgets(page);
       const result = await new AxeBuilder({ page }).analyze();
       const bad = result.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
-      expect(bad.map((v) => `${scheme}: ${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)).toEqual([]);
+      expect(
+        bad.map((v) => `${scheme} ${width}px: ${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`),
+      ).toEqual([]);
     }
   });
 }

@@ -5,6 +5,7 @@ import TOC from '../components/layout/TOC.astro';
 import SymbolsCard from '../components/layout/SymbolsCard.astro';
 import SeriesNav from '../components/layout/SeriesNav.astro';
 import Giscus from '../components/layout/Giscus.astro';
+import MathScroll from '../components/layout/MathScroll.astro';
 import { entryBySlug, parts } from '../lib/site/syllabus';
 import { url, postPath } from '../lib/site/url';
 import { issueUrl } from '../lib/site/config';
@@ -121,6 +122,7 @@ const pageUrl = new URL(url(postPath(post.id)), Astro.site).toString();
       <div data-pagefind-ignore>
         <SeriesNav slug={post.id} />
         <Giscus />
+        <MathScroll />
       </div>
     </article>
     {d.symbols.length > 0 && (
