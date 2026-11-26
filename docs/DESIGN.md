@@ -267,6 +267,7 @@ Typography: scalars are italic ($x$), vectors are bold lowercase ($\mathbf{x}$),
 | $\mathbf{v}_k \sim \mathcal{N}(\mathbf{0},\mathbf{R}_k)$ | measurement noise and its covariance |
 | $\boldsymbol{\nu}_k$, $\mathbf{S}_k$ | innovation and innovation covariance |
 | $\mathbf{K}_k$ | Kalman gain |
+| $K_\infty$, $P_\infty$ | steady-state gain and (updated) variance of a filter with constant $Q$, $R$ (post 11) |
 | $\boldsymbol{\Omega} = \mathbf{P}^{-1}$, $\boldsymbol{\xi} = \boldsymbol{\Omega}\hat{\mathbf{x}}$ | information matrix and information vector |
 | $\mathcal{N}(\boldsymbol{\mu}, \boldsymbol{\Sigma})$ | Gaussian (generic mean and covariance, used in Part 0) |
 | $\mu, \sigma$; $\sigma_x, \sigma_y$; $\rho$ | scalar mean and standard deviation; per-axis standard deviations and correlation coefficient of a 2D Gaussian (Part 0) |

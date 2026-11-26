@@ -96,13 +96,19 @@ Equation (1) is the **prediction**: the probability of being at $\mathbf{x}_k$ n
 Apply Bayes' rule to the newest measurement $\mathbf{z}_k$, keeping everything else as given:
 
 $$
-\bel(\mathbf{x}_k) = \frac{p(\mathbf{z}_k \mid \mathbf{x}_k, \mathbf{z}_{1:k-1}, \mathbf{u}_{1:k})\; p(\mathbf{x}_k \mid \mathbf{z}_{1:k-1}, \mathbf{u}_{1:k})}{p(\mathbf{z}_k \mid \mathbf{z}_{1:k-1}, \mathbf{u}_{1:k})}.
+\begin{aligned}
+\bel(\mathbf{x}_k) = \eta\; &p(\mathbf{z}_k \mid \mathbf{x}_k, \mathbf{z}_{1:k-1}, \mathbf{u}_{1:k}) \\
+\times\; &p(\mathbf{x}_k \mid \mathbf{z}_{1:k-1}, \mathbf{u}_{1:k}),
+\end{aligned}
 $$
 
-By assumption 2 the first factor is $p(\mathbf{z}_k \mid \mathbf{x}_k)$. The denominator does not depend on $\mathbf{x}_k$; call it $1/\eta$. The second factor is $\overline{\bel}(\mathbf{x}_k)$, which gives (2). To compute it, sum over the previous state (the law of total probability):
+where $1/\eta = p(\mathbf{z}_k \mid \mathbf{z}_{1:k-1}, \mathbf{u}_{1:k})$ does not depend on $\mathbf{x}_k$. By assumption 2 the first factor is $p(\mathbf{z}_k \mid \mathbf{x}_k)$. The second factor is $\overline{\bel}(\mathbf{x}_k)$, which gives (2). To compute it, sum over the previous state (the law of total probability):
 
 $$
-\overline{\bel}(\mathbf{x}_k) = \int p(\mathbf{x}_k \mid \mathbf{x}_{k-1}, \mathbf{z}_{1:k-1}, \mathbf{u}_{1:k})\, p(\mathbf{x}_{k-1} \mid \mathbf{z}_{1:k-1}, \mathbf{u}_{1:k})\, d\mathbf{x}_{k-1}.
+\begin{aligned}
+\overline{\bel}(\mathbf{x}_k) = \int &p(\mathbf{x}_k \mid \mathbf{x}_{k-1}, \mathbf{z}_{1:k-1}, \mathbf{u}_{1:k}) \\
+\times\; &p(\mathbf{x}_{k-1} \mid \mathbf{z}_{1:k-1}, \mathbf{u}_{1:k})\, d\mathbf{x}_{k-1}.
+\end{aligned}
 $$
 
 By assumption 1 the first factor is $p(\mathbf{x}_k \mid \mathbf{x}_{k-1}, \mathbf{u}_k)$. In the second factor, the control $\mathbf{u}_k$ is applied after $\mathbf{x}_{k-1}$ and says nothing about it, so it can be dropped. What is left is $\bel(\mathbf{x}_{k-1})$, which gives (1).
@@ -125,7 +131,7 @@ The chance of moving from $x_{k-1}$ to $x_k$ depends only on the distance betwee
 **Measurement model.** The door detector has two numbers. In front of a door it says "door" with probability 0.9 (the hit rate); in front of a wall it falsely says "door" with probability 0.05 (the false-alarm rate):
 
 $$
-p(z_k = \text{door} \mid x_k) = \begin{cases} 0.9 & \text{if } x_k \text{ faces a door,} \\ 0.05 & \text{if } x_k \text{ faces a wall,} \end{cases}
+p(z_k = \text{door} \mid x_k) = \begin{cases} 0.9 & \text{at a door,} \\ 0.05 & \text{at a wall,} \end{cases}
 $$
 
 and $p(z_k = \text{wall} \mid x_k) = 1 - p(z_k = \text{door} \mid x_k)$. A "door" reading therefore multiplies every door cell by 0.9 and every wall cell by 0.05, a ratio of 18 to 1. A "wall" reading multiplies them by 0.1 and 0.95, a gentler ratio of 9.5 to 1 in the other direction. Update (2) is that multiplication, followed by dividing every cell by the sum.
@@ -174,14 +180,17 @@ The robot below has already driven two laps from the same start and is sure wher
 The motion model that allows for kidnapping mixes a little of the uniform distribution into every prediction:
 
 $$
-\overline{\bel}(x_k) = (1 - \varepsilon) \sum_{x_{k-1}} p(x_k \mid x_{k-1}, u_k)\, \bel(x_{k-1}) + \frac{\varepsilon}{120}.
+\begin{aligned}
+&\overline{\bel}(x_k) = (1 - \varepsilon) \\
+&\quad \times \sum_{x_{k-1}} p(x_k \mid x_{k-1}, u_k)\, \bel(x_{k-1}) + \frac{\varepsilon}{120}.
+\end{aligned}
 $$
 
 After every prediction each cell holds at least $\varepsilon/120$, so no hypothesis is ever ruled out completely. The cost is small: over seeds 1 to 100, the average belief within 1 m of the truth between moves 30 and 60 drops only from 94.2% to 92.6%. The general lesson is that a Bayes filter can only recover from a situation its model says is impossible, or nearly so, as fast as the evidence can overturn the model. Particle filters (Post 17) use the same remedy, sprinkling a few random particles over the map.
 
 ### Too many cells
 
-A 30 m corridor needs 120 cells. A 50 m × 50 m floor with 10 cm cells and 5° heading bins needs 18 million, and a prediction step that sums over all previous cells for each cell would be hopeless. Histogram filters work well in one or two dimensions; in three they need coarse grids and careful engineering, and beyond that they are hopeless. The rest of Part 2 offers two ways out: assume the belief is Gaussian, so a mean and a covariance describe it (the Kalman filter, Posts 11 and 12), or represent it with samples placed where the probability is (the particle filter, Post 17).
+A 30 m corridor needs 120 cells. A 50 m × 50 m floor with 10 cm cells and 5° heading bins needs 18 million, and a prediction step that sums over all previous cells for each cell would be hopeless. Histogram filters work well in one or two dimensions; in three they need coarse grids and careful engineering, and beyond that they are hopeless. The rest of Part 2 offers two ways out: assume the belief is Gaussian, so a mean and a covariance describe it (the Kalman filter, [Post 11](../kalman-filter-1d/) and Post 12), or represent it with samples placed where the probability is (the particle filter, Post 17).
 
 ### Cells that are too coarse
 

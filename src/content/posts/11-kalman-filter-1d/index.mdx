@@ -1,0 +1,218 @@
+---
+number: 11
+title: The Kalman Filter in One Dimension
+description: With a one-bump belief, the Bayes filter becomes arithmetic on a mean and a variance. Track a robot down a corridor from odometry and position fixes.
+part: 2
+status: published
+date: 2026-11-26
+prerequisites: [bayes-filter, conditioning-and-marginalizing]
+objectives:
+  - Explain why a Gaussian belief stays Gaussian under linear motion with Gaussian noise and Gaussian measurements.
+  - Write the one-dimensional prediction (the variance grows by Q) and update (a product of Gaussians) steps.
+  - Read the Kalman gain as a trust ratio between the prediction and the measurement.
+  - Compute the steady-state gain and variance, and predict how a gap in the measurements affects them.
+references:
+  - key: kalman1960
+    text: 'Kalman. "A New Approach to Linear Filtering and Prediction Problems." *Journal of Basic Engineering* 82(1), 1960.'
+  - key: thrun2005
+    text: Thrun, Burgard, Fox. *Probabilistic Robotics.* MIT Press, 2005. §3.2 (the Kalman filter, including a one-dimensional illustration).
+  - key: simon2006
+    text: Simon. *Optimal State Estimation.* Wiley, 2006. Ch. 5 (the discrete-time Kalman filter).
+  - key: faragher2012
+    text: 'Faragher. "Understanding the basis of the Kalman filter via a simple and intuitive derivation." *IEEE Signal Processing Magazine* 29(5), 2012 (the update as a product of Gaussians).'
+widgets: [GaussianProduct, Tracker1D]
+symbols:
+  - tex: '\hat{\mathbf{x}}_{k\mid k-1},\ \mathbf{P}_{k\mid k-1}'
+    meaning: 'here scalars: predicted mean and variance'
+    match: ['P_{k\mid k-1}']
+  - tex: '\hat{\mathbf{x}}_{k\mid k},\ \mathbf{P}_{k\mid k}'
+    meaning: 'here scalars: updated mean and variance'
+    match: ['P_{k\mid k}']
+  - tex: '\mathbf{w}_k \sim \N(\mathbf{0},\mathbf{Q}_k)'
+    meaning: 'here w_k ~ N(0, Q): motion noise, Q = α² per 1 m move'
+    match: ['Q']
+  - tex: '\mathbf{v}_k \sim \N(\mathbf{0},\mathbf{R}_k)'
+    meaning: 'here v_k ~ N(0, R): noise of a position fix'
+    match: ['R']
+  - tex: '\mathbf{K}_k'
+    meaning: 'here the scalar gain K_k'
+    match: ['K_k']
+  - tex: '\boldsymbol{\nu}_k,\ \mathbf{S}_k'
+    meaning: 'here ν_k: the innovation (surprise)'
+    match: ['\nu_k']
+  - tex: 'K_\infty,\ P_\infty'
+    meaning: steady-state gain and variance
+    match: ['K_\infty']
+---
+
+import GaussianProduct from '../../../components/widgets/GaussianProduct/GaussianProduct.svelte';
+import Tracker1D from '../../../components/widgets/Tracker1D/Tracker1D.svelte';
+
+The delivery robot from [Post 10](../bayes-filter/) has found itself and turned into a long, straight corridor. Its odometry says it has driven to 12.0 m from the corridor's start, give or take 0.5 m. Then the building's positioning system reports a fix: 12.8 m, give or take 0.3 m. Where is the robot now?
+
+<GaussianProduct client:visible />
+
+The histogram filter of Post 10 could answer, with 120 numbers per belief. But both pieces of information here are single bumps, and so is the answer: 12.59 m, give or take 0.26 m. A bump needs only two numbers, a mean and a variance. Doing the Bayes filter with just those two numbers is the **Kalman filter**.
+
+## Intuition
+
+A Gaussian belief has a remarkable property: under the right conditions it stays Gaussian forever, so the filter never needs more than a mean and a variance.
+
+**Moving widens the bump.** If the robot believes it is at 11 m ± 0.4 m and drives 1 m with an odometry error of ± 0.1 m, it now believes 12 m, and the two uncertainties combine. Independent errors add their *variances*: $0.4^2 + 0.1^2 = 0.17$, so about ± 0.41 m. The bump moves and gets wider, and stays a Gaussian.
+
+**A reading narrows the bump.** Multiplying two Gaussian curves gives another Gaussian curve, narrower than both. Its peak lies between the two peaks, closer to the narrower one. That is what the widget shows: the green belief is pulled most of the way to the fix, because the fix is the more precise of the two.
+
+How far it is pulled is the **Kalman gain**, a number between 0 and 1: the fraction of the way from the prediction to the reading. A gain near 1 trusts the reading; a gain near 0 trusts the prediction.
+
+## The math
+
+### The model
+
+The robot's position $x_k$ changes by a known commanded move $u_k$ plus noise, and each fix $z_k$ is the position plus noise:
+
+$$
+\begin{aligned}
+x_k &= x_{k-1} + u_k + w_k, &\quad w_k &\sim \N(0, Q), \\
+z_k &= x_k + v_k, &\quad v_k &\sim \N(0, R).
+\end{aligned}
+$$
+
+$Q$ is the variance of the motion error per step and $R$ the variance of a fix. With 1 m moves and the odometry noise level $\alpha = 0.1$ m per $\sqrt{\text{m}}$ of [Post 1](../where-am-i/), $Q = \alpha^2 \cdot 1\,\text{m} = 0.01$ m². The fixes have a standard deviation of 0.3 m, so $R = 0.09$ m². The belief after step $k$ is a Gaussian with mean $\hat{x}_{k\mid k}$ and variance $P_{k\mid k}$; the subscript $k \mid k$ reads "at time $k$, given the data up to time $k$".
+
+### Predict
+
+Before the fix arrives, the predicted belief has mean and variance
+
+$$
+\begin{aligned}
+\hat{x}_{k\mid k-1} &= \hat{x}_{k-1\mid k-1} + u_k, \\
+P_{k\mid k-1} &= P_{k-1\mid k-1} + Q.
+\end{aligned} \tag{1}
+$$
+
+The mean moves by the commanded amount and the variance grows by $Q$. This is the prediction step of the Bayes filter: the convolution of the old belief with the motion noise. For Gaussians that convolution is simply the distribution of a sum of two independent Gaussian variables, whose variances add, as in [Post 4](../propagating-uncertainty/).
+
+### Update
+
+When the fix $z_k$ arrives, Bayes' rule multiplies the predicted belief by the likelihood $p(z_k \mid x_k) = \N(z_k;\, x_k, R)$, read as a function of $x_k$. The result is again Gaussian:
+
+$$
+\begin{aligned}
+\nu_k &= z_k - \hat{x}_{k\mid k-1} \\
+K_k &= \frac{P_{k\mid k-1}}{P_{k\mid k-1} + R} \\
+\hat{x}_{k\mid k} &= \hat{x}_{k\mid k-1} + K_k\,\nu_k \\
+P_{k\mid k} &= (1 - K_k)\, P_{k\mid k-1}
+\end{aligned}
+\tag{2}
+$$
+
+In words: the innovation $\nu_k$ is the surprise, how far the fix lands from the prediction. The gain $K_k$ decides what fraction of that surprise to believe. The mean moves by that fraction of the surprise, and the variance is multiplied by $1 - K_k$.
+
+<Derivation title="Equation (2) as a product of Gaussians, and as conditioning">
+**As a product.** Up to constants, the log of the product is the sum of two parabolas:
+
+$$
+\begin{aligned}
+&-\frac{(x - \hat{x}_{k\mid k-1})^2}{2P_{k\mid k-1}} - \frac{(x - z_k)^2}{2R} \\
+&\qquad = -\frac{(x - \hat{x}_{k\mid k})^2}{2P_{k\mid k}} + \text{const},
+\end{aligned}
+$$
+
+where matching the $x^2$ terms gives $1/P_{k\mid k} = 1/P_{k\mid k-1} + 1/R$, and matching the $x$ terms gives $\hat{x}_{k\mid k} = P_{k\mid k}\,(\hat{x}_{k\mid k-1}/P_{k\mid k-1} + z_k/R)$. A line of algebra turns these into (2).
+
+**As conditioning.** Before the fix arrives, the position and the fix are jointly Gaussian. The fix has mean $\hat{x}_{k\mid k-1}$, variance $P_{k\mid k-1} + R$ and covariance $P_{k\mid k-1}$ with the position. The conditioning formula of [Post 3](../conditioning-and-marginalizing/) gives mean $\hat{x}_{k\mid k-1} + \frac{P_{k\mid k-1}}{P_{k\mid k-1} + R}(z_k - \hat{x}_{k\mid k-1})$ and variance $P_{k\mid k-1} - \frac{P_{k\mid k-1}^2}{P_{k\mid k-1} + R}$, which is (2) again. Adding the noise variance $R$ to the measured block is exactly the fix that Post 3 anticipated for noisy readings.
+</Derivation>
+
+The update has the same shape as recursive least squares in [Post 8](../recursive-least-squares/): old estimate plus gain times surprise. And from the derivation,
+
+$$
+\frac{1}{P_{k\mid k}} = \frac{1}{P_{k\mid k-1}} + \frac{1}{R}.
+$$
+
+Information, the inverse of variance, adds. That is why the updated belief is always narrower than both the prediction and the fix.
+
+### The gain is a trust ratio
+
+$K_k = P_{k\mid k-1}/(P_{k\mid k-1} + R)$ compares two variances. If the prediction is vague ($P_{k\mid k-1} \gg R$), $K_k \approx 1$ and the estimate jumps to the fix. If the fix is vague ($R \gg P_{k\mid k-1}$), $K_k \approx 0$ and the fix is mostly ignored. If they are equally uncertain, $K_k = 1/2$ and the estimate lands halfway.
+
+<Callout type="key">
+For a Gaussian belief, the Bayes filter is two lines of arithmetic. Prediction adds $Q$ to the variance. The update moves the mean a fraction $K_k = P_{k\mid k-1}/(P_{k\mid k-1}+R)$ of the way to the reading, and the information $1/P$ grows by $1/R$.
+</Callout>
+
+### Steady state
+
+Notice that (1) and (2) never use the readings to compute $P$ or $K$. The variances follow their own recursion and, with $Q$ and $R$ constant, settle to fixed values: each step the prediction adds $Q$ and the update removes the same amount. The steady-state variance $P_\infty$ after an update solves $P_\infty = (1 - K_\infty)(P_\infty + Q)$, which gives
+
+$$
+\begin{aligned}
+P_\infty + Q &= \tfrac{1}{2}\left(Q + \sqrt{Q^2 + 4QR}\right), \\
+K_\infty &= \frac{P_\infty + Q}{P_\infty + Q + R}.
+\end{aligned}
+$$
+
+For our robot, $K_\infty = 0.282$ and $\sqrt{P_\infty} = 0.159$ m: about half the 0.3 m of a single fix, because each estimate combines the newest fix with everything the earlier fixes and the odometry imply.
+
+## Play with it
+
+In the first widget, at the top of the post:
+
+<TryThis>
+1. At the defaults the gain is 0.74, and the updated belief is 12.59 ± 0.26 m (one standard deviation), narrower than both the prediction (0.5 m) and the fix (0.3 m).
+2. Set both $\sigma_1$ and $\sigma_2$ to 0.4 m. The gain becomes exactly 0.5, the estimate lands halfway at 12.40 m, and its standard deviation is $0.4/\sqrt{2} = 0.28$ m.
+3. Widen the fix to $\sigma_2 = 2$ m. The gain drops to 0.06, and the fix moves the estimate by only 5 cm, to 12.05 m.
+</TryThis>
+
+The second widget runs the filter for 40 steps. The robot starts near 0 m, but the filter only believes "0 ± 1 m". Each step it drives 1 m and then gets a fix. The widget opens at the end of the run; drag the time slider back to 0 and use **Step** to go through predict and update one at a time.
+
+<Tracker1D client:visible />
+
+<TryThis>
+1. Step through the first few updates and watch the **Gain** readout: 0.918, 0.507, 0.382, 0.330, 0.306, settling at the steady state 0.282. The first fix is trusted almost completely, because the prediction is still ± 1 m; after that, each fix matters less.
+2. Look at the middle chart. The standard deviation is a sawtooth: up by the motion noise at each prediction, down at each fix. By step 8 both teeth are within 2 mm of their steady values, 0.188 m (predicted) and 0.159 m (updated).
+3. In the lower chart, the fixes (crosses) have a root-mean-square error of 0.31 m; the filter's estimates (dots) have 0.15 m, half as much. 38 of the 40 estimates lie inside their 95% band: the filter is not only accurate but honest about its accuracy.
+4. Lower the motion noise to $\alpha = 0.02$ m. The odometry is now so good that the steady gain is 0.064 and $\sqrt{P_\infty}$ is 0.076 m: the filter mostly ignores each fix and averages over many of them.
+</TryThis>
+
+## Algorithm
+
+<AlgorithmBox title="Kalman filter in one dimension (one step)" source="src/lib/filters/kf1d.ts">
+1. **Predict** with the move $u_k$: $\hat{x}_{k\mid k-1} = \hat{x}_{k-1\mid k-1} + u_k$ and $P_{k\mid k-1} = P_{k-1\mid k-1} + Q$.
+2. If no reading arrived, stop here: the prediction is the new belief.
+3. **Update** with the reading $z_k$: $K_k = P_{k\mid k-1}/(P_{k\mid k-1} + R)$, $\hat{x}_{k\mid k} = \hat{x}_{k\mid k-1} + K_k(z_k - \hat{x}_{k\mid k-1})$, $P_{k\mid k} = (1-K_k)^2 P_{k\mid k-1} + K_k^2 R$.
+</AlgorithmBox>
+
+The last line is the **Joseph form** of the variance update. At the optimal gain it equals $(1 - K_k)P_{k\mid k-1}$, but it stays positive even when rounding errors creep in; Post 13 explains why that matters in more dimensions. The unit tests check that the update equals both the product of Gaussians and the conditioning formula; that after every step the filter's estimate equals the batch MAP estimate obtained by solving for the whole trajectory at once with least squares; and that the histogram filter of Post 10, run on a 1 cm grid, gives the same means and variances to three decimals.
+
+## When it breaks
+
+### Gaps in the measurements
+
+Here the positioning system goes silent for ten steps, from step 16 to step 25.
+
+<Tracker1D client:visible preset="outage" />
+
+<TryThis>
+1. Look at the middle chart. Without fixes, every step is a prediction only, and the variance grows by $Q$ each time: the standard deviation climbs from 0.159 m to 0.354 m by step 25. The band in the lower chart widens with it.
+2. The error drifts too, reaching 0.58 m at step 25, but it stays inside the widened 95% band of ± 0.69 m. The filter is less sure, and it says so.
+3. Step to the update of step 26. The prediction is now vague, so the first fix gets a gain of 0.601, and the standard deviation drops at once to 0.233 m. By step 30 it is 0.164 m, close to the steady 0.159 m.
+</TryThis>
+
+### A reading that is wrong
+
+In the first widget, drag the reading to 16 m, four metres from the prediction. The estimate moves to 14.94 m, where neither the odometry nor the fix put the robot, and its standard deviation is still 0.26 m: the update's variance does not depend on how much the two disagree. A Gaussian has no notion of an outlier. Real filters check each reading's innovation against its expected spread before using it, and reject readings that are too surprising (Post 13 and Post 25).
+
+### A belief that is not one bump
+
+At the start of Post 10 the robot had no idea where it was, and later its belief had two separate bumps. A single Gaussian cannot represent either. The Kalman filter needs a reasonable initial guess and a problem where one bump is an adequate summary; for global localization, use a histogram or particle filter (Post 17).
+
+### Wrong noise levels
+
+The filter is only as good as its $Q$ and $R$. In the widget they match the simulated robot exactly. A real filter uses assumed values, and if it assumes too little noise it becomes overconfident: its band shrinks while its error does not. Post 13 shows how to detect this from the innovations alone.
+
+## Summary
+
+- When motion and measurements are linear with Gaussian noise, a Gaussian belief stays Gaussian, and the Bayes filter reduces to updating a mean and a variance.
+- Prediction moves the mean by the commanded motion and adds $Q$ to the variance.
+- The update is the product of two Gaussians: the mean moves a fraction $K_k = P_{k\mid k-1}/(P_{k\mid k-1}+R)$ of the way to the reading, and the information $1/P$ grows by $1/R$.
+- The variances and gains do not depend on the readings; with constant noise they settle to $K_\infty$ and $P_\infty$ within a few steps.
+- Without readings the variance grows linearly; a wrong reading pulls the estimate as hard as a right one; a belief with several bumps needs a different filter.

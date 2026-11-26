@@ -107,6 +107,10 @@ export const notationGroups: readonly NotationGroup[] = [
       { tex: '\\boldsymbol{\\nu}_k,\\ \\mathbf{S}_k', meaning: 'innovation and innovation covariance' },
       { tex: '\\mathbf{K}_k', meaning: 'Kalman gain' },
       {
+        tex: 'K_\\infty,\\ P_\\infty',
+        meaning: 'steady-state gain and variance of a filter with constant noise levels (Post 11)',
+      },
+      {
         tex: '\\boldsymbol{\\Omega} = \\mathbf{P}^{-1},\\ \\boldsymbol{\\xi} = \\boldsymbol{\\Omega}\\hat{\\mathbf{x}}',
         meaning: 'information matrix and information vector',
       },

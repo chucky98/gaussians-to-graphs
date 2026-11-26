@@ -1,8 +1,8 @@
 # Progress
 
-## Current phase: 2 — Part 2 (in progress: post 10 published)
+## Current phase: 2 — Part 2 (in progress: posts 10–11 published)
 
-## Next task: Phase 2 — post 11 `kalman-filter-1d` (GaussianProduct, Tracker1D)
+## Next task: Phase 2 — post 12 `kalman-filter` (CVTracker2D)
 
 ## Posts
 
@@ -18,7 +18,8 @@
 | 08    | recursive-least-squares          | published | RLSStream                     | ~2,300 words. Online motor calibration; battery sag; forgetting factor sweet spot.                                          |
 | 09    | nonlinear-least-squares          | published | CostLandscape                 | ~2,300 words. UWB indoor positioning; mirror minimum with wall anchors; GN divergence vs LM.                                |
 | 10    | bayes-filter                     | published | CorridorRobot                 | ~2,400 words. Delivery robot on a 30 m loop corridor, door detector; histogram filter; kidnapping and the ε fix.            |
-| 11–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                             |                                                                                                                             |
+| 11    | kalman-filter-1d                 | published | GaussianProduct, Tracker1D    | ~2,500 words. Same robot in a straight corridor: odometry + position fixes; gain as trust ratio; steady state; outage.      |
+| 12–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                             |                                                                                                                             |
 
 ## Infrastructure checklist
 
@@ -93,6 +94,11 @@
 - 2026-11-26 — **Kidnapping probability ε = 0.001 per move** (toggle). Without it the tracking preset (two laps) is still lost 80 moves after a kidnap; with it, back above 90% after 32 moves, at a cost of 94.2% → 92.6% average near-truth mass (seeds 1–100). A "surprise" readout (the normalizer p(zₖ | earlier data)) was tried and dropped: one surprising reading also happens while tracking correctly, so it would teach a misleading signal.
 - 2026-11-26 — **Notation additions (post 10):** z₁:ₖ/u₁:ₖ, predicted belief bel̄(xₖ), scalar normalizer η (conflict note vs bold η of Gauss–Newton), ε kidnapping probability (conflict note vs NEES εₖ); α now also covers "per 1 m move" in post 10.
 - 2026-11-26 — **Wide widgets were never centred (fixed).** `WidgetFrame`'s scoped `margin: … 0` overrode the global `.wide` negative side margins, so widgets started at the text column's left edge: from 721 to 1239 px every post with a widget scrolled horizontally, and at 1280 px widgets ran under the symbols card. Frames (and `Figure`) now set only block margins. The e2e overflow test now also runs at 1000 and 1280 px, and a new test checks that widgets are centred and clear both rails at 1280 and 1500 px.
+- 2026-11-26 — **`filters/kf1d.ts` (post 11)**, a scalar Kalman filter (predict, Joseph-form update, `run1` with optional readings, `steadyState1`, `batchMap1`). Kept separate from the multivariate `filters/kf.ts` that post 12 introduces, so post 11's code reads like its equations. Invariants: update = Gaussian product = conditioning (post 3); filter = batch MAP of the latest state after every step (with gaps); the post-10 histogram filter on a 1 cm grid matches to 3 decimals.
+- 2026-11-26 — **Tracker1D scenario:** 40 moves of 1 m with α = 0.1 (Q = 0.01 m²) and fixes with √R = 0.3 m, prior 0 ± 1 m. Seed 11 was unlucky (RMS error 0.215 m vs median 0.164 m; 82.5% coverage), so the default is seed 7 (0.154 m, 95%). An "outage" preset drops fixes for steps 16–25. GaussianProduct defaults: prediction 12.0 ± 0.5 m, fix 12.8 ± 0.3 m.
+- 2026-11-26 — **Notation additions (post 11):** K∞, P∞ (steady-state gain and updated variance). Scalar forms (x̂, P, K, Q, R, ν) of the table's bold symbols are used in post 11, per the typography rule.
+- 2026-11-26 — **Cross-links:** posts 03, 08 and 10 now link Post 11.
+- 2026-11-26 — **Wide equations in posts 10–11 stacked to fit at 375 px.** Caught by axe on post 11 (a display overflowing at 1280 px is a non-focusable scrollable region).
 - 2026-11-26 — **About page accuracy fix:** it cited "the Kalman filter equals batch least squares" as an existing test; that test arrives with Part 2, so it now cites "recursive least squares equals batch least squares".
 
 ## Follow-ups / known issues
@@ -100,9 +106,10 @@
 - **Owner action (statistics):** GoatCounter site `chucky98` is configured and counting. In GoatCounter → Settings, enable "Allow adding visitor counts on your website"; until then the public counters return 403 and the About section shows "could not be loaded".
 
 - **Owner action:** install the giscus GitHub App on `chucky98/gaussians-to-graphs` (https://github.com/apps/giscus). Then set `giscus.enabled = true` in `src/lib/site/config.ts`.
-- When posts 11, 12, 13, 15, 16, 17, 19, 22, 23, 25, 27, 28, 29 are published: link the plain-text references to them from earlier posts.
+- When posts 12, 13, 15, 16, 17, 19, 22, 23, 25, 27, 28, 29 are published: link the plain-text references to them from earlier posts.
 - Client-side KaTeX (77 KB gz) still loads for widgets with TeX labels or MatrixView. Consider rendering static TeX at build time and showing live numbers as plain text.
 - `Plot2D` pan/zoom is not implemented yet (no Phase 0 widget needs it). Primitives still to build when first needed: Landmark, Heatmap, Spy.
+- **Display math at 375 px (posts 02–09):** about 15 displays scroll horizontally on phones (allowed by DESIGN §6.4, but a scrolling display is not keyboard-focusable, which axe flags as serious when it happens on desktop). Posts 10–11 were stacked with `aligned` to fit. Phase 5: stack the rest, or give `.katex-display` `tabindex="0"` when it overflows.
 - Lighthouse has not been run (optional per §8.4).
 - Post 01's DriftFan "close the loop" follow-up remains scheduled for Phase 4.
 
@@ -119,4 +126,5 @@
 | NonlinearPropagation island | 5.8 KB (+ KaTeX chunk)                                                                      | Two instances on post 04                                      |
 | Part 1 islands              | LineFit 3.8, BayesGrid1D 4.5, EstimatorShootout 4.9, RLSStream 4.3, CostLandscape 5.8 KB gz | KaTeX chunk only where TeX labels/formulas are used           |
 | CorridorRobot island        | 5.9 KB gz (+ shared primitives and Svelte runtime)                                          | No KaTeX (plain-text slider labels)                           |
+| Post 11 islands             | GaussianProduct 2.7 KB, Tracker1D 4.6 KB gz (+ shared primitives and Svelte runtime)        | No KaTeX                                                      |
 | Shared: KaTeX chunk         | 77 KB                                                                                       | Loaded only by Gaussian1D / CovarianceEllipse (post 02)       |
