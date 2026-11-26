@@ -141,6 +141,11 @@ export const notationGroups: readonly NotationGroup[] = [
         meaning: 'information matrix and information vector',
       },
       {
+        tex: '\\alpha,\\ \\beta,\\ \\kappa,\\ \\lambda\\ \\text{(UT)}',
+        meaning:
+          'unscented-transform parameters: spread α, distribution β, secondary scaling κ, and λ = α²(n + κ) − n (Post 16)',
+      },
+      {
         tex: '\\mathcal{X}^{[i]},\\ W^{[i]}_m,\\ W^{[i]}_c',
         meaning: 'sigma points and their mean / covariance weights',
       },
@@ -230,6 +235,10 @@ export const notationConflicts: readonly { tex: string; note: string }[] = [
   {
     tex: '\\varepsilon\\ \\text{vs.}\\ \\epsilon_k',
     note: 'A bare ε (Post 10) is a kidnapping probability; ε with a time index is the NEES of a Kalman filter (Post 13).',
+  },
+  {
+    tex: '\\beta,\\ \\kappa,\\ \\lambda\\ \\text{(UT)}',
+    note: 'In Post 16 (and only there) β, κ and λ are unscented-transform parameters. Elsewhere β is the forgetting factor of Post 8, κ the prior weight of Post 6, and a bare λ the Levenberg–Marquardt damping.',
   },
   {
     tex: '\\alpha\\ \\text{(odometry)}\\ \\text{vs.}\\ \\alpha\\ \\text{(UKF)}',

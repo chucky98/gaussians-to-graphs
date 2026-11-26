@@ -306,6 +306,7 @@ Typography: scalars are italic ($x$), vectors are bold lowercase ($\mathbf{x}$),
 | $p(\cdot)$, $\mathrm{bel}(\mathbf{x}_k)$ | density; belief |
 | $n_x, n_z$ | state and measurement dimensions |
 | $\mathcal{X}^{[i]}$, $W^{[i]}_m, W^{[i]}_c$ | sigma points and their mean/covariance weights |
+| $\alpha, \beta, \kappa, \lambda$ (UT) | unscented-transform spread, distribution and scaling parameters, $\lambda = \alpha^2(n+\kappa) - n$ (post 16) |
 | $\mathbf{x}^{[i]}$, $w^{[i]}$ | particle $i$ and its (scalar) weight; $N_p$ particles; $N_{\text{eff}}$ effective sample size |
 | $\epsilon_k$, $\epsilon_{\nu,k}$ | NEES and NIS |
 | $M$, $\bar{\epsilon}_k$ | number of Monte Carlo runs; a statistic averaged over them (post 13) |
@@ -328,7 +329,7 @@ Typography: scalars are italic ($x$), vectors are bold lowercase ($\mathbf{x}$),
 | $\rho(\cdot)$ | robust kernel |
 | $\mathbb{E}$, $\operatorname{Cov}$, $(\cdot)^\top$, $\mathbf{I}$ | expectation, covariance, transpose, identity |
 
-Conflict notes, to be explained on the `/notation` page: $\theta$ (heading, from post 14) vs $\theta$ (bearing in post 4); $v$ (speed) vs $\mathbf{v}_k$ (measurement noise); $M$ (Monte Carlo runs) vs $\mathbf{M}_k$ (control noise); $\eta$ (belief normalizer) vs $\boldsymbol{\eta}$ (Gauss–Newton); $\varepsilon$ (kidnapping probability) vs $\epsilon_k$ (NEES); $w^{[i]}$ (particle weight, scalar, superscript) vs $\mathbf{w}_k$ (process noise, bold); $\lambda$ for LM damping vs eigenvalues; $\rho$ (correlation, Part 0) vs $\rho(\cdot)$ (robust kernel); $\mathbf{z}$ (whitened vector, Part 0) vs $\mathbf{z}_k$ (measurement). Eigenvalues are written $\lambda_1, \lambda_2$ and appear only in Part 0, so context makes the meaning clear.
+Conflict notes, to be explained on the `/notation` page: $\beta, \kappa, \lambda$ in post 16 (UT parameters) vs forgetting factor, prior weight and LM damping; $\theta$ (heading, from post 14) vs $\theta$ (bearing in post 4); $v$ (speed) vs $\mathbf{v}_k$ (measurement noise); $M$ (Monte Carlo runs) vs $\mathbf{M}_k$ (control noise); $\eta$ (belief normalizer) vs $\boldsymbol{\eta}$ (Gauss–Newton); $\varepsilon$ (kidnapping probability) vs $\epsilon_k$ (NEES); $w^{[i]}$ (particle weight, scalar, superscript) vs $\mathbf{w}_k$ (process noise, bold); $\lambda$ for LM damping vs eigenvalues; $\rho$ (correlation, Part 0) vs $\rho(\cdot)$ (robust kernel); $\mathbf{z}$ (whitened vector, Part 0) vs $\mathbf{z}_k$ (measurement). Eigenvalues are written $\lambda_1, \lambda_2$ and appear only in Part 0, so context makes the meaning clear.
 
 ### 6.2 Colors and line styles (semantic tokens)
 

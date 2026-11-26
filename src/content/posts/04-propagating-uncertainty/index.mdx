@@ -40,7 +40,7 @@ A laser scanner reports that a landmark is 2 m away, straight ahead, with a rang
 
 <NonlinearPropagation client:visible />
 
-The cloud of output samples is not an ellipse. It is a curved band, a "banana",<Sidenote>This conversion is a classic test case. Julier and Uhlmann used it to motivate the unscented transform, the subject of Post 16.</Sidenote> because a bearing error swings the point along a circle around the sensor. The dashed ellipse is what the standard shortcut, linearization, predicts. It is centred too far out, it is too thin, and only 70% of the samples fall inside what it claims is a 95% region.
+The cloud of output samples is not an ellipse. It is a curved band, a "banana",<Sidenote>This conversion is a classic test case. Julier and Uhlmann used it to motivate the unscented transform, the subject of [Post 16](../unscented-kalman-filter/).</Sidenote> because a bearing error swings the point along a circle around the sensor. The dashed ellipse is what the standard shortcut, linearization, predicts. It is centred too far out, it is too thin, and only 70% of the samples fall inside what it claims is a 95% region.
 
 ## Intuition
 
@@ -159,7 +159,7 @@ Every analytic Jacobian in this series is checked in the unit tests against cent
 
 **Linearizing at the wrong point.** Equation (2) uses the Jacobian at the *mean*. If the mean itself is badly wrong, the tangent is taken at the wrong place and the whole approximation can be off. [Post 15](../extended-kalman-filter/) shows an extended Kalman filter diverging for exactly this reason.
 
-**The summary is not the distribution.** Even a perfect mean and covariance describe a banana poorly: the fitted ellipse in the widget covers empty space inside the arc and misses the ends. Two better tools come later in the series. The unscented transform (Post 16) chooses a handful of sample points cleverly instead of thousands at random. Post 22 shows that describing pose uncertainty in the right coordinates turns the banana back into an ellipse.
+**The summary is not the distribution.** Even a perfect mean and covariance describe a banana poorly: the fitted ellipse in the widget covers empty space inside the arc and misses the ends. Two better tools come later in the series. The unscented transform ([Post 16](../unscented-kalman-filter/)) chooses a handful of sample points cleverly instead of thousands at random. Post 22 shows that describing pose uncertainty in the right coordinates turns the banana back into an ellipse.
 
 ## Summary
 
