@@ -181,6 +181,15 @@ hr {
   max-width: none;
   margin-inline: calc((var(--w-text) - min(var(--w-wide), calc(100vw - 2 * var(--gutter)))) / 2);
 }
+/* With the contents rail in the left margin, cap wide figures so they keep clear of it. */
+@media (min-width: 1240px) {
+  .prose > .wide,
+  .wide {
+    --wide-w: min(var(--w-wide), calc(100vw - 2 * (var(--rail) + 3rem)));
+    width: var(--wide-w);
+    margin-inline: calc((var(--w-text) - var(--wide-w)) / 2);
+  }
+}
 @media (max-width: 720px) {
   .prose > .wide,
   .wide {

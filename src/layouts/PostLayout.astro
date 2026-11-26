@@ -29,7 +29,7 @@ const pageUrl = new URL(url(postPath(post.id)), Astro.site).toString();
   <div class="post-grid">
     <aside class="toc-col">
       <div class="toc-sticky">
-        <TOC headings={headings} />
+        <TOC headings={headings} variant="rail" />
       </div>
     </aside>
     <article class="prose" data-pagefind-body>
@@ -86,7 +86,7 @@ const pageUrl = new URL(url(postPath(post.id)), Astro.site).toString();
       </div>
 
       <div class="mobile-toc">
-        <TOC headings={headings} />
+        <TOC headings={headings} variant="inline" />
       </div>
 
       <div class="content">
@@ -141,21 +141,22 @@ const pageUrl = new URL(url(postPath(post.id)), Astro.site).toString();
   .toc-col {
     display: none;
   }
-  /* Wide widgets reach 140px into each margin; the sticky TOC needs ~260px beside that. */
-  @media (min-width: 1500px) {
+  /* From 1240px the contents live in the left margin; wide widgets are capped (global.css) so they never reach it. */
+  @media (min-width: 1240px) {
     .toc-col {
       display: block;
       grid-column: 1;
       grid-row: 1;
-      justify-self: end;
-      width: 220px;
-      margin-right: 2.5rem;
+      justify-self: start;
+      width: var(--rail);
+      margin-left: var(--gutter);
     }
     .toc-sticky {
       position: sticky;
-      top: var(--space-5);
-      max-height: calc(100vh - 2 * var(--space-5));
+      top: var(--space-6);
+      max-height: calc(100vh - 2 * var(--space-6));
       overflow-y: auto;
+      padding-right: var(--space-2);
     }
     .mobile-toc {
       display: none;
@@ -215,9 +216,6 @@ const pageUrl = new URL(url(postPath(post.id)), Astro.site).toString();
   }
   .mobile-toc {
     margin-bottom: var(--space-5);
-    border: 1px solid var(--c-border);
-    border-radius: var(--radius);
-    padding: var(--space-2) var(--space-4);
   }
   .soon {
     color: var(--c-muted);

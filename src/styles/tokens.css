@@ -67,6 +67,8 @@
   --w-text: 680px;
   --w-wide: 960px;
   --w-page: 1200px;
+  /* Left rail (post table of contents) on wide screens */
+  --rail: 200px;
   --gutter: 1rem;
   --space-1: 0.25rem;
   --space-2: 0.5rem;
