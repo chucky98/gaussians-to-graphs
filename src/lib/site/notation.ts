@@ -101,6 +101,12 @@ export const notationGroups: readonly NotationGroup[] = [
       },
       { tex: '\\mathbf{F}_k,\\ f(\\cdot)', meaning: 'linear state transition / nonlinear motion model' },
       { tex: '\\mathbf{B}_k', meaning: 'control-input matrix' },
+      { tex: '\\Delta t', meaning: 'time step between filter updates (s)' },
+      {
+        tex: 'q',
+        meaning:
+          'white-noise acceleration density of a constant-velocity model (m²/s³): velocity variance gained per second',
+      },
       { tex: '\\mathbf{H}_k,\\ h(\\cdot)', meaning: 'linear measurement matrix / nonlinear measurement model' },
       { tex: '\\mathbf{w}_k \\sim \\N(\\mathbf{0},\\mathbf{Q}_k)', meaning: 'process noise and its covariance' },
       { tex: '\\mathbf{v}_k \\sim \\N(\\mathbf{0},\\mathbf{R}_k)', meaning: 'measurement noise and its covariance' },

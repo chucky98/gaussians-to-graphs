@@ -1,25 +1,26 @@
 # Progress
 
-## Current phase: 2 — Part 2 (in progress: posts 10–11 published)
+## Current phase: 2 — Part 2 (in progress: posts 10–12 published)
 
-## Next task: Phase 2 — post 12 `kalman-filter` (CVTracker2D)
+## Next task: Phase 2 — post 13 `tuning-and-consistency` (TuningLab)
 
 ## Posts
 
-| #     | Slug                             | Status    | Widgets                       | Notes                                                                                                                       |
-| ----- | -------------------------------- | --------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| 01    | where-am-i                       | published | DriftFan                      | ~2,100 words. Embeds the SyllabusMap. Claims pinned in `tests/unit/posts/01-…`. Phase 4 follow-up: "close the loop" toggle. |
-| 02    | gaussians-and-covariance         | published | Gaussian1D, CovarianceEllipse | Reference implementation of the post template. ~2,200 words. Claims pinned in `tests/unit/posts/02-…`.                      |
-| 03    | conditioning-and-marginalizing   | published | SliceVsProject                | ~1,600 words. Covariance/information duality; claims pinned in `tests/unit/posts/03-…`.                                     |
-| 04    | propagating-uncertainty          | published | NonlinearPropagation          | ~1,600 words. Polar banana, x², sin, linear; claims pinned in `tests/unit/posts/04-…`.                                      |
-| 05    | least-squares                    | published | LineFit                       | ~2,300 words. Road from phone GPS fixes; multipath outlier; weights from reported accuracy. Projection figure.              |
-| 06    | mle-and-map                      | published | BayesGrid1D                   | ~2,100 words. Distance to a wall: odometry prior + ultrasonic readings; two-doorway bimodal prior.                          |
-| 07    | estimator-quality                | published | EstimatorShootout             | ~2,200 words. GPS receiver on a benchmark; open sky vs reflections (10% at ±30 m); CRLB by numerical Fisher information.    |
-| 08    | recursive-least-squares          | published | RLSStream                     | ~2,300 words. Online motor calibration; battery sag; forgetting factor sweet spot.                                          |
-| 09    | nonlinear-least-squares          | published | CostLandscape                 | ~2,300 words. UWB indoor positioning; mirror minimum with wall anchors; GN divergence vs LM.                                |
-| 10    | bayes-filter                     | published | CorridorRobot                 | ~2,400 words. Delivery robot on a 30 m loop corridor, door detector; histogram filter; kidnapping and the ε fix.            |
-| 11    | kalman-filter-1d                 | published | GaussianProduct, Tracker1D    | ~2,500 words. Same robot in a straight corridor: odometry + position fixes; gain as trust ratio; steady state; outage.      |
-| 12–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                             |                                                                                                                             |
+| #     | Slug                             | Status    | Widgets                       | Notes                                                                                                                        |
+| ----- | -------------------------------- | --------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| 01    | where-am-i                       | published | DriftFan                      | ~2,100 words. Embeds the SyllabusMap. Claims pinned in `tests/unit/posts/01-…`. Phase 4 follow-up: "close the loop" toggle.  |
+| 02    | gaussians-and-covariance         | published | Gaussian1D, CovarianceEllipse | Reference implementation of the post template. ~2,200 words. Claims pinned in `tests/unit/posts/02-…`.                       |
+| 03    | conditioning-and-marginalizing   | published | SliceVsProject                | ~1,600 words. Covariance/information duality; claims pinned in `tests/unit/posts/03-…`.                                      |
+| 04    | propagating-uncertainty          | published | NonlinearPropagation          | ~1,600 words. Polar banana, x², sin, linear; claims pinned in `tests/unit/posts/04-…`.                                       |
+| 05    | least-squares                    | published | LineFit                       | ~2,300 words. Road from phone GPS fixes; multipath outlier; weights from reported accuracy. Projection figure.               |
+| 06    | mle-and-map                      | published | BayesGrid1D                   | ~2,100 words. Distance to a wall: odometry prior + ultrasonic readings; two-doorway bimodal prior.                           |
+| 07    | estimator-quality                | published | EstimatorShootout             | ~2,200 words. GPS receiver on a benchmark; open sky vs reflections (10% at ±30 m); CRLB by numerical Fisher information.     |
+| 08    | recursive-least-squares          | published | RLSStream                     | ~2,300 words. Online motor calibration; battery sag; forgetting factor sweet spot.                                           |
+| 09    | nonlinear-least-squares          | published | CostLandscape                 | ~2,300 words. UWB indoor positioning; mirror minimum with wall anchors; GN divergence vs LM.                                 |
+| 10    | bayes-filter                     | published | CorridorRobot                 | ~2,400 words. Delivery robot on a 30 m loop corridor, door detector; histogram filter; kidnapping and the ε fix.             |
+| 11    | kalman-filter-1d                 | published | GaussianProduct, Tracker1D    | ~2,500 words. Same robot in a straight corridor: odometry + position fixes; gain as trust ratio; steady state; outage.       |
+| 12    | kalman-filter                    | published | CVTracker2D                   | ~2,700 words. Warehouse forklift from ceiling-camera fixes; constant-velocity model; velocity learned via correlation; turn. |
+| 13–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                             |                                                                                                                              |
 
 ## Infrastructure checklist
 
@@ -100,6 +101,9 @@
 - 2026-11-26 — **Cross-links:** posts 03, 08 and 10 now link Post 11.
 - 2026-11-26 — **Wide equations in posts 10–11 stacked to fit at 375 px.** Caught by axe on post 11 (a display overflowing at 1280 px is a non-focusable scrollable region).
 - 2026-11-26 — **Scrolling display equations are keyboard-accessible.** `MathScroll.astro` (in `PostLayout`) makes every `.katex-display` that actually overflows a focusable, labelled region (axe "scrollable-region-focusable", WCAG 2.1.1), and re-checks on resize and after fonts load; non-overflowing displays stay out of the tab order. The axe test now also runs every post at 375 px. Writing rule unchanged: stack wide equations with `aligned` where it reads well.
+- 2026-11-26 — **`filters/kf.ts` + `models/linear.ts` (post 12).** Multivariate KF: `kfPredict`, `kfUpdate` (Joseph by default, gain by Cholesky solve, returns ν, S, K, NIS), `kfRun` with missing measurements, and `batchLinearGaussian` (dense batch MAP over the whole trajectory with every state's marginal covariance; reused by post 18). `constantVelocity(dim, dt, q)` (white-noise acceleration; Q checked against its defining integral) and `positionSensor`. Invariants: KF = batch MAP after every step (with gaps); P symmetric PSD; Joseph = short form; update = conditioning; 1D case = `kf1d`.
+- 2026-11-26 — **CVTracker2D scenario:** Δt = 1 s, q = 0.01 m²/s³, σ = 0.5 m. The filter's prior is honestly vague about velocity (0 ± 2 m/s) while the true forklift starts at about 1.5 m/s east; with a fixed floor plan most seeds wandered off it, so the map fits itself to the path. Seed 50 chosen as the most typical of 200 (position, fix and velocity RMS all within 3% of the medians). "turn" preset: scripted 90° left turn at t = 20 s from the prior position. q slider is logarithmic (0.001–1).
+- 2026-11-26 — **Notation additions (post 12):** Δt, q (white-noise acceleration density).
 - 2026-11-26 — **About page accuracy fix:** it cited "the Kalman filter equals batch least squares" as an existing test; that test arrives with Part 2, so it now cites "recursive least squares equals batch least squares".
 
 ## Follow-ups / known issues
@@ -107,7 +111,7 @@
 - **Owner action (statistics):** GoatCounter site `chucky98` is configured and counting. In GoatCounter → Settings, enable "Allow adding visitor counts on your website"; until then the public counters return 403 and the About section shows "could not be loaded".
 
 - **Owner action:** install the giscus GitHub App on `chucky98/gaussians-to-graphs` (https://github.com/apps/giscus). Then set `giscus.enabled = true` in `src/lib/site/config.ts`.
-- When posts 12, 13, 15, 16, 17, 19, 22, 23, 25, 27, 28, 29 are published: link the plain-text references to them from earlier posts.
+- When posts 13, 15, 16, 17, 19, 22, 23, 25, 27, 28, 29 are published: link the plain-text references to them from earlier posts.
 - Client-side KaTeX (77 KB gz) still loads for widgets with TeX labels or MatrixView. Consider rendering static TeX at build time and showing live numbers as plain text.
 - `Plot2D` pan/zoom is not implemented yet (no Phase 0 widget needs it). Primitives still to build when first needed: Landmark, Heatmap, Spy.
 - Lighthouse has not been run (optional per §8.4).
@@ -127,4 +131,5 @@
 | Part 1 islands              | LineFit 3.8, BayesGrid1D 4.5, EstimatorShootout 4.9, RLSStream 4.3, CostLandscape 5.8 KB gz | KaTeX chunk only where TeX labels/formulas are used           |
 | CorridorRobot island        | 5.9 KB gz (+ shared primitives and Svelte runtime)                                          | No KaTeX (plain-text slider labels)                           |
 | Post 11 islands             | GaussianProduct 2.7 KB, Tracker1D 4.6 KB gz (+ shared primitives and Svelte runtime)        | No KaTeX                                                      |
+| CVTracker2D island          | 5.0 KB gz (+ shared primitives and Svelte runtime)                                          | No KaTeX                                                      |
 | Shared: KaTeX chunk         | 77 KB                                                                                       | Loaded only by Gaussian1D / CovarianceEllipse (post 02)       |
