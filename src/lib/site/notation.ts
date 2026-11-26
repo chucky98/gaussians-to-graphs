@@ -37,6 +37,11 @@ export const notationGroups: readonly NotationGroup[] = [
       { tex: '\\mathbf{L}', meaning: 'lower-triangular Cholesky factor, Σ = L Lᵀ' },
       { tex: '\\mathbf{z} \\sim \\N(\\mathbf{0}, \\mathbf{I})', meaning: 'standard-normal (whitened) vector' },
       { tex: 'd_M', meaning: 'Mahalanobis distance' },
+      {
+        tex: '\\mathbf{x}_1, \\mathbf{x}_2;\\ \\boldsymbol{\\Sigma}_{11}, \\boldsymbol{\\Sigma}_{12}, \\ldots;\\ \\boldsymbol{\\Omega}_{11}, \\boldsymbol{\\xi}_1, \\ldots',
+        meaning: 'blocks of a partitioned Gaussian and of its covariance / information form',
+      },
+      { tex: 'a', meaning: 'an observed (conditioned-on) value, as in x = a' },
       { tex: '\\gamma', meaning: 'level of a contour of the quadratic form, d_M² = γ' },
       { tex: '\\chi^2_n(p)', meaning: 'p-quantile of the chi-square distribution with n degrees of freedom' },
     ],

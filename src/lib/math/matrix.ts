@@ -479,3 +479,19 @@ export function isSymmetricPSD(a: Mat, tol = 1e-9): boolean {
   const { values } = eigSym(a);
   return values.every((v) => v >= -tol * s);
 }
+
+/**
+ * Schur complement of the block `drop` in A, keeping the rows/columns `keep`:
+ * A_kk − A_kd A_dd⁻¹ A_dk. A must be symmetric positive definite on the dropped block.
+ * (Conditioning in covariance form and marginalizing in information form are both this.)
+ */
+export function schurComplement(a: Mat, keep: readonly number[]): Mat {
+  if (a.rows !== a.cols) throw new RangeError('schurComplement needs a square matrix');
+  const drop = Array.from({ length: a.rows }, (_, i) => i).filter((i) => !keep.includes(i));
+  const Akk = select(a, keep, keep);
+  if (drop.length === 0) return Akk;
+  const Akd = select(a, keep, drop);
+  const L = cholesky(select(a, drop, drop));
+  const X = solveCholeskyMat(L, transpose(Akd)); // A_dd⁻¹ A_dk
+  return symmetrize(sub(Akk, mul(Akd, X)));
+}

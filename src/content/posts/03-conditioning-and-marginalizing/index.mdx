@@ -1,0 +1,193 @@
+---
+number: 3
+title: 'Slicing and Squashing: Conditioning vs. Marginalizing'
+description: Two ways to reduce a joint Gaussian to fewer variables, their closed-form formulas, the Schur complement, and why the information form swaps which one is easy.
+part: 0
+status: published
+date: 2026-11-26
+prerequisites: [gaussians-and-covariance]
+objectives:
+  - Tell marginalizing (ignoring a variable) apart from conditioning (learning its value), both in pictures and in formulas.
+  - Write down the marginal and conditional of a partitioned Gaussian, and derive the conditional.
+  - Recognize the Schur complement and explain why conditioning can only shrink a covariance.
+  - Explain why marginalizing is easy in covariance form while conditioning is easy in information form.
+references:
+  - key: barfoot2024
+    text: Barfoot. *State Estimation for Robotics*, 2nd ed. Cambridge University Press, 2024. §2.2 (joint, marginal and conditional Gaussians; the Schur complement).
+  - key: thrun2005
+    text: Thrun, Burgard, Fox. *Probabilistic Robotics.* MIT Press, 2005. §3.5 (the information filter and the canonical parameterization).
+  - key: eustice2006
+    text: 'Eustice, Singh, Leonard. "Exactly sparse delayed-state filters for view-based SLAM." *IEEE Transactions on Robotics*, 22(6), 2006.'
+widgets: [SliceVsProject]
+---
+
+import SliceVsProject from '../../../components/widgets/SliceVsProject/SliceVsProject.svelte';
+
+A robot's belief about its position $(x, y)$ is a two-dimensional Gaussian, and the two coordinates are usually correlated: the 95% ellipse of the drifting robots in the [first post](../where-am-i/) is tilted, not aligned with the axes. Now ask two questions about that belief.
+
+First: *how sure are we about $y$, if we simply do not care about $x$?* Second: *a sensor has just told us that $x$ is exactly $a$; what do we now believe about $y$?* The first question is answered by **marginalizing** out $x$. The second is answered by **conditioning** on $x = a$. They sound alike, they are often confused, and they give different answers whenever $x$ and $y$ are correlated. Drag the dashed line in the widget below and compare the two curves underneath.
+
+<SliceVsProject client:visible />
+
+## Intuition
+
+Think of the joint density as a hill over the $(x, y)$ plane, drawn above as a heat map.
+
+**Marginalizing is squashing.** To get the density of $y$ alone, add up the hill along every horizontal line, over all values of $x$. It is like shining a light along the $x$-axis and looking at the shadow the hill casts on the $y$-axis. The shadow is wide, because it includes every $y$ the hill reaches for *any* $x$.
+
+**Conditioning is slicing.** To get the density of $y$ given $x = a$, cut the hill with a vertical knife at $x = a$ and look at the profile of the cut. The profile does not have area 1, so we rescale it until it does. The slice is narrower than the shadow, because once $x$ is known, only the $y$ values compatible with that $x$ remain.
+
+Correlation is what makes the two differ. If the hill is tilted, the slice at $x = a$ is centred on a different $y$ than the shadow, and it is narrower. If the hill is not tilted ($\rho = 0$), every slice has the same shape as the shadow, and learning $x$ tells you nothing about $y$.
+
+## The math
+
+### A partitioned Gaussian
+
+Split a Gaussian vector into two blocks, $\mathbf{x} = (\mathbf{x}_1, \mathbf{x}_2)$, and split its mean and covariance to match:
+
+$$
+\begin{bmatrix} \mathbf{x}_1 \\ \mathbf{x}_2 \end{bmatrix} \sim \N\!\left( \begin{bmatrix} \boldsymbol{\mu}_1 \\ \boldsymbol{\mu}_2 \end{bmatrix},\ \begin{bmatrix} \boldsymbol{\Sigma}_{11} & \boldsymbol{\Sigma}_{12} \\ \boldsymbol{\Sigma}_{21} & \boldsymbol{\Sigma}_{22} \end{bmatrix} \right), \qquad \boldsymbol{\Sigma}_{21} = \boldsymbol{\Sigma}_{12}\T .
+$$
+
+The diagonal blocks $\boldsymbol{\Sigma}_{11}$ and $\boldsymbol{\Sigma}_{22}$ are the covariances of each block on its own. The off-diagonal block $\boldsymbol{\Sigma}_{12} = \Cov(\mathbf{x}_1, \mathbf{x}_2)$ holds every covariance between a component of $\mathbf{x}_1$ and a component of $\mathbf{x}_2$. In the widget $\mathbf{x}_1 = y$ and $\mathbf{x}_2 = x$ are scalars; the formulas below work for blocks of any size.
+
+The **marginal** is $p(\mathbf{x}_1) = \int p(\mathbf{x}_1, \mathbf{x}_2)\,\mathrm{d}\mathbf{x}_2$, the squash. The **conditional** is $p(\mathbf{x}_1 \mid \mathbf{x}_2) = p(\mathbf{x}_1, \mathbf{x}_2) / p(\mathbf{x}_2)$, the slice divided by its area.
+
+### Marginalizing: read off a block
+
+For a Gaussian, the marginal is Gaussian again, and its parameters are already sitting in the joint:
+
+$$
+p(\mathbf{x}_1) = \N(\boldsymbol{\mu}_1, \boldsymbol{\Sigma}_{11}) .
+$$
+
+This follows from the definitions: $\boldsymbol{\mu}_1 = \E[\mathbf{x}_1]$ and $\boldsymbol{\Sigma}_{11} = \Cov(\mathbf{x}_1)$ no matter what $\mathbf{x}_2$ does, and a block of a Gaussian vector is itself Gaussian. Marginalizing in covariance form costs nothing: you delete the rows and columns you do not care about.
+
+### Conditioning: shift and shrink
+
+Conditioning is more interesting:
+
+$$
+\begin{aligned}
+p(\mathbf{x}_1 \mid \mathbf{x}_2) &= \N(\boldsymbol{\mu}_{1 \mid 2}, \boldsymbol{\Sigma}_{1 \mid 2}), \\
+\boldsymbol{\mu}_{1 \mid 2} &= \boldsymbol{\mu}_1 + \boldsymbol{\Sigma}_{12}\boldsymbol{\Sigma}_{22}^{-1}(\mathbf{x}_2 - \boldsymbol{\mu}_2), \\
+\boldsymbol{\Sigma}_{1 \mid 2} &= \boldsymbol{\Sigma}_{11} - \boldsymbol{\Sigma}_{12}\boldsymbol{\Sigma}_{22}^{-1}\boldsymbol{\Sigma}_{21}.
+\end{aligned} \tag{1}
+$$
+
+The mean starts at the prior guess $\boldsymbol{\mu}_1$ and moves in proportion to the *surprise* $\mathbf{x}_2 - \boldsymbol{\mu}_2$, how far the observed value is from what we expected. The matrix $\boldsymbol{\Sigma}_{12}\boldsymbol{\Sigma}_{22}^{-1}$ converts surprise in $\mathbf{x}_2$ into a correction of $\mathbf{x}_1$. The covariance starts at $\boldsymbol{\Sigma}_{11}$ and has something subtracted; notice that it does not depend on the observed value at all.
+
+<Derivation title="Why equation (1) holds">
+Define the residual $\mathbf{e} = \mathbf{x}_1 - \boldsymbol{\Sigma}_{12}\boldsymbol{\Sigma}_{22}^{-1}\mathbf{x}_2$. It is a linear function of a Gaussian vector, so $(\mathbf{e}, \mathbf{x}_2)$ is jointly Gaussian. Its covariance with $\mathbf{x}_2$ is
+
+$$
+\Cov(\mathbf{e}, \mathbf{x}_2) = \boldsymbol{\Sigma}_{12} - \boldsymbol{\Sigma}_{12}\boldsymbol{\Sigma}_{22}^{-1}\boldsymbol{\Sigma}_{22} = \mathbf{0} .
+$$
+
+For jointly Gaussian variables, zero covariance means independence, so learning $\mathbf{x}_2$ tells us nothing about $\mathbf{e}$. Its mean and covariance stay
+
+$$
+\E[\mathbf{e}] = \boldsymbol{\mu}_1 - \boldsymbol{\Sigma}_{12}\boldsymbol{\Sigma}_{22}^{-1}\boldsymbol{\mu}_2, \qquad \Cov(\mathbf{e}) = \boldsymbol{\Sigma}_{11} - \boldsymbol{\Sigma}_{12}\boldsymbol{\Sigma}_{22}^{-1}\boldsymbol{\Sigma}_{21}
+$$
+
+(the second line expands $\Cov(\mathbf{e})$ and collects the three cross terms into one). Given $\mathbf{x}_2$, we have $\mathbf{x}_1 = \mathbf{e} + \boldsymbol{\Sigma}_{12}\boldsymbol{\Sigma}_{22}^{-1}\mathbf{x}_2$, a fixed shift of $\mathbf{e}$. Adding the shift to the mean, and leaving the covariance alone, gives (1).
+</Derivation>
+
+For two scalars with standard deviations $\sigma_x, \sigma_y$ and correlation $\rho$, equation (1) for $y$ given $x = a$ becomes
+
+$$
+\begin{aligned}
+\mu_{y \mid x = a} &= \mu_y + \rho\,\frac{\sigma_y}{\sigma_x}\,(a - \mu_x), \\
+\sigma^2_{y \mid x} &= \sigma_y^2\,(1 - \rho^2) .
+\end{aligned}
+$$
+
+The conditional mean moves along a straight line as $a$ changes, and the conditional variance is the marginal variance times $1 - \rho^2$. The stronger the correlation, the more learning $x$ tells us about $y$.
+
+### The Schur complement
+
+The matrix $\boldsymbol{\Sigma}_{11} - \boldsymbol{\Sigma}_{12}\boldsymbol{\Sigma}_{22}^{-1}\boldsymbol{\Sigma}_{21}$ appears so often that it has a name: the **Schur complement** of $\boldsymbol{\Sigma}_{22}$ in $\boldsymbol{\Sigma}$. The term being subtracted, $\boldsymbol{\Sigma}_{12}\boldsymbol{\Sigma}_{22}^{-1}\boldsymbol{\Sigma}_{21}$, is positive semidefinite, so the conditional covariance is never larger than the marginal one in any direction.
+
+<Callout type="key">
+Conditioning on data can only shrink uncertainty, or leave it unchanged. It shrinks by exactly the amount of the Schur-complement correction, and that amount does not depend on the value that was observed.
+</Callout>
+
+### The information form flips the roles
+
+[Post 2](../gaussians-and-covariance/) described a Gaussian by $\boldsymbol{\mu}$ and $\boldsymbol{\Sigma}$. An equivalent description uses the **information matrix** and **information vector**,
+
+$$
+\boldsymbol{\Omega} = \boldsymbol{\Sigma}^{-1}, \qquad \boldsymbol{\xi} = \boldsymbol{\Omega}\boldsymbol{\mu},
+$$
+
+partitioned into blocks $\boldsymbol{\Omega}_{11}, \boldsymbol{\Omega}_{12}, \ldots$ and $\boldsymbol{\xi}_1, \boldsymbol{\xi}_2$ in the same way. Large entries of $\boldsymbol{\Omega}$ mean high confidence. A standard identity for the inverse of a block matrix says that the top-left block of $\boldsymbol{\Omega}$ is the inverse of the Schur complement:
+
+$$
+\boldsymbol{\Omega}_{11} = \left( \boldsymbol{\Sigma}_{11} - \boldsymbol{\Sigma}_{12}\boldsymbol{\Sigma}_{22}^{-1}\boldsymbol{\Sigma}_{21} \right)^{-1} .
+$$
+
+So the conditional covariance is simply $\boldsymbol{\Omega}_{11}^{-1}$. In information form, conditioning on $\mathbf{x}_2$ is the easy operation:
+
+$$
+\begin{aligned}
+\boldsymbol{\Omega}_{1 \mid 2} &= \boldsymbol{\Omega}_{11}, \\
+\boldsymbol{\xi}_{1 \mid 2} &= \boldsymbol{\xi}_1 - \boldsymbol{\Omega}_{12}\,\mathbf{x}_2 .
+\end{aligned}
+$$
+
+Keep a block and shift a vector; no inverse is needed. Marginalizing out $\mathbf{x}_2$, in turn, now needs a Schur complement, this time of $\boldsymbol{\Omega}_{22}$ in $\boldsymbol{\Omega}$ (the primes mark the marginal's parameters):
+
+$$
+\begin{aligned}
+\boldsymbol{\Omega}_1' &= \boldsymbol{\Omega}_{11} - \boldsymbol{\Omega}_{12}\boldsymbol{\Omega}_{22}^{-1}\boldsymbol{\Omega}_{21}, \\
+\boldsymbol{\xi}_1' &= \boldsymbol{\xi}_1 - \boldsymbol{\Omega}_{12}\boldsymbol{\Omega}_{22}^{-1}\boldsymbol{\xi}_2 .
+\end{aligned}
+$$
+
+| | Covariance form $(\boldsymbol{\mu}, \boldsymbol{\Sigma})$ | Information form $(\boldsymbol{\xi}, \boldsymbol{\Omega})$ |
+|---|---|---|
+| Marginalize | easy: keep a block | Schur complement |
+| Condition | Schur complement | easy: keep a block, shift $\boldsymbol{\xi}$ |
+
+This duality comes back twice in the series. Post 19 uses it to explain why the information matrix of a whole robot trajectory is sparse while its covariance is dense. Post 28 shows that marginalizing old poses out of a SLAM problem is a Schur complement in information form, and that it fills in zeros.
+
+## Play with it
+
+In the widget, $\sigma_x = 1.5$, $\sigma_y = 1$, the mean is zero, and $\rho$ starts at 0.7. The slice is at $a = 1.5$, one standard deviation to the right of the mean. The panel shows equation (1) with live numbers: the conditional mean is $0.7 \times \tfrac{1}{1.5} \times 1.5 = 0.70$, and the conditional variance is $1 \times (1 - 0.49) = 0.51$, compared with a marginal variance of 1. The matrix $\boldsymbol{\Omega}$ is shown too. Its bottom-right entry is $1.96$, and $1/1.96 = 0.51$: the conditional variance, read straight off the information matrix.
+
+<TryThis>
+1. Drag the slice from left to right. The conditional curve slides with it (at $a = -2$ its mean is $-0.93$), but its width never changes: the variance stays at 0.51 wherever you cut.
+2. Set $\rho$ to 0. The two curves in the lower plot lie on top of each other, and moving the slice does nothing. Without correlation, learning $x$ tells you nothing about $y$.
+3. Set $\rho$ to 0.95. The conditional variance falls to $1 - 0.95^2 = 0.0975$ and the 95% interval on the slice shrinks to $\pm 0.61$. Knowing $x$ now almost pins down $y$. Set $\rho$ to $-0.7$ and the conditional mean moves the other way, to $-0.70$.
+4. Turn on the line of conditional means. It passes through the points where the ellipse is furthest left and furthest right, not along the ellipse's long axis. With the defaults its slope is $0.7 \times 1/1.5 = 0.47$ (about $25^\circ$), flatter than the major axis at about $30^\circ$.
+</TryThis>
+
+The last observation is the geometric face of *regression to the mean*: an unusually large $x$ predicts a $y$ that is large, but less unusual than $x$ itself.
+
+## Algorithm
+
+<AlgorithmBox title="Condition and marginalize a Gaussian, in either form" source="src/lib/math/gaussian.ts">
+1. **Marginalize, covariance form:** keep $\boldsymbol{\mu}_1$ and $\boldsymbol{\Sigma}_{11}$.
+2. **Condition, covariance form:** factor $\boldsymbol{\Sigma}_{22} = \mathbf{L}\mathbf{L}\T$ (Cholesky). Solve for $\boldsymbol{\Sigma}_{22}^{-1}(\mathbf{x}_2 - \boldsymbol{\mu}_2)$ and $\boldsymbol{\Sigma}_{22}^{-1}\boldsymbol{\Sigma}_{21}$ with that factor, then apply equation (1).
+3. **Condition, information form:** keep $\boldsymbol{\Omega}_{11}$; set $\boldsymbol{\xi}_{1 \mid 2} = \boldsymbol{\xi}_1 - \boldsymbol{\Omega}_{12}\mathbf{x}_2$.
+4. **Marginalize, information form:** the Schur complement of $\boldsymbol{\Omega}_{22}$, again computed with a Cholesky solve instead of an explicit inverse.
+</AlgorithmBox>
+
+The same `schurComplement` function in `src/lib/math/matrix.ts` serves both step 2 and step 4. The unit tests check that the two forms agree, and that the inverse of a Schur complement equals the corresponding block of the inverse matrix.
+
+## When it breaks
+
+**Using the marginal when you know more.** If a sensor has measured $x$, the right belief about $y$ is the conditional. Using the marginal throws away what the correlation tells you, and leaves the belief wider than it should be.
+
+**Conditioning on something you have not observed.** The reverse mistake is worse. Treating a guessed value of $x$ as if it had been measured shrinks the variance of $y$ for no reason, and the estimate becomes overconfident.
+
+**Forgetting that real measurements are noisy.** Equation (1) conditions on $\mathbf{x}_2$ known *exactly*. A real sensor reports $\mathbf{x}_2$ plus noise. The fix is to condition on the noisy reading instead, which adds the noise covariance to $\boldsymbol{\Sigma}_{22}$. That one change turns equation (1) into the Kalman filter's update step, the subject of Posts 11 and 12.
+
+**Inverting nearly singular blocks.** If $\boldsymbol{\Sigma}_{22}$ is close to singular, for example because two measured quantities are almost perfectly correlated, computing $\boldsymbol{\Sigma}_{22}^{-1}$ explicitly amplifies rounding errors. Solve with a Cholesky factor instead, and symmetrize the result, as the code in this series does throughout.
+
+## Summary
+
+- Marginalizing ignores a variable (squash); conditioning uses its observed value (slice and renormalize). They agree only when the variables are uncorrelated.
+- For a Gaussian, the marginal keeps a block: $\N(\boldsymbol{\mu}_1, \boldsymbol{\Sigma}_{11})$. The conditional shifts the mean by $\boldsymbol{\Sigma}_{12}\boldsymbol{\Sigma}_{22}^{-1}$ times the surprise and replaces $\boldsymbol{\Sigma}_{11}$ by the Schur complement.
+- The conditional covariance never exceeds the marginal one and does not depend on the observed value. In 2D it is $\sigma_y^2(1 - \rho^2)$.
+- In information form the roles flip: conditioning keeps a block of $\boldsymbol{\Omega}$, while marginalizing needs a Schur complement.

@@ -1,8 +1,8 @@
 # Progress
 
-## Current phase: 1 — Parts 0 and 1 (in progress: 2 of 9 posts published)
+## Current phase: 1 — Parts 0 and 1 (in progress: 3 of 9 posts published)
 
-## Next task: post 03 `conditioning-and-marginalizing` (SliceVsProject widget)
+## Next task: post 04 `propagating-uncertainty` (NonlinearPropagation widget; `models/` nonlinear test functions, `math/autodiff`)
 
 ## Posts
 
@@ -10,7 +10,8 @@
 | ----- | -------------------------------- | --------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | 01    | where-am-i                       | published | DriftFan                      | ~2,100 words. Embeds the SyllabusMap. Claims pinned in `tests/unit/posts/01-…`. Phase 4 follow-up: "close the loop" toggle. |
 | 02    | gaussians-and-covariance         | published | Gaussian1D, CovarianceEllipse | Reference implementation of the post template. ~2,200 words. Claims pinned in `tests/unit/posts/02-…`.                      |
-| 03–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                             |                                                                                                                             |
+| 03    | conditioning-and-marginalizing   | published | SliceVsProject                | ~1,600 words. Covariance/information duality; claims pinned in `tests/unit/posts/03-…`.                                     |
+| 04–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                             |                                                                                                                             |
 
 ## Infrastructure checklist
 
@@ -55,11 +56,15 @@
 - 2026-11-26 — **Notation additions (post 01):** x_k, y_k, θ_k (pose components), d_k, Δθ_k (odometry reading), α (odometry noise level), ℓ (distance driven); conflict notes for x_k vs bold x_k and α (odometry) vs α (UKF).
 - 2026-11-26 — **`Slider` no longer imports KaTeX;** TeX labels use the new `TexSlider`. This keeps the 77 KB (gz) KaTeX chunk out of widgets without TeX: DriftFan dropped from ~125 KB to ~45 KB total.
 - 2026-11-26 — **New primitives:** `PathsCanvas` (many polylines on canvas, dash patterns read from tokens) and `Robot2D` (pose glyph).
+- 2026-11-26 — **Information-form duals in `lib/math/gaussian`:** `conditionInformation` and `marginalizeInformation`, plus `schurComplement` in `matrix.ts` shared by covariance-form conditioning and information-form marginalization. Tests check both forms agree and that the inverse of a Schur complement is the matching block of the inverse (the §8.1 "marginalize" invariant, ahead of `graph/marginalize` in Phase 4).
+- 2026-11-26 — **New primitive `Heatmap`** (canvas; renders an nx×ny grid to an offscreen bitmap and scales it smoothly; colors interpolate between `--c-seq-lo` and `--c-seq-hi`).
+- 2026-11-26 — **Wide display equations are stacked with `aligned`** so they fit at 375 px instead of scrolling (applied in post 03; worth keeping as a writing rule).
+- 2026-11-26 — **Notation additions (post 03):** partition blocks x₁, x₂, Σ₁₁, Σ₁₂, Ω₁₁, ξ₁, and a (conditioned-on value).
 
 ## Follow-ups / known issues
 
 - **Owner action:** install the giscus GitHub App on `chucky98/gaussians-to-graphs` (https://github.com/apps/giscus). Then set `giscus.enabled = true` in `src/lib/site/config.ts`.
-- When posts 04, 13, 23, 25, 27, 29 are published: link the plain-text references to them from posts 01 and 02.
+- When posts 04, 11, 12, 13, 19, 23, 25, 27, 28, 29 are published: link the plain-text references to them from posts 01–03.
 - Client-side KaTeX (77 KB gz) still loads for widgets with TeX labels or MatrixView. Consider rendering static TeX at build time and showing live numbers as plain text.
 - `Plot2D` pan/zoom is not implemented yet (no Phase 0 widget needs it). Primitives still to build when first needed: Landmark, Heatmap, Spy.
 - Lighthouse has not been run (optional per §8.4).
@@ -74,4 +79,5 @@
 | CovarianceEllipse island   | 6.0 KB                                                               | Budget ~80 KB ✓ (excl. shared)                                |
 | Shared: Svelte runtime     | 22.8 KB                                                              |                                                               |
 | DriftFan island            | 4.8 KB (+ 13.6 KB shared primitives, 3.3 KB animation, 23 KB Svelte) | Post 01 total ≈ 45 KB; no KaTeX                               |
+| SliceVsProject island      | 4.0 KB (+ KaTeX chunk)                                               | Live formulas use KaTeX                                       |
 | Shared: KaTeX chunk        | 77 KB                                                                | Loaded only by Gaussian1D / CovarianceEllipse (post 02)       |
