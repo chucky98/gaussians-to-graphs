@@ -13,6 +13,15 @@ export const postFrontmatter = z.object({
   objectives: z.array(z.string().min(1)).min(3).max(5),
   references: z.array(z.object({ key: z.string(), text: z.string(), url: z.url().optional() })),
   widgets: z.array(z.string()),
+  /**
+   * Key symbols shown in the "Symbols in this post" card. `tex` is displayed; `match` lists TeX
+   * fragments that identify the symbol in the post's math (defaults to [tex]).
+   */
+  symbols: z
+    .array(
+      z.object({ tex: z.string().min(1), meaning: z.string().min(1), match: z.array(z.string().min(1)).optional() }),
+    )
+    .default([]),
   needs3d: z.boolean().optional(),
 });
 

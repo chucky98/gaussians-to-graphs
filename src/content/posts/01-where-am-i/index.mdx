@@ -19,6 +19,21 @@ references:
   - key: barfoot2024
     text: Barfoot. *State Estimation for Robotics*, 2nd ed. Cambridge University Press, 2024. Ch. 1 (introduction and a short history of estimation).
 widgets: [DriftFan]
+symbols:
+  - tex: '\mathbf{x}_k'
+    meaning: the robot's pose (its state) after step k
+  - tex: 'x_k,\ y_k,\ \theta_k'
+    meaning: position in metres and heading in radians
+    match: ['\theta_k']
+  - tex: '\mathbf{u}_k'
+    meaning: 'odometry reading: drive d_k, then turn Δθ_k'
+    match: ['\mathbf{u}_k', '\Delta\theta_k']
+  - tex: '\mathbf{w}_k'
+    meaning: process noise, the error in a reading
+  - tex: '\alpha'
+    meaning: odometry noise level, error per √m driven
+  - tex: '\ell'
+    meaning: total distance driven
 ---
 
 import DriftFan from '../../../components/widgets/DriftFan/DriftFan.svelte';
@@ -26,7 +41,7 @@ import SyllabusMap from '../../../components/layout/SyllabusMap.astro';
 
 Close your eyes, walk ten paces forward, turn left, walk ten more, and point to where you started. You will be close, but not exactly right. Do it again with forty paces and a few more turns and you will be further off. You never stopped knowing roughly where you were. You just became steadily less sure.
 
-A wheeled robot without GPS or cameras is in the same position. It counts wheel rotations to work out how far it has driven and how much it has turned. This is called **odometry**, and adding up its readings to track position is called **dead reckoning**. Every reading is slightly wrong, and the errors pile up. Below, a robot drives two laps of a loop. Each dotted line is what the robot would believe in one run, each run with its own random odometry errors.
+A wheeled robot without GPS or cameras is in the same position. It counts wheel rotations to work out how far it has driven and how much it has turned. This is called **odometry**<Sidenote>From the Greek *hodos*, "way", and *metron*, "measure", as in the odometer of a car.</Sidenote>, and adding up its readings to track position is called **dead reckoning**. Every reading is slightly wrong, and the errors pile up. Below, a robot drives two laps of a loop. Each dotted line is what the robot would believe in one run, each run with its own random odometry errors.
 
 <DriftFan client:visible />
 
@@ -92,7 +107,7 @@ where $\mathbf{w}_k$ is a small random error, the **process noise**. In the widg
 
 ### How the errors add up
 
-Independent random errors do not cancel neatly. They partly cancel and partly add, and the rule is that their **variances add**. After driving a total distance $\ell = d_1 + \dots + d_k$, the heading error is the sum of all the turn errors so far, so its variance is $\alpha^2 d_1 + \dots + \alpha^2 d_k = \alpha^2 \ell$ and its standard deviation is
+Independent random errors do not cancel neatly. They partly cancel and partly add, and the rule is that their **variances add**.<Sidenote>The rule needs only independence, not any particular distribution. [Post 2](../gaussians-and-covariance/) treats variance and covariance properly.</Sidenote> After driving a total distance $\ell = d_1 + \dots + d_k$, the heading error is the sum of all the turn errors so far, so its variance is $\alpha^2 d_1 + \dots + \alpha^2 d_k = \alpha^2 \ell$ and its standard deviation is
 
 $$
 \sigma_\theta(\ell) = \alpha\sqrt{\ell} .
@@ -128,7 +143,7 @@ On a loop the picture is less tidy. A heading error made at some point rotates t
 
 ## Play with it
 
-The widget starts at the end of the drive, so you see the full fan at once. Press **Replay** to watch it grow, or drag the time slider. The lower plot shows the root-mean-square (RMS) position error of the runs, a typical distance between a run's position and the truth, against the distance driven. The dashed ellipse is fitted to where the runs currently are and holds 95% of a Gaussian with the same spread. For these defaults, the RMS position error is 1.19 m after one lap and 1.98 m after two, and the worst of the 30 runs ends 4.67 m from the truth.
+The widget starts at the end of the drive, so you see the full fan at once. Press **Replay** to watch it grow, or drag the time slider. The lower plot shows the root-mean-square (RMS) position error of the runs,<Sidenote>Square each run's distance from the truth, average the squares, then take the square root. Large errors count for more than in a plain average.</Sidenote> a typical distance between a run's position and the truth, against the distance driven. The dashed ellipse is fitted to where the runs currently are and holds 95% of a Gaussian with the same spread. For these defaults, the RMS position error is 1.19 m after one lap and 1.98 m after two, and the worst of the 30 runs ends 4.67 m from the truth.
 
 <TryThis>
 1. Press **Replay** and watch the lower plot. The error rises in waves. It climbs to about 1.4 m after 31 m of driving, dips to 1.05 m, climbs to 1.9 m, dips to 1.4 m and climbs to 2.3 m: each crest and each dip is higher than the one before. The true robot passes its starting point after one lap, but the estimate does not return there with it.

@@ -1,7 +1,8 @@
 ---
 /**
- * Tufte-style margin note: floats into the right margin from 1200px; on narrower
- * screens the numbered marker toggles the note inline. Content must be phrasing content.
+ * Tufte-style margin note. From 1240px it floats into the right margin, in the same column as the
+ * "Symbols in this post" card (which fades while a note passes it); on narrower screens the numbered
+ * marker toggles the note inline. Content must be phrasing content.
  */
 let counter = (globalThis as { __sidenoteCounter?: number }).__sidenoteCounter ?? 0;
 counter += 1;
@@ -10,7 +11,9 @@ const id = `sn-${counter}`;
 ---
 
 <span class="sn-wrap">
-  <label for={id} class="sn-ref ui" aria-label="Show side note"></label>
+  <label for={id} class="sn-ref ui">
+    <span class="visually-hidden">Side note</span>
+  </label>
   <input type="checkbox" id={id} class="sn-toggle" />
   <span class="sidenote">
     <slot />
@@ -64,7 +67,7 @@ const id = `sn-${counter}`;
     padding: 0.5rem 0.75rem;
     border-left: 2px solid var(--c-border);
   }
-  @media (min-width: 1200px) {
+  @media (min-width: 1240px) {
     .sn-ref {
       cursor: default;
       pointer-events: none;
@@ -74,10 +77,15 @@ const id = `sn-${counter}`;
       display: block;
       float: right;
       clear: right;
-      width: 220px;
-      margin: 0.2rem calc(-220px - 2.5rem) 1rem 0;
-      padding: 0;
+      position: relative;
+      width: var(--rail);
+      /* right edge at the page gutter, i.e. the same column as the symbols card */
+      margin: 0.2rem calc(-1 * (50vw - var(--w-text) / 2 - var(--gutter))) 1rem 0;
+      padding: 0 0 0 0.75rem;
       border: none;
+      border-left: 2px solid var(--c-border);
+      background: var(--c-bg);
+      z-index: 1;
     }
   }
 </style>

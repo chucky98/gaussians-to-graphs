@@ -19,6 +19,19 @@ references:
   - key: julier2004
     text: 'Julier, Uhlmann. "Unscented filtering and nonlinear estimation." *Proceedings of the IEEE*, 92(3), 2004.'
 widgets: [NonlinearPropagation]
+symbols:
+  - tex: '\N(\boldsymbol{\mu}, \boldsymbol{\Sigma})'
+    meaning: the input Gaussian
+    match: ['\boldsymbol{\Sigma}']
+  - tex: '\mathbf{A},\ \mathbf{b}'
+    meaning: a linear map y = Ax + b
+    match: ['\mathbf{A}']
+  - tex: '\mathbf{J} = \partial f / \partial \mathbf{x}'
+    meaning: Jacobian of f at the mean
+    match: ['\mathbf{J}']
+  - tex: 'r,\ \theta'
+    meaning: range and bearing of a polar reading
+    match: ['r\cos', '\sigma_\theta']
 ---
 
 import NonlinearPropagation from '../../../components/widgets/NonlinearPropagation/NonlinearPropagation.svelte';
@@ -27,7 +40,7 @@ A laser scanner reports that a landmark is 2 m away, straight ahead, with a rang
 
 <NonlinearPropagation client:visible />
 
-The cloud of output samples is not an ellipse. It is a curved band, a "banana", because a bearing error swings the point along a circle around the sensor. The dashed ellipse is what the standard shortcut, linearization, predicts. It is centred too far out, it is too thin, and only 70% of the samples fall inside what it claims is a 95% region.
+The cloud of output samples is not an ellipse. It is a curved band, a "banana",<Sidenote>This conversion is a classic test case. Julier and Uhlmann used it to motivate the unscented transform, the subject of Post 16.</Sidenote> because a bearing error swings the point along a circle around the sensor. The dashed ellipse is what the standard shortcut, linearization, predicts. It is centred too far out, it is too thin, and only 70% of the samples fall inside what it claims is a 95% region.
 
 ## Intuition
 
@@ -35,7 +48,7 @@ Uncertainty never stays put. Each time a robot moves, converts a measurement int
 
 For a **linear** function the answer is clean: stretching, rotating and shifting a Gaussian gives another Gaussian, and its mean and covariance follow from two short formulas. For a **nonlinear** function the result is generally not Gaussian at all. We then have two practical options.
 
-- **Monte Carlo:** draw many samples, push each one through the function, and summarize the cloud of results. This is accurate given enough samples, but it can be expensive.
+- **Monte Carlo:**<Sidenote>Named after the casino in Monaco: random draws play the part of the roulette wheel.</Sidenote> draw many samples, push each one through the function, and summarize the cloud of results. This is accurate given enough samples, but it can be expensive.
 - **Linearization:** replace the function by its tangent at the mean, then use the linear formulas. It is cheap and often good, but it fails when the function bends noticeably over the width of the input.
 
 The widget shows both summaries side by side. The **dotted cloud** is Monte Carlo, the **solid ellipse** is a Gaussian fitted to that cloud, and the **dashed ellipse** is the linearized prediction.
@@ -70,7 +83,7 @@ $$
 f(\mathbf{x}) \approx f(\boldsymbol{\mu}) + \mathbf{J}\,(\mathbf{x} - \boldsymbol{\mu}), \qquad \mathbf{J} = \left.\frac{\partial f}{\partial \mathbf{x}}\right|_{\mathbf{x} = \boldsymbol{\mu}} .
 $$
 
-The **Jacobian** $\mathbf{J}$ is the matrix of partial derivatives: entry $(i, j)$ is $\partial f_i / \partial x_j$, so for $f: \R^n \to \R^m$ it is $m \times n$. The approximation is a linear map with $\mathbf{A} = \mathbf{J}$, so equation (1) gives
+The **Jacobian**<Sidenote>After the mathematician Carl Gustav Jacob Jacobi.</Sidenote> $\mathbf{J}$ is the matrix of partial derivatives: entry $(i, j)$ is $\partial f_i / \partial x_j$, so for $f: \R^n \to \R^m$ it is $m \times n$. The approximation is a linear map with $\mathbf{A} = \mathbf{J}$, so equation (1) gives
 
 $$
 \mathbf{y} \approx \N\!\left( f(\boldsymbol{\mu}),\ \mathbf{J}\boldsymbol{\Sigma}\mathbf{J}\T \right). \tag{2}

@@ -66,6 +66,8 @@
 - 2026-11-26 — **NonlinearPropagation adds a "Linear" option** beyond the three functions in DESIGN §11, to show that linearization is exact for linear maps.
 - 2026-11-26 — **Widget grid tracks use `minmax(0, 1fr)`** and selects shrink to their container: a long `<select>` option had pushed post 04 wider than 320 px (caught by the overflow e2e test).
 - 2026-11-26 — **Notation additions (post 04):** A, b (linear map), J (Jacobian of one function), r, θ (range and bearing).
+- 2026-11-26 — **Right margin (owner request): "Symbols in this post" card + margin notes.** Posts list key symbols in frontmatter (`symbols: [{tex, meaning, match?}]`); the card is KaTeX-rendered at build time, sticky in the right margin from 1240 px, and highlights the symbols whose TeX occurs in the section being read (client script scans KaTeX annotations). Below 1240 px it is a collapsible card under Contents. The validator requires each symbol's TeX to be in the notation table and each match fragment to occur in the post's math.
+- 2026-11-26 — **Margin notes moved to the symbols column** (from 1240 px, right edge on the page gutter); the card fades while a note overlaps it. Posts 01–04 each got three notes (etymology, attributions, back-references), all facts checked to well-established sources.
 
 ## Follow-ups / known issues
 

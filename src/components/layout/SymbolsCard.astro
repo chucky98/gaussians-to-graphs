@@ -1,0 +1,232 @@
+---
+/**
+ * "Symbols in this post": the post's key symbols with one-line meanings, rendered with KaTeX at
+ * build time. variant "rail": sticky in the right margin; symbols that occur in the section being
+ * read are highlighted, and the card fades while a margin note passes it. variant "inline": a
+ * collapsible card for narrow screens.
+ */
+import katex from 'katex';
+import { katexMacros } from '../../../scripts/katex-macros';
+import { url } from '../../lib/site/url';
+import type { PostFrontmatter } from '../../lib/site/schema';
+
+interface Props {
+  symbols: PostFrontmatter['symbols'];
+  variant: 'rail' | 'inline';
+}
+const { symbols, variant } = Astro.props;
+const tex = (s: string) => katex.renderToString(s, { macros: { ...katexMacros }, throwOnError: true, strict: 'error' });
+const rows = symbols.map((s) => ({ html: tex(s.tex), meaning: s.meaning, match: JSON.stringify(s.match ?? [s.tex]) }));
+---
+
+{rows.length > 0 &&
+  (variant === 'rail' ? (
+    <aside class="symbols rail ui" aria-label="Symbols in this post" data-symbols>
+      <p class="eyebrow">Symbols in this post</p>
+      <dl>
+        {rows.map((r) => (
+          <div class="row" data-match={r.match}>
+            <dt set:html={r.html} />
+            <dd>{r.meaning}</dd>
+          </div>
+        ))}
+      </dl>
+      <a class="all" href={url('notation/')}>
+        All notation <span aria-hidden="true">→</span>
+      </a>
+    </aside>
+  ) : (
+    <aside class="symbols inline ui" aria-label="Symbols in this post">
+      <details>
+        <summary>
+          <span class="label">Symbols</span>
+          <span class="count">{rows.length} in this post</span>
+          <svg class="chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+            <path d="M4 6l4 4 4-4" />
+          </svg>
+        </summary>
+        <dl>
+          {rows.map((r) => (
+            <div class="row">
+              <dt set:html={r.html} />
+              <dd>{r.meaning}</dd>
+            </div>
+          ))}
+        </dl>
+        <a class="all" href={url('notation/')}>
+          All notation <span aria-hidden="true">→</span>
+        </a>
+      </details>
+    </aside>
+  ))}
+
+<script>
+  const card = document.querySelector<HTMLElement>('[data-symbols]');
+  const content = document.querySelector<HTMLElement>('article .content');
+  if (card && content) {
+    const rows = Array.from(card.querySelectorAll<HTMLElement>('.row')).map((el) => ({
+      el,
+      match: JSON.parse(el.dataset.match ?? '[]') as string[],
+    }));
+    const headings = Array.from(content.querySelectorAll<HTMLElement>('h2[id], h3[id]'));
+    // TeX used in each heading's segment (from the heading up to the next h2/h3).
+    const texBySegment = new Map<HTMLElement, string>();
+    for (const h of headings) texBySegment.set(h, '');
+    for (const ann of content.querySelectorAll('annotation[encoding="application/x-tex"]')) {
+      let owner: HTMLElement | null = null;
+      for (const h of headings) {
+        if (h.compareDocumentPosition(ann) & Node.DOCUMENT_POSITION_FOLLOWING) owner = h;
+        else break;
+      }
+      if (owner) texBySegment.set(owner, texBySegment.get(owner)! + '\n' + (ann.textContent ?? ''));
+    }
+    const notes = () => Array.from(document.querySelectorAll<HTMLElement>('.sidenote'));
+    let queued = false;
+    const update = () => {
+      queued = false;
+      const line = window.innerHeight * 0.3;
+      let active: HTMLElement | null = null;
+      for (const h of headings) if (h.getBoundingClientRect().top <= line) active = h;
+      const texInView = active ? (texBySegment.get(active) ?? '') : '';
+      for (const r of rows)
+        r.el.classList.toggle(
+          'here',
+          r.match.some((m) => texInView.includes(m)),
+        );
+      // Step aside while a margin note shares the column.
+      const c = card.getBoundingClientRect();
+      const covered = notes().some((n) => {
+        const b = n.getBoundingClientRect();
+        return b.width > 0 && b.left < c.right && b.right > c.left && b.top < c.bottom && b.bottom > c.top;
+      });
+      card.classList.toggle('covered', covered);
+    };
+    const schedule = () => {
+      if (!queued) {
+        queued = true;
+        requestAnimationFrame(update);
+      }
+    };
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    update();
+  }
+</script>
+
+<style>
+  .eyebrow {
+    margin: 0 0 0.6rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--c-muted);
+  }
+  dl {
+    margin: 0;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.6rem;
+    align-items: baseline;
+    padding: 0.35rem 0.5rem;
+    border-radius: var(--radius);
+    border-left: 2px solid transparent;
+  }
+  dt {
+    margin: 0;
+    white-space: nowrap;
+    font-size: 0.95rem;
+  }
+  dd {
+    margin: 0;
+    font-size: 0.8rem;
+    line-height: 1.35;
+    color: var(--c-muted);
+  }
+  .all {
+    display: inline-block;
+    margin-top: 0.75rem;
+    font-size: 0.82rem;
+    color: var(--c-muted);
+    text-decoration: none;
+  }
+  .all:hover {
+    color: var(--c-fg);
+  }
+
+  /* ---- rail ---- */
+  .rail {
+    transition: opacity 0.2s;
+  }
+  .rail .row.here {
+    background: var(--c-surface);
+    border-left-color: var(--c-link);
+  }
+  .rail .row.here dd {
+    color: var(--c-fg);
+  }
+  .rail.covered {
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 0.2s,
+      visibility 0s 0.2s;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .rail {
+      transition: none;
+    }
+  }
+
+  /* ---- inline card ---- */
+  .inline details {
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    background: var(--c-surface);
+  }
+  .inline summary {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.8rem 1rem;
+    cursor: pointer;
+    list-style: none;
+    font-size: 1rem;
+    font-weight: 600;
+    min-height: 44px;
+  }
+  .inline summary::-webkit-details-marker {
+    display: none;
+  }
+  .count {
+    font-weight: 400;
+    font-size: 0.85rem;
+    color: var(--c-muted);
+  }
+  .chev {
+    margin-left: auto;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 0.15s;
+  }
+  .inline details[open] .chev {
+    transform: rotate(180deg);
+  }
+  .inline details[open] summary {
+    border-bottom: 1px solid var(--c-border);
+  }
+  .inline dl {
+    padding: 0.5rem 0.5rem 0;
+  }
+  .inline dd {
+    font-size: 0.88rem;
+  }
+  .inline .all {
+    margin: 0.25rem 1rem 0.75rem;
+  }
+</style>

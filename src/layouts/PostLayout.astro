@@ -2,6 +2,7 @@
 import type { MarkdownHeading } from 'astro';
 import BaseLayout from './BaseLayout.astro';
 import TOC from '../components/layout/TOC.astro';
+import SymbolsCard from '../components/layout/SymbolsCard.astro';
 import SeriesNav from '../components/layout/SeriesNav.astro';
 import Giscus from '../components/layout/Giscus.astro';
 import { entryBySlug, parts } from '../lib/site/syllabus';
@@ -87,6 +88,7 @@ const pageUrl = new URL(url(postPath(post.id)), Astro.site).toString();
 
       <div class="mobile-toc">
         <TOC headings={headings} variant="inline" />
+        <SymbolsCard symbols={d.symbols} variant="inline" />
       </div>
 
       <div class="content">
@@ -121,6 +123,13 @@ const pageUrl = new URL(url(postPath(post.id)), Astro.site).toString();
         <Giscus />
       </div>
     </article>
+    {d.symbols.length > 0 && (
+      <div class="sym-col">
+        <div class="sym-sticky">
+          <SymbolsCard symbols={d.symbols} variant="rail" />
+        </div>
+      </div>
+    )}
   </div>
 </BaseLayout>
 
@@ -138,7 +147,8 @@ const pageUrl = new URL(url(postPath(post.id)), Astro.site).toString();
     /* auto margins (from the global .prose rule) would disable grid stretching */
     margin-inline: 0;
   }
-  .toc-col {
+  .toc-col,
+  .sym-col {
     display: none;
   }
   /* From 1240px the contents live in the left margin; wide widgets are capped (global.css) so they never reach it. */
@@ -160,6 +170,20 @@ const pageUrl = new URL(url(postPath(post.id)), Astro.site).toString();
     }
     .mobile-toc {
       display: none;
+    }
+    .sym-col {
+      display: block;
+      grid-column: 3;
+      grid-row: 1;
+      justify-self: end;
+      width: var(--rail);
+      margin-right: var(--gutter);
+    }
+    .sym-sticky {
+      position: sticky;
+      top: var(--space-6);
+      max-height: calc(100vh - 2 * var(--space-6));
+      overflow-y: auto;
     }
   }
   .kicker {
@@ -216,6 +240,9 @@ const pageUrl = new URL(url(postPath(post.id)), Astro.site).toString();
   }
   .mobile-toc {
     margin-bottom: var(--space-5);
+  }
+  .mobile-toc > :global(* + *) {
+    margin-top: var(--space-3);
   }
   .soon {
     color: var(--c-muted);
