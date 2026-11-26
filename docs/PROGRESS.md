@@ -1,27 +1,28 @@
 # Progress
 
-## Current phase: 2 — Part 2 (in progress: posts 10–13 published)
+## Current phase: 2 — Part 2 (in progress: posts 10–14 published)
 
-## Next task: Phase 2 — post 14 `robot-models-2d` (MotionModelSampler, RangeBearing)
+## Next task: Phase 2 — post 15 `extended-kalman-filter` (EKFLocalization)
 
 ## Posts
 
-| #     | Slug                             | Status    | Widgets                       | Notes                                                                                                                        |
-| ----- | -------------------------------- | --------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| 01    | where-am-i                       | published | DriftFan                      | ~2,100 words. Embeds the SyllabusMap. Claims pinned in `tests/unit/posts/01-…`. Phase 4 follow-up: "close the loop" toggle.  |
-| 02    | gaussians-and-covariance         | published | Gaussian1D, CovarianceEllipse | Reference implementation of the post template. ~2,200 words. Claims pinned in `tests/unit/posts/02-…`.                       |
-| 03    | conditioning-and-marginalizing   | published | SliceVsProject                | ~1,600 words. Covariance/information duality; claims pinned in `tests/unit/posts/03-…`.                                      |
-| 04    | propagating-uncertainty          | published | NonlinearPropagation          | ~1,600 words. Polar banana, x², sin, linear; claims pinned in `tests/unit/posts/04-…`.                                       |
-| 05    | least-squares                    | published | LineFit                       | ~2,300 words. Road from phone GPS fixes; multipath outlier; weights from reported accuracy. Projection figure.               |
-| 06    | mle-and-map                      | published | BayesGrid1D                   | ~2,100 words. Distance to a wall: odometry prior + ultrasonic readings; two-doorway bimodal prior.                           |
-| 07    | estimator-quality                | published | EstimatorShootout             | ~2,200 words. GPS receiver on a benchmark; open sky vs reflections (10% at ±30 m); CRLB by numerical Fisher information.     |
-| 08    | recursive-least-squares          | published | RLSStream                     | ~2,300 words. Online motor calibration; battery sag; forgetting factor sweet spot.                                           |
-| 09    | nonlinear-least-squares          | published | CostLandscape                 | ~2,300 words. UWB indoor positioning; mirror minimum with wall anchors; GN divergence vs LM.                                 |
-| 10    | bayes-filter                     | published | CorridorRobot                 | ~2,400 words. Delivery robot on a 30 m loop corridor, door detector; histogram filter; kidnapping and the ε fix.             |
-| 11    | kalman-filter-1d                 | published | GaussianProduct, Tracker1D    | ~2,500 words. Same robot in a straight corridor: odometry + position fixes; gain as trust ratio; steady state; outage.       |
-| 12    | kalman-filter                    | published | CVTracker2D                   | ~2,700 words. Warehouse forklift from ceiling-camera fixes; constant-velocity model; velocity learned via correlation; turn. |
-| 13    | tuning-and-consistency           | published | TuningLab                     | ~2,500 words. 50 Monte Carlo runs of the forklift tracker; true vs assumed noise; NEES/NIS bounds; NIS blind spot; Joseph.   |
-| 14–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                             |                                                                                                                              |
+| #     | Slug                             | Status    | Widgets                          | Notes                                                                                                                        |
+| ----- | -------------------------------- | --------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| 01    | where-am-i                       | published | DriftFan                         | ~2,100 words. Embeds the SyllabusMap. Claims pinned in `tests/unit/posts/01-…`. Phase 4 follow-up: "close the loop" toggle.  |
+| 02    | gaussians-and-covariance         | published | Gaussian1D, CovarianceEllipse    | Reference implementation of the post template. ~2,200 words. Claims pinned in `tests/unit/posts/02-…`.                       |
+| 03    | conditioning-and-marginalizing   | published | SliceVsProject                   | ~1,600 words. Covariance/information duality; claims pinned in `tests/unit/posts/03-…`.                                      |
+| 04    | propagating-uncertainty          | published | NonlinearPropagation             | ~1,600 words. Polar banana, x², sin, linear; claims pinned in `tests/unit/posts/04-…`.                                       |
+| 05    | least-squares                    | published | LineFit                          | ~2,300 words. Road from phone GPS fixes; multipath outlier; weights from reported accuracy. Projection figure.               |
+| 06    | mle-and-map                      | published | BayesGrid1D                      | ~2,100 words. Distance to a wall: odometry prior + ultrasonic readings; two-doorway bimodal prior.                           |
+| 07    | estimator-quality                | published | EstimatorShootout                | ~2,200 words. GPS receiver on a benchmark; open sky vs reflections (10% at ±30 m); CRLB by numerical Fisher information.     |
+| 08    | recursive-least-squares          | published | RLSStream                        | ~2,300 words. Online motor calibration; battery sag; forgetting factor sweet spot.                                           |
+| 09    | nonlinear-least-squares          | published | CostLandscape                    | ~2,300 words. UWB indoor positioning; mirror minimum with wall anchors; GN divergence vs LM.                                 |
+| 10    | bayes-filter                     | published | CorridorRobot                    | ~2,400 words. Delivery robot on a 30 m loop corridor, door detector; histogram filter; kidnapping and the ε fix.             |
+| 11    | kalman-filter-1d                 | published | GaussianProduct, Tracker1D       | ~2,500 words. Same robot in a straight corridor: odometry + position fixes; gain as trust ratio; steady state; outage.       |
+| 12    | kalman-filter                    | published | CVTracker2D                      | ~2,700 words. Warehouse forklift from ceiling-camera fixes; constant-velocity model; velocity learned via correlation; turn. |
+| 13    | tuning-and-consistency           | published | TuningLab                        | ~2,500 words. 50 Monte Carlo runs of the forklift tracker; true vs assumed noise; NEES/NIS bounds; NIS blind spot; Joseph.   |
+| 14    | robot-models-2d                  | published | MotionModelSampler, RangeBearing | ~2,600 words. Velocity/odometry models, control vs state noise (V M Vᵀ), range–bearing Jacobians; hospital lobby markers.    |
+| 15–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                                |                                                                                                                              |
 
 ## Infrastructure checklist
 
@@ -108,6 +109,9 @@
 - 2026-11-26 — **`filters/consistency.ts` (post 13):** `nees`, `nis`, `averageBounds(dof, count)` (χ²_{count·dof} quantiles / count), `verdict`, `fractionInside`. DESIGN §8.1 consistency invariant: 200 seeded runs of the tuned filter keep ≥ 90% of the run-averaged NEES values inside their 95% bounds and the grand mean within 0.15 of n_x.
 - 2026-11-26 — **TuningLab:** truth drawn from the filter's exact model (including the prior) so the tuned case is consistent by construction. 50 runs × 40 steps recomputed on every slider change in ~7.5 ms: the covariances and gains are data-independent, so they are computed once and each run only propagates its mean (tested equal to the full KF). Presets use exact factors (sliders round to 2 significant digits). Found and used a NIS blind spot: q × 0.1 with σ × 1.4 gives a consistent NIS but NEES 18.5.
 - 2026-11-26 — **Notation additions (post 13):** M (Monte Carlo runs), ε̄_k (run-averaged statistic). Posts 02, 06, 08, 10, 11, 12 now link Post 13.
+- 2026-11-26 — **`models/unicycle.ts` + `models/range-bearing.ts` (post 14).** Velocity model written in the sinc form (chord v·dt·sinc(ωdt/2) along θ + ωdt/2), exactly the textbook arc but stable as ω → 0, so there is no straight-line branch; Jacobians F and V derived from it. Odometry model (rot1, trans, rot2) with `odometryBetween`. Range–bearing h, inverse, and Jacobians wrt pose and landmark. All Jacobians tested against central differences, including ω = 0.
+- 2026-11-26 — **RangeBearing draws a true 95% region:** the 95% ellipse of (r, φ) mapped to the floor (a box of two 1.96σ intervals would hold only 90%); tested by simulation. Two Try-this prompts were rewritten after checking: speed noise alone does not make a thin sliver along a 103° arc; the honest lesson is size (0.16 m vs 1.42 m).
+- 2026-11-26 — **Notation additions (post 14):** v, ω; σ_v, σ_ω; bold M_k, V_k; δ_rot1, δ_trans, δ_rot2; r, φ (bearing). Conflict notes: θ heading vs post 4's bearing θ; v vs bold v_k; M vs bold M_k.
 - 2026-11-26 — **About page accuracy fix:** it cited "the Kalman filter equals batch least squares" as an existing test; that test arrives with Part 2, so it now cites "recursive least squares equals batch least squares".
 
 ## Follow-ups / known issues
@@ -137,4 +141,5 @@
 | Post 11 islands             | GaussianProduct 2.7 KB, Tracker1D 4.6 KB gz (+ shared primitives and Svelte runtime)        | No KaTeX                                                      |
 | CVTracker2D island          | 5.0 KB gz (+ shared primitives and Svelte runtime)                                          | No KaTeX                                                      |
 | TuningLab island            | 4.9 KB gz (+ shared primitives and Svelte runtime)                                          | No KaTeX; ~7.5 ms per recompute (50 runs)                     |
+| Post 14 islands             | MotionModelSampler 3.9 KB, RangeBearing 4.2 KB gz; no KaTeX                                 |                                                               |
 | Shared: KaTeX chunk         | 77 KB                                                                                       | Loaded only by Gaussian1D / CovarianceEllipse (post 02)       |

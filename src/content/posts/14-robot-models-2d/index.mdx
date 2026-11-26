@@ -1,0 +1,186 @@
+---
+number: 14
+title: 'Robots in the Plane: Motion and Sensor Models'
+description: How a wheeled robot moves when its commands are noisy, what a range–bearing sensor reports, and the Jacobians a filter needs from both.
+part: 2
+status: published
+date: 2026-11-26
+prerequisites: [propagating-uncertainty]
+objectives:
+  - Write the velocity (unicycle) and odometry motion models for a planar pose, including the exact arc.
+  - Explain the difference between noise in control space and noise in state space, and map one to the other with the control Jacobian.
+  - Write the range–bearing measurement model and its Jacobians with respect to the pose and the landmark.
+  - Predict when first-order propagation of these models fails, from the size of the heading uncertainty and the distance to a landmark.
+references:
+  - key: thrun2005
+    text: Thrun, Burgard, Fox. *Probabilistic Robotics.* MIT Press, 2005. §5.3 (velocity motion model), §5.4 (odometry motion model), §6.6 (feature-based measurement models, range and bearing) and §7.4 (the Jacobians used in EKF localization).
+  - key: barfoot2024
+    text: Barfoot. *State Estimation for Robotics*, 2nd ed. Cambridge University Press, 2024. Ch. 4 (nonlinear non-Gaussian estimation, with planar motion and range–bearing examples).
+  - key: siegwart2011
+    text: Siegwart, Nourbakhsh, Scaramuzza. *Introduction to Autonomous Mobile Robots*, 2nd ed. MIT Press, 2011. Ch. 3 (mobile robot kinematics) and Ch. 5 (error propagation in odometry).
+widgets: [MotionModelSampler, RangeBearing]
+symbols:
+  - tex: 'x_k,\ y_k,\ \theta_k'
+    meaning: pose components; θ is the heading
+    match: ['\theta_k']
+  - tex: 'v,\ \omega'
+    meaning: commanded speed and turn rate
+    match: ['\omega']
+  - tex: '\mathbf{M}_k,\ \mathbf{V}_k'
+    meaning: control-noise covariance; control Jacobian
+    match: ['\mathbf{V}_k']
+  - tex: '\mathbf{F}_k,\ f(\cdot)'
+    meaning: 'motion model f and its Jacobian F = ∂f/∂x'
+    match: ['\mathbf{F}_k']
+  - tex: '\mathbf{H}_k,\ h(\cdot)'
+    meaning: 'measurement model h and its Jacobian H = ∂h/∂x'
+    match: ['\mathbf{H}_k']
+  - tex: 'r,\ \phi'
+    meaning: range and bearing of a landmark
+    match: ['\phi']
+---
+
+import MotionModelSampler from '../../../components/widgets/MotionModelSampler/MotionModelSampler.svelte';
+import RangeBearing from '../../../components/widgets/RangeBearing/RangeBearing.svelte';
+
+So far the delivery robot has lived on a line: a position along a corridor. In a lobby it has a position in the plane *and* a heading, and the heading changes everything. A robot that drives 6 m with its heading off by a few degrees ends up far to the side of where it meant to be. Before a filter can track it, we need two models: how commands move the robot, and what its sensors report. This post builds both, together with the derivatives a filter needs.
+
+<MotionModelSampler client:visible />
+
+Each dot is where the robot ends up after the same 6-second command: drive at 1 m/s while turning at 0.3 rad/s. The command is the same every time; only the small random errors in the wheels differ. The cloud is already bent, and in this post's last section it becomes a banana.
+
+## Intuition
+
+A planar robot's state is its **pose**: position $(x, y)$ and heading $\theta$. The heading is the troublemaker. An error in heading does not hurt immediately, but every metre driven afterwards turns it into a sideways position error, like a lever: 1° of heading error becomes 1.7 cm of sideways error per metre. Because the robot's position spreads along an arc of possible headings, the cloud of possible positions curves around the start.
+
+There are two ways to say "the motion is noisy". In **control space**, the robot's actual speed and turn rate differ a little from the command: two noise sources. In **state space**, we add noise directly to $x$, $y$ and $\theta$. The first describes what really happens, so it is the better model, but filters work in state space. The control Jacobian translates one into the other.
+
+A **range–bearing sensor**, such as a lidar picking out reflective markers, reports how far away a landmark is and in which direction relative to the robot's heading. Its range noise is a length, the same at every distance. Its bearing noise is an angle, and like the heading error it becomes a sideways error that grows with distance.
+
+## The math
+
+### The velocity motion model
+
+Command the robot to drive at speed $v$ while turning at rate $\omega$ for a time $\Delta t$. With $v$ and $\omega$ constant, it drives along a circular arc of radius $v/\omega$, and its new pose is
+
+$$
+\begin{aligned}
+x_k &= x_{k-1} + v\,\Delta t\,\operatorname{sinc}\!\big(\tfrac{\omega\Delta t}{2}\big)\cos\!\big(\theta_{k-1} + \tfrac{\omega\Delta t}{2}\big), \\
+y_k &= y_{k-1} + v\,\Delta t\,\operatorname{sinc}\!\big(\tfrac{\omega\Delta t}{2}\big)\sin\!\big(\theta_{k-1} + \tfrac{\omega\Delta t}{2}\big), \\
+\theta_k &= \theta_{k-1} + \omega\,\Delta t,
+\end{aligned}
+$$
+
+with $\operatorname{sinc}(h) = \sin(h)/h$. The robot moves along the chord of the arc, whose direction is halfway between the old and the new heading. Textbooks often write $x_k = x_{k-1} + \frac{v}{\omega}\big(\sin(\theta_{k-1} + \omega\Delta t) - \sin\theta_{k-1}\big)$, which is the same thing but divides by $\omega$ and loses accuracy when the robot drives almost straight; the sinc form becomes a straight line smoothly as $\omega \to 0$.
+
+Call this map $\mathbf{x}_k = f(\mathbf{x}_{k-1}, \mathbf{u}_k)$ with control $\mathbf{u}_k = (v, \omega)$. A filter needs two Jacobians: $\mathbf{F}_k = \partial f/\partial\mathbf{x}$ (3 × 3), how errors in the old pose carry over, and $\mathbf{V}_k = \partial f/\partial\mathbf{u}$ (3 × 2), how errors in the controls show up in the pose. With $h = \omega\Delta t/2$, $d = v\Delta t\operatorname{sinc}(h)$ the chord length and $a = \theta_{k-1} + h$ its direction,
+
+$$
+\mathbf{F}_k = \begin{bmatrix} 1 & 0 & -d\sin a \\ 0 & 1 & d\cos a \\ 0 & 0 & 1 \end{bmatrix}.
+$$
+
+The third column is the lever: a heading error moves the new position sideways, perpendicular to the chord, by $d$ times the error. $\mathbf{V}_k$ follows by differentiating with respect to $v$ and $\omega$ (see the source file); its last row is $(0, \Delta t)$, since only the turn rate changes the heading.
+
+### Noise in control space
+
+The robot's actual controls are $v + \delta v$ and $\omega + \delta\omega$, with $\delta v \sim \N(0, \sigma_v^2)$ and $\delta\omega \sim \N(0, \sigma_\omega^2)$, so the control noise has covariance $\mathbf{M}_k = \diag(\sigma_v^2, \sigma_\omega^2)$. To first order, it adds the state-space covariance
+
+$$
+\mathbf{Q}_k = \mathbf{V}_k\,\mathbf{M}_k\,\mathbf{V}_k\T
+$$
+
+to the predicted pose, and a filter's prediction becomes $\mathbf{P}_k = \mathbf{F}_k\mathbf{P}_{k-1}\mathbf{F}_k\T + \mathbf{V}_k\mathbf{M}_k\mathbf{V}_k\T$, exactly the propagation of [Post 4](../propagating-uncertainty/). Notice that $\mathbf{Q}_k$ is 3 × 3 but has rank 2: two noise sources cannot spread the pose in all three directions at once. Over a single step the robot cannot slide sideways; sideways uncertainty only builds up through the heading, step after step.
+
+<Callout type="key">
+A motion model's noise lives in its controls. The control Jacobian $\mathbf{V}_k$ maps it into state space as $\mathbf{V}_k\mathbf{M}_k\mathbf{V}_k\T$, and the state Jacobian $\mathbf{F}_k$ carries existing uncertainty forward, turning heading errors into sideways position errors. That lever is where the banana comes from.
+</Callout>
+
+### The odometry motion model
+
+Many robots do not report commands but **odometry**: the wheel encoders measure how far the robot actually moved between two time steps. A standard way to express that motion is to rotate by $\delta_{\text{rot1}}$ towards the new position, translate by $\delta_{\text{trans}}$, and rotate by $\delta_{\text{rot2}}$ to the new heading:
+
+$$
+\begin{aligned}
+x_k &= x_{k-1} + \delta_{\text{trans}}\cos(\theta_{k-1} + \delta_{\text{rot1}}), \\
+y_k &= y_{k-1} + \delta_{\text{trans}}\sin(\theta_{k-1} + \delta_{\text{rot1}}), \\
+\theta_k &= \theta_{k-1} + \delta_{\text{rot1}} + \delta_{\text{rot2}}.
+\end{aligned}
+$$
+
+Noise is again added to the three readings, and the same Jacobian machinery applies, now with a 3 × 3 control Jacobian. [Post 1](../where-am-i/)'s "move, then turn" model is the special case $\delta_{\text{rot1}} = 0$.
+
+### The range–bearing measurement model
+
+A landmark at $\mathbf{m} = (m_x, m_y)$, seen from the pose $(x, y, \theta)$, produces the reading $\mathbf{z} = (r, \phi)$:
+
+$$
+\begin{aligned}
+r &= \sqrt{(m_x - x)^2 + (m_y - y)^2}, \\
+\phi &= \operatorname{atan2}(m_y - y,\ m_x - x) - \theta,
+\end{aligned}
+$$
+
+with $\phi$ wrapped to $(-\pi, \pi]$, plus noise of standard deviations $\sigma_r$ and $\sigma_\phi$. Call it $\mathbf{z} = h(\mathbf{x}, \mathbf{m})$. With $\Delta_x = m_x - x$, $\Delta_y = m_y - y$, its Jacobian with respect to the pose is
+
+$$
+\mathbf{H}_k = \frac{\partial h}{\partial \mathbf{x}} = \begin{bmatrix} -\Delta_x/r & -\Delta_y/r & 0 \\ \Delta_y/r^2 & -\Delta_x/r^2 & -1 \end{bmatrix}.
+$$
+
+The first row is a unit vector: moving towards the landmark shortens the range one for one, and turning does not change it. The second row says that turning by one radian changes the bearing by one radian, whatever the distance, while moving sideways changes it by only $1/r$ per metre. So a distant landmark pins down the robot's heading but says little about its position across the line of sight; a nearby one constrains position much better. The Jacobian with respect to the landmark has the same entries with opposite signs in its first two columns; it matters when landmarks are estimated too (Post 23).
+
+## Play with it
+
+In the sampler at the top of the post:
+
+<TryThis>
+1. At the defaults the heading spreads by 14° (one standard deviation) after the 6 s drive. 89.8% of the samples fall inside the linearized 95% ellipse: close to 95%, but the cloud already bends around the start.
+2. Set the turn-rate noise $\sigma_\omega$ to 0 and leave the speed noise. The cloud shrinks to a small blob: its largest standard deviation drops from 0.77 m to 0.16 m, and 93.2% of the samples fall inside the linearized ellipse. Speed errors alone barely matter, and they behave almost linearly.
+3. Set $\sigma_v$ to 0 and raise $\sigma_\omega$ to 0.3 rad/s. Now the cloud stretches to a largest standard deviation of 1.42 m along an arc around the start, and only 79.2% of the samples fall inside the linearized ellipse. Heading noise, through the lever, dominates.
+</TryThis>
+
+Now the sensor. Drag the robot around the lobby, or turn it with the outer handle.
+
+<RangeBearing client:visible />
+
+<TryThis>
+1. From the starting pose, marker 3 is 6.04 m away. Its reading's 95% interval is ± 0.20 m along the ray but ± 0.41 m across it: 2° of bearing noise at 6 m is twice the 10 cm range noise. Marker 5, at 2.51 m, is smeared only ± 0.17 m sideways.
+2. Read the Jacobian for marker 3. The bearing row is $(0.068, -0.151, -1)$: moving the robot by a metre changes that bearing by at most $1/r = 0.17$ rad, but turning it by a radian changes it by a full radian. Distant markers are compasses.
+3. Raise the bearing noise to 8° and look at the sampled readings of the far markers: they become arcs centred on the robot, the banana of [Post 4](../propagating-uncertainty/) again.
+4. Lower the maximum range to 6 m. Markers 3 and 4 drop out, and only nearby markers remain, which constrain position well but heading less.
+</TryThis>
+
+## Algorithm
+
+<AlgorithmBox title="Sampling and linearizing the velocity motion model" source="src/lib/models/unicycle.ts">
+1. **Sample** (as a particle filter will, Post 17): for each step draw $\hat v = v + \sigma_v\varepsilon_1$ and $\hat\omega = \omega + \sigma_\omega\varepsilon_2$ with standard normal $\varepsilon_1, \varepsilon_2$, and apply the exact arc $f(\mathbf{x}, (\hat v, \hat\omega))$.
+2. **Linearize** (as an extended Kalman filter will, Post 15): at the current estimate compute $\mathbf{F}_k$ and $\mathbf{V}_k$, then $\hat{\mathbf{x}} \leftarrow f(\hat{\mathbf{x}}, \mathbf{u})$ and $\mathbf{P} \leftarrow \mathbf{F}_k\mathbf{P}\mathbf{F}_k\T + \mathbf{V}_k\mathbf{M}_k\mathbf{V}_k\T$.
+3. **Wrap** every heading and every bearing difference to $(-\pi, \pi]$.
+</AlgorithmBox>
+
+The unit tests check every analytic Jacobian in this post, for both motion models and the sensor, against central finite differences (relative error below $10^{-6}$), including the straight-line case $\omega = 0$. They also check that the odometry reading between two poses reproduces the second pose, and that converting a range and bearing back to a position recovers the landmark.
+
+## When it breaks
+
+### Large heading uncertainty
+
+Choose **Long drive, poor heading control** in the sampler: 8 s with a turn-rate noise of 0.5 rad/s. The final heading now spreads by 55°, and the cloud is a full banana around the start. Only 75.8% of the samples fall inside the linearized 95% ellipse, and the linearized centre is 1.34 m from the samples' actual mean, which lies inside the curve of the banana rather than on it. A filter that linearizes (Post 15) will be overconfident and biased here; the remedies are better linearization (Post 16), samples (Post 17), or the tangent-space Gaussians of Post 22.
+
+### Angles
+
+Headings and bearings live on a circle. A bearing residual of $179° - (-179°)$ is $-2°$, not $358°$. Every difference of angles must be wrapped, or the filter will see a huge error and lurch. The same applies when averaging headings.
+
+### Singular geometry
+
+The range–bearing Jacobian divides by $r$ and $r^2$. A landmark very close to the sensor makes the bearing extremely sensitive to position, and the linearization is valid only over a tiny region. Real systems ignore landmarks closer than some minimum range.
+
+### Which landmark is it?
+
+Everything here assumes the robot knows which marker it is looking at. With identical reflectors, it has to work that out from the predicted positions, and a wrong guess is worse than no reading at all. That is the subject of Post 25.
+
+## Summary
+
+- A planar pose is $(x, y, \theta)$. The velocity model drives along an exact arc; the odometry model rotates, translates and rotates.
+- Motion noise lives in the controls. The control Jacobian maps it into state space as $\mathbf{V}_k\mathbf{M}_k\mathbf{V}_k\T$, a covariance of rank 2.
+- The state Jacobian $\mathbf{F}_k$ turns heading errors into sideways position errors that grow with the distance driven: the banana.
+- A range–bearing sensor reports $r$ and $\phi$. Bearing noise smears a landmark sideways in proportion to its distance; the Jacobian shows that far landmarks constrain heading, near ones constrain position.
+- Linearization fails when heading uncertainty is large; angles must always be wrapped.

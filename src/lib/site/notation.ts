@@ -88,6 +88,26 @@ export const notationGroups: readonly NotationGroup[] = [
         meaning: 'odometry noise level (error std per √m driven; per 1 m move in the corridor of Post 10)',
       },
       { tex: '\\ell', meaning: 'total distance driven' },
+      {
+        tex: 'v,\\ \\omega',
+        meaning: 'speed and turn rate: the controls of the velocity (unicycle) motion model (Post 14)',
+      },
+      {
+        tex: '\\sigma_v,\\ \\sigma_\\omega',
+        meaning: 'standard deviations of the actual speed and turn rate around the command',
+      },
+      {
+        tex: '\\mathbf{M}_k,\\ \\mathbf{V}_k',
+        meaning: 'covariance of the control noise, and the Jacobian ∂f/∂u that maps it into state space',
+      },
+      {
+        tex: '\\delta_{\\text{rot1}},\\ \\delta_{\\text{trans}},\\ \\delta_{\\text{rot2}}',
+        meaning: 'odometry reading as rotate, translate, rotate',
+      },
+      {
+        tex: 'r,\\ \\phi',
+        meaning: 'range and bearing of a landmark, the bearing measured from the robot’s heading (Part 2 on)',
+      },
       { tex: '\\mathbf{z}_k', meaning: 'measurement' },
       { tex: '\\mathbf{z}_{1:k},\\ \\mathbf{u}_{1:k}', meaning: 'all measurements / controls from time 1 to k' },
       {
@@ -190,6 +210,18 @@ export const notationConflicts: readonly { tex: string; note: string }[] = [
   {
     tex: 'x_k\\ \\text{vs.}\\ \\mathbf{x}_k',
     note: 'An italic x_k is the x-coordinate of a planar pose; a bold x_k is the whole state vector.',
+  },
+  {
+    tex: '\\theta\\ \\text{(heading)}\\ \\text{vs.}\\ \\theta\\ \\text{(bearing, Post 4)}',
+    note: 'From Post 14 on, θ is the heading of a pose and a bearing is written φ. Post 4 used (r, θ) for a polar reading, before poses had headings.',
+  },
+  {
+    tex: 'v\\ \\text{vs.}\\ \\mathbf{v}_k',
+    note: 'An italic v is a speed (Post 14); the bold v_k with a time index is measurement noise.',
+  },
+  {
+    tex: 'M\\ \\text{vs.}\\ \\mathbf{M}_k',
+    note: 'A plain M counts Monte Carlo runs (Post 13); the bold M_k is the covariance of control noise (Post 14).',
   },
   {
     tex: '\\eta\\ \\text{vs.}\\ \\boldsymbol{\\eta}',
