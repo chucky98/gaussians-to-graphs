@@ -1,6 +1,6 @@
 # Progress
 
-## Current phase: 0 — Foundation (complete, pending first deploy check)
+## Current phase: 0 — Foundation (complete, 2026-11-26)
 
 ## Next task: Phase 1 — post 01 `where-am-i` (DriftFan widget; `geometry/se2` basics)
 
@@ -26,7 +26,7 @@
 - [x] Primitives: Plot2D, Axes, CovEllipse, PointsCanvas, Handle, Slider, Toggle, Select, PlayControls, SeedControl, Legend, MatrixView, KaTeXInline, WidgetFrame; `createAnimationLoop`
 - [x] CI (`ci.yml`: `npm run verify`, screenshots artifact) and deploy (`deploy.yml`: withastro/action → deploy-pages)
 - [x] README, LICENSE (MIT), LICENSE-CONTENT (CC BY 4.0), this file
-- [ ] First deployment verified live (done right after merge; see below)
+- [x] First deployment verified live (2026-11-26): https://chucky98.github.io/gaussians-to-graphs/ — all pages 200 under the base path, 404 page served, 3 widgets hydrate, search works, no console errors
 - [ ] giscus comments: needs the owner to install the giscus GitHub App (see follow-ups)
 
 ## Decisions
