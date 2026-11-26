@@ -2,7 +2,7 @@
 
 ## Current phase: 1 — Parts 0 and 1 (complete: posts 01–09 published)
 
-## Next task: Phase 2 — post 10 `bayes-filter` (CorridorRobot). First, a link pass: posts 05–08 mention posts 6 and 9 as plain text where links are now possible.
+## Next task: Phase 2 — post 10 `bayes-filter` (CorridorRobot)
 
 ## Posts
 
