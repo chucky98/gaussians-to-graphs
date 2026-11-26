@@ -8,6 +8,7 @@ import {
   inverse,
   mul,
   mulVec,
+  schurComplement,
   select,
   solveCholesky,
   symmetrize,
@@ -215,5 +216,37 @@ export function cov2(sx: number, sy: number, rho: number): Mat {
     rows: 2,
     cols: 2,
     data: Float64Array.of(sx * sx, rho * sx * sy, rho * sx * sy, sy * sy),
+  };
+}
+
+/**
+ * Condition an information-form Gaussian on x[idx] = value. In information form this is easy:
+ * keep the sub-block, Ω_{a|b} = Ω_aa, and shift the vector, ξ_{a|b} = ξ_a − Ω_ab v.
+ */
+export function conditionInformation(f: InformationForm, idx: readonly number[], value: Vec): InformationForm {
+  const n = f.vec.length;
+  if (value.length !== idx.length) throw new RangeError('conditionInformation: value length mismatch');
+  const a = Array.from({ length: n }, (_, i) => i).filter((i) => !idx.includes(i));
+  const shift = mulVec(select(f.info, a, [...idx]), value);
+  return { info: select(f.info, a, a), vec: Float64Array.from(a, (i, r) => f.vec[i]! - shift[r]!) };
+}
+
+/**
+ * Marginal over x[keep] of an information-form Gaussian. In information form this needs a
+ * Schur complement: Ω_a = Ω_aa − Ω_ab Ω_bb⁻¹ Ω_ba, ξ_a = ξ_a − Ω_ab Ω_bb⁻¹ ξ_b.
+ */
+export function marginalizeInformation(f: InformationForm, keep: readonly number[]): InformationForm {
+  const n = f.vec.length;
+  const b = Array.from({ length: n }, (_, i) => i).filter((i) => !keep.includes(i));
+  if (b.length === 0) return { info: select(f.info, keep, keep), vec: Float64Array.from(keep, (i) => f.vec[i]!) };
+  const L = cholesky(select(f.info, b, b));
+  const w = solveCholesky(
+    L,
+    Float64Array.from(b, (i) => f.vec[i]!),
+  ); // Ω_bb⁻¹ ξ_b
+  const shift = mulVec(select(f.info, [...keep], b), w);
+  return {
+    info: schurComplement(f.info, keep),
+    vec: Float64Array.from(keep, (i, r) => f.vec[i]! - shift[r]!),
   };
 }

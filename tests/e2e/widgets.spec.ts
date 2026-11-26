@@ -129,3 +129,28 @@ test.describe('post 01 widgets', () => {
     await expect(page.locator('.prereqs a[href$="/posts/where-am-i/"]')).toBeVisible();
   });
 });
+
+test.describe('post 03 widgets', () => {
+  test('SliceVsProject: live formulas match the text; ρ = 0 removes the shrinkage; the slice handle moves', async ({
+    page,
+  }) => {
+    await page.goto('posts/conditioning-and-marginalizing/');
+    const w = page.locator('[data-widget="SliceVsProject"]');
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="cond-mean"]')).toContainText('0.70');
+    await expect(w.locator('[data-readout="cond-var"]')).toContainText('0.51');
+
+    // Arrow keys on the slice handle move a; the variance must not change.
+    const handle = w.getByRole('slider', { name: /Slice position a/ });
+    for (let i = 0; i < 10; i++) await handle.press('ArrowRight');
+    await expect(handle).toHaveAttribute('aria-valuetext', 'a = 2.00');
+    await expect(w.locator('[data-readout="cond-var"]')).toContainText('0.51');
+
+    await w.getByRole('slider', { name: 'correlation rho' }).fill('0');
+    await expect(w.locator('[data-readout="cond-var"]')).toContainText('1.00');
+
+    await w.locator('[data-action="reset"]').click();
+    await expect(w.locator('[data-readout="cond-mean"]')).toContainText('0.70');
+  });
+});
