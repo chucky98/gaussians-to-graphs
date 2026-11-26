@@ -65,6 +65,8 @@ export const notationGroups: readonly NotationGroup[] = [
       { tex: '\\kappa', meaning: 'prior weight in MAP (1 = ordinary Bayes, 0 = ignore the prior)' },
       { tex: '\\bar{z}', meaning: 'average of the measurements' },
       { tex: '\\mathcal{I}', meaning: 'Fisher information (of one measurement)' },
+      { tex: '\\mathbf{a}_k', meaning: 'regressor: row k of the design matrix A' },
+      { tex: '\\beta', meaning: 'forgetting factor in recursive least squares; memory ≈ 1/(1 − β)' },
     ],
   },
   {
