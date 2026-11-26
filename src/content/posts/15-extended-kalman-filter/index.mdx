@@ -156,7 +156,7 @@ The EKF recovered at the default range only because this hall has many markers a
 
 ### Strong nonlinearity
 
-Even with a good estimate, linearization fails when the uncertainty is large relative to the curvature: the banana of Post 14, a far-away marker seen with poor bearing accuracy, or a long stretch of dead reckoning. The EKF then predicts an ellipse in the wrong place, of the wrong shape, and reports too little uncertainty. The unscented Kalman filter (Post 16) propagates the mean and covariance more accurately, and particle filters (Post 17) drop the Gaussian assumption altogether.
+Even with a good estimate, linearization fails when the uncertainty is large relative to the curvature: the banana of Post 14, a far-away marker seen with poor bearing accuracy, or a long stretch of dead reckoning. The EKF then predicts an ellipse in the wrong place, of the wrong shape, and reports too little uncertainty. The unscented Kalman filter ([Post 16](../unscented-kalman-filter/)) propagates the mean and covariance more accurately, and particle filters (Post 17) drop the Gaussian assumption altogether.
 
 ### Jacobians at the wrong point
 

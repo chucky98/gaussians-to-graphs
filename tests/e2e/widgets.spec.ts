@@ -494,3 +494,26 @@ test.describe('post 15 widgets', () => {
     await expect(b.locator('[data-readout="ekf"]')).toContainText('1.12 m');
   });
 });
+
+test.describe('post 16 widgets', () => {
+  test('UnscentedTransform and UKFvsEKF: defaults, x², the mild scenario', async ({ page }) => {
+    await page.goto('posts/unscented-kalman-filter/');
+    const u = page.locator('[data-widget="UnscentedTransform"]');
+    await u.scrollIntoViewIfNeeded();
+    await expect(u.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(u.locator('[data-readout="inside-lin"]')).toHaveText('70.0%');
+    await expect(u.locator('[data-readout="inside-ut"]')).toHaveText('93.6%');
+    await u.getByLabel('Function').selectOption('square');
+    await expect(u.locator('[data-readout="var-ut"]')).toHaveText('0.375');
+    await expect(u.locator('[data-readout="var-lin"]')).toHaveText('0.250');
+
+    const c = page.locator('[data-widget="UKFvsEKF"]');
+    await c.scrollIntoViewIfNeeded();
+    await expect(c.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(c.locator('[data-readout="nees-ekf"]')).toHaveText('4.66');
+    await expect(c.locator('[data-readout="nees-ukf"]')).toHaveText('3.54');
+    await c.getByLabel('Scenario').selectOption('mild');
+    await expect(c.locator('[data-readout="rms-ekf"]')).toHaveText('0.07 m');
+    await expect(c.locator('[data-readout="rms-ukf"]')).toHaveText('0.07 m');
+  });
+});

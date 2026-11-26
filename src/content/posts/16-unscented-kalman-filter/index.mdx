@@ -1,0 +1,172 @@
+---
+number: 16
+title: The Unscented Kalman Filter
+description: Instead of linearizing, push a few carefully chosen points through the exact model. Sigma points, the unscented transform, and a UKF against an EKF.
+part: 2
+status: published
+date: 2026-11-26
+prerequisites: [extended-kalman-filter]
+objectives:
+  - Construct sigma points and weights for a Gaussian, and explain what the parameters α, β and κ control.
+  - Apply the unscented transform, and explain why it captures the mean of a nonlinear function more accurately than linearization.
+  - Assemble the unscented Kalman filter from the unscented transform, including noise that enters through the controls.
+  - Compare the UKF with the EKF on the same data, and say when the difference matters.
+references:
+  - key: julier2004
+    text: 'Julier, Uhlmann. "Unscented filtering and nonlinear estimation." *Proceedings of the IEEE* 92(3), 2004.'
+  - key: wan2000
+    text: 'Wan, van der Merwe. "The unscented Kalman filter for nonlinear estimation." *Proc. IEEE Adaptive Systems for Signal Processing, Communications, and Control Symposium*, 2000.'
+  - key: thrun2005
+    text: Thrun, Burgard, Fox. *Probabilistic Robotics.* MIT Press, 2005. §3.4 (the unscented Kalman filter) and §7.7 (UKF localization).
+  - key: simon2006
+    text: Simon. *Optimal State Estimation.* Wiley, 2006. Ch. 14 (the unscented Kalman filter).
+widgets: [UnscentedTransform, UKFvsEKF]
+symbols:
+  - tex: '\mathcal{X}^{[i]},\ W^{[i]}_m,\ W^{[i]}_c'
+    meaning: sigma points and their mean and covariance weights
+    match: ['\mathcal{X}^{[i]}']
+  - tex: '\alpha,\ \beta,\ \kappa,\ \lambda\ \text{(UT)}'
+    meaning: 'UT parameters: spread, distribution, scaling; λ = α²(n + κ) − n'
+    match: ['\lambda']
+  - tex: 'n'
+    meaning: dimension of the Gaussian being transformed
+    match: ['2n + 1']
+  - tex: '\mathbf{K}_k'
+    meaning: Kalman gain, here built from sigma-point covariances
+  - tex: '\mathbf{M}_k,\ \mathbf{V}_k'
+    meaning: control noise covariance (augmented into the state)
+    match: ['\mathbf{M}_k']
+---
+
+import UnscentedTransform from '../../../components/widgets/UnscentedTransform/UnscentedTransform.svelte';
+import UKFvsEKF from '../../../components/widgets/UKFvsEKF/UKFvsEKF.svelte';
+
+[Post 4](../propagating-uncertainty/) pushed a Gaussian through a nonlinear function and found that linearization can badly misjudge the result: the "banana" of a range–bearing reading ended up with its linearized ellipse in the wrong place. The extended Kalman filter of [Post 15](../extended-kalman-filter/) inherits exactly that error at every step. Monte Carlo got it right, but with thousands of samples. Is there something in between: as cheap as linearization, nearly as accurate as sampling?
+
+<UnscentedTransform client:visible />
+
+The five open circles are **sigma points**. They are not random: they are placed deterministically, at the mean and symmetrically around it. Each is pushed through the exact function, and their weighted mean and covariance (green) summarize the output. On the banana they find the mean to within 0.2 mm and enclose 93.6% of the samples in their 95% ellipse. The linearized ellipse (dashed) misses the mean by 18 cm and holds only 70%.
+
+## Intuition
+
+Linearization approximates the *function* and keeps the Gaussian exact. The unscented transform does the opposite: it keeps the function exact and approximates the *Gaussian*, by a handful of points that share its mean and covariance. It is easier to approximate a probability distribution than an arbitrary nonlinear function.
+
+A few points can carry a lot of information. For a Gaussian in $n$ dimensions, $2n + 1$ points (the mean, plus one point on each side of it along each principal direction) have exactly the right mean and covariance, and by symmetry the right third moments too. Push them through the function, and you see how it bends on both sides of the mean, in every direction, rather than only its slope at one point. That is enough to get the output mean right to second order, where linearization is only first-order accurate.
+
+## The math
+
+### Sigma points and weights
+
+For a Gaussian $\N(\boldsymbol{\mu}, \boldsymbol{\Sigma})$ in $n$ dimensions, let $\lambda = \alpha^2(n + \kappa) - n$ and let $\mathbf{L}$ be the Cholesky factor of $(n + \lambda)\boldsymbol{\Sigma}$, with columns $\mathbf{l}_i$. The $2n + 1$ sigma points are
+
+$$
+\mathcal{X}^{[0]} = \boldsymbol{\mu}, \qquad \mathcal{X}^{[i]} = \boldsymbol{\mu} + \mathbf{l}_i, \qquad \mathcal{X}^{[n+i]} = \boldsymbol{\mu} - \mathbf{l}_i, \qquad i = 1, \ldots, n,
+$$
+
+with weights
+
+$$
+\begin{aligned}
+W_m^{[0]} &= \frac{\lambda}{n + \lambda}, &\qquad W_c^{[0]} &= \frac{\lambda}{n + \lambda} + 1 - \alpha^2 + \beta, \\
+W_m^{[i]} &= W_c^{[i]} = \frac{1}{2(n + \lambda)}, &\qquad i &= 1, \ldots, 2n.
+\end{aligned}
+$$
+
+The points sit at $\pm\sqrt{n + \lambda}$ standard deviations along each axis of the covariance. The three parameters control where:
+
+- $\alpha$ sets the **spread**: small $\alpha$ pulls the points close to the mean.
+- $\kappa$ is a secondary scaling. Julier and Uhlmann's choice $\kappa = 3 - n$ (with $\alpha = 1$) puts the points at $\pm\sqrt{3}$ standard deviations, which matches the fourth moment of a Gaussian in each direction.
+- $\beta$ adjusts only the weight of the centre point in the covariance, to account for higher moments of the distribution. For a Gaussian the right value depends on $\alpha$: for $f(x) = x^2$ the unscented variance is exact exactly when $\beta = 2 - 2\alpha^2$, so $\beta = 0$ for $\alpha = 1$ and $\beta \approx 2$, the usual textbook value, for small $\alpha$.
+
+### The unscented transform
+
+Push each point through the function, $\mathcal{Y}^{[i]} = f(\mathcal{X}^{[i]})$, and summarize:
+
+$$
+\begin{aligned}
+\bar{\mathbf{y}} &= \sum_{i=0}^{2n} W_m^{[i]}\,\mathcal{Y}^{[i]}, \\
+\mathbf{P}_{yy} &= \sum_{i=0}^{2n} W_c^{[i]}\,(\mathcal{Y}^{[i]} - \bar{\mathbf{y}})(\mathcal{Y}^{[i]} - \bar{\mathbf{y}})\T, \\
+\mathbf{P}_{xy} &= \sum_{i=0}^{2n} W_c^{[i]}\,(\mathcal{X}^{[i]} - \boldsymbol{\mu})(\mathcal{Y}^{[i]} - \bar{\mathbf{y}})\T.
+\end{aligned}
+\tag{1}
+$$
+
+These are the mean and covariance of the output, and the cross-covariance between input and output, estimated from $2n + 1$ evaluations of $f$ and no derivatives. For a linear $f$ the result is exact, whatever the parameters. For a quadratic it gets the mean exactly, which linearization never does unless the curvature is zero.
+
+<Callout type="key">
+The unscented transform replaces a Gaussian by $2n + 1$ deterministic sigma points with the same mean and covariance, pushes them through the exact function, and reads off the output mean, covariance and cross-covariance. It needs no Jacobians and is accurate to second order where linearization is accurate to first.
+</Callout>
+
+### The unscented Kalman filter
+
+The Kalman filter only ever needs means, covariances and a cross-covariance; the unscented transform supplies all three.
+
+**Predict:** apply (1) to the motion model. When the noise enters through the controls, as with the robot's wheels, append the control noise to the state: transform the augmented Gaussian with mean $(\hat{\mathbf{x}}, \mathbf{0})$ and covariance $\diag(\mathbf{P}, \mathbf{M}_k)$ through $f(\mathbf{x}, \mathbf{u}_k + \boldsymbol{\delta})$. No control Jacobian $\mathbf{V}_k$ is needed.
+
+**Update:** apply (1) to the measurement model at the predicted state, giving the predicted reading $\bar{\mathbf{z}}$, its covariance $\mathbf{P}_{zz}$ and the cross-covariance $\mathbf{P}_{xz}$. Then
+
+$$
+\begin{aligned}
+\mathbf{S}_k &= \mathbf{P}_{zz} + \mathbf{R}_k, &\qquad \mathbf{K}_k &= \mathbf{P}_{xz}\,\mathbf{S}_k^{-1}, \\
+\hat{\mathbf{x}}_{k\mid k} &= \hat{\mathbf{x}}_{k\mid k-1} + \mathbf{K}_k(\mathbf{z}_k - \bar{\mathbf{z}}), &\qquad \mathbf{P}_{k\mid k} &= \mathbf{P}_{k\mid k-1} - \mathbf{K}_k\mathbf{S}_k\mathbf{K}_k\T.
+\end{aligned}
+$$
+
+This is the Kalman update of [Post 12](../kalman-filter/) with $\mathbf{P}\mathbf{H}\T$ replaced by $\mathbf{P}_{xz}$ and $\mathbf{H}\mathbf{P}\mathbf{H}\T$ by $\mathbf{P}_{zz}$: the same conditioning formula, with the covariances estimated by sigma points instead of a tangent. Angles need care, as in Post 15: a weighted mean of headings or bearings is taken on the circle (from the weighted sums of their sines and cosines), and every difference is wrapped.
+
+## Play with it
+
+In the transform widget at the top of the post:
+
+<TryThis>
+1. With the polar function at its defaults ($\sigma_\theta = 25°$), compare the three summaries. Both the unscented ellipse (93.6%) and the ellipse fitted to the 2,000 samples (93.4%) hold close to 95% of them; the linearized one holds 70.0%. The unscented mean is closer to the exact mean than the Monte Carlo mean (9 mm off), from five evaluations of the function.
+2. Raise the bearing spread to 50°. Linearization collapses: its ellipse holds 40.2% of the samples and its mean is 0.63 m off. The unscented transform still holds 94.2%. Lower it to 5° and all three agree.
+3. Choose $x \mapsto x^2$. Linearization predicts a variance of 0.250 and misses the mean by 0.25; the unscented transform gives the exact mean and the exact variance, 0.375, from three points.
+4. Back on the polar function, lower $\alpha$ to 0.1. The sigma points crowd around the mean and only probe the function's slope there: the unscented ellipse shrinks towards the linearized one and holds only 74.3% of the samples, although its mean stays accurate.
+</TryThis>
+
+Now the filters. The robot of Post 15 drives its loop again, and an EKF and a UKF process exactly the same wheel commands and lidar readings. The widget opens on a rough scenario: poor wheels ($\sigma_\omega = 0.15$ rad/s instead of 0.05) and a lidar range of only 3 m, so the robot often drives on odometry alone and its heading uncertainty grows large.
+
+<UKFvsEKF client:visible />
+
+<TryThis>
+1. Switch to the **mild** scenario of Post 15. The two estimates never differ by more than 1.8 cm: when the uncertainty is small, linearization is good enough, and the UKF brings nothing.
+2. Back to **rough**. The two filters' errors are similar, 0.66 m and 0.65 m (root mean square). But compare how honest they are. An honest filter's NEES averages 3; the EKF's averages 4.66 and is inside its 95% range at 107 of the 120 steps. The UKF's averages 3.54 and is inside at 115.
+3. Over 100 different seeds of the rough scenario, the EKF ends the run more than 1 m from the truth in 38 runs, the UKF in 28. The advantage is real, but neither filter is rescued from long stretches without landmarks.
+</TryThis>
+
+## Algorithm
+
+<AlgorithmBox title="Unscented Kalman filter (one step)" source="src/lib/filters/ukf.ts">
+1. **Sigma points** of the augmented Gaussian $\N\big((\hat{\mathbf{x}}, \mathbf{0}),\ \diag(\mathbf{P}, \mathbf{M}_k)\big)$: Cholesky factor of $(n + \lambda)$ times its covariance, $2n + 1$ points, weights $W_m^{[i]}, W_c^{[i]}$.
+2. **Predict:** push each point through $f(\mathbf{x}, \mathbf{u}_k + \boldsymbol{\delta})$; the weighted mean and covariance (1) are $\hat{\mathbf{x}}_{k\mid k-1}$ and $\mathbf{P}_{k\mid k-1}$ (add $\mathbf{Q}$ if there is also additive noise).
+3. **Update:** sigma points of $\N(\hat{\mathbf{x}}_{k\mid k-1}, \mathbf{P}_{k\mid k-1})$, pushed through $h$, give $\bar{\mathbf{z}}$, $\mathbf{P}_{zz}$ and $\mathbf{P}_{xz}$. Then $\mathbf{S} = \mathbf{P}_{zz} + \mathbf{R}$, $\mathbf{K} = \mathbf{P}_{xz}\mathbf{S}^{-1}$ (Cholesky solve), $\hat{\mathbf{x}} \leftarrow \hat{\mathbf{x}} + \mathbf{K}(\mathbf{z} \boxminus \bar{\mathbf{z}})$, $\mathbf{P} \leftarrow \mathbf{P} - \mathbf{K}\mathbf{S}\mathbf{K}\T$.
+4. Take means of angles on the circle and wrap every angle difference.
+</AlgorithmBox>
+
+The unit tests check DESIGN's invariant for this post: on a *linear* model the UKF reproduces the Kalman filter to within $10^{-9}$ at every step, for two different parameter choices. They also check that the transform is exact for linear maps, and that for $x^2$ it gets the mean exactly for any $\alpha$ and the variance exactly precisely when $\beta = 2 - 2\alpha^2$.
+
+## When it breaks
+
+### Still a Gaussian
+
+The unscented transform summarizes the output by a mean and a covariance, so a banana still becomes an ellipse, only a better-placed one. Two bumps, as in the corridor of [Post 10](../bayes-filter/), are beyond any Gaussian filter. And with very wide inputs even the sigma points can miss features of the function between them.
+
+### Negative weights
+
+With $\kappa < 3 - n$ or a small $\alpha$, the centre weight $W_m^{[0]}$ becomes negative, and the computed covariance can lose positive definiteness when the function is strongly nonlinear. Implementations guard against this by choosing parameters that keep weights positive, by symmetrizing, or by factored ("square-root") forms of the filter.
+
+### Cost
+
+Each step evaluates the models at $2n + 1$ points and factorizes an $n \times n$ matrix. For a robot pose this is trivial; for a state with thousands of landmarks (Post 24) it is not, and the EKF's sparse Jacobians become an advantage.
+
+### Not a cure for a bad start
+
+The unscented transform still looks only within a few standard deviations of the current estimate. A filter that has the wrong mode entirely, like the lost robot of Post 15, needs many hypotheses at once: the particle filter of Post 17.
+
+## Summary
+
+- Sigma points: $2n + 1$ deterministic points with the mean and covariance of a Gaussian, placed by $\alpha$ and $\kappa$, weighted with an extra $\beta$ term for the covariance.
+- The unscented transform pushes them through the exact function and reads off mean, covariance and cross-covariance, with no Jacobians and second-order accuracy for the mean.
+- The UKF builds the Kalman update from those quantities; control noise is handled by augmenting the state.
+- When uncertainty is small, UKF and EKF agree; when it is large, the UKF's covariance stays more honest, while both remain single-Gaussian filters.
