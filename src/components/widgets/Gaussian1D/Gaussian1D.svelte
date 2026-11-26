@@ -2,7 +2,7 @@
   import WidgetFrame from '../../primitives/WidgetFrame.svelte';
   import Plot2D from '../../primitives/Plot2D.svelte';
   import Axes from '../../primitives/Axes.svelte';
-  import Slider from '../../primitives/Slider.svelte';
+  import TexSlider from '../../primitives/TexSlider.svelte';
   import Handle from '../../primitives/Handle.svelte';
   import KaTeXInline from '../../primitives/KaTeXInline.svelte';
   import type { PlotContext } from '../../primitives/plot';
@@ -122,7 +122,7 @@
   {/snippet}
 
   {#snippet controls()}
-    <Slider
+    <TexSlider
       label="Mean mu"
       tex="\mu"
       min={L.mu.min}
@@ -131,7 +131,7 @@
       bind:value={mu}
       format={(v) => v.toFixed(1)}
     />
-    <Slider
+    <TexSlider
       label="Standard deviation sigma"
       tex="\sigma"
       min={L.sigma.min}

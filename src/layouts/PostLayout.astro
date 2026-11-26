@@ -48,7 +48,7 @@ const pageUrl = new URL(url(postPath(post.id)), Astro.site).toString();
               · updated <time datetime={d.updated.toISOString()}>{fmt(d.updated)}</time>
             </>
           )}
-          · {minutes} min read
+          {` · ${minutes} min read`}
         </p>
       </header>
 

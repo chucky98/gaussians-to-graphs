@@ -4,7 +4,7 @@
   import Axes from '../../primitives/Axes.svelte';
   import CovEllipse from '../../primitives/CovEllipse.svelte';
   import PointsCanvas from '../../primitives/PointsCanvas.svelte';
-  import Slider from '../../primitives/Slider.svelte';
+  import TexSlider from '../../primitives/TexSlider.svelte';
   import Toggle from '../../primitives/Toggle.svelte';
   import Select from '../../primitives/Select.svelte';
   import PlayControls from '../../primitives/PlayControls.svelte';
@@ -301,9 +301,9 @@
   {/snippet}
 
   {#snippet controls()}
-    <Slider label="sigma x" tex="\sigma_x" min={L.sigma.min} max={L.sigma.max} step={L.sigma.step} bind:value={sx} />
-    <Slider label="sigma y" tex="\sigma_y" min={L.sigma.min} max={L.sigma.max} step={L.sigma.step} bind:value={sy} />
-    <Slider label="correlation rho" tex="\rho" min={L.rho.min} max={L.rho.max} step={L.rho.step} bind:value={rho} />
+    <TexSlider label="sigma x" tex="\sigma_x" min={L.sigma.min} max={L.sigma.max} step={L.sigma.step} bind:value={sx} />
+    <TexSlider label="sigma y" tex="\sigma_y" min={L.sigma.min} max={L.sigma.max} step={L.sigma.step} bind:value={sy} />
+    <TexSlider label="correlation rho" tex="\rho" min={L.rho.min} max={L.rho.max} step={L.rho.step} bind:value={rho} />
     <Select label="Probability inside the ellipse" bind:value={level} options={LEVEL_OPTIONS} />
     <Toggle label="Show samples" bind:checked={showSamples} />
     {#if showSamples}

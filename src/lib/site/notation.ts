@@ -51,6 +51,10 @@ export const notationGroups: readonly NotationGroup[] = [
         meaning: 'updated (posterior) mean and covariance',
       },
       { tex: '\\mathbf{u}_k', meaning: 'control input / odometry' },
+      { tex: 'x_k,\\ y_k,\\ \\theta_k', meaning: 'components of a planar pose: position (m) and heading (rad)' },
+      { tex: 'd_k,\\ \\Delta\\theta_k', meaning: 'odometry reading: distance driven, then turn' },
+      { tex: '\\alpha', meaning: 'odometry noise level (error std per √m driven)' },
+      { tex: '\\ell', meaning: 'total distance driven' },
       { tex: '\\mathbf{z}_k', meaning: 'measurement' },
       { tex: '\\mathbf{F}_k,\\ f(\\cdot)', meaning: 'linear state transition / nonlinear motion model' },
       { tex: '\\mathbf{B}_k', meaning: 'control-input matrix' },
@@ -125,6 +129,14 @@ export const notationConflicts: readonly { tex: string; note: string }[] = [
   {
     tex: '\\lambda\\ \\text{vs.}\\ \\lambda_1, \\lambda_2',
     note: 'A bare λ is the Levenberg–Marquardt damping. Eigenvalues always carry a subscript and appear only in Part 0, so context makes the meaning clear.',
+  },
+  {
+    tex: 'x_k\\ \\text{vs.}\\ \\mathbf{x}_k',
+    note: 'An italic x_k is the x-coordinate of a planar pose; a bold x_k is the whole state vector.',
+  },
+  {
+    tex: '\\alpha\\ \\text{(odometry)}\\ \\text{vs.}\\ \\alpha\\ \\text{(UKF)}',
+    note: 'In Part 0 α is an odometry noise level; in the unscented Kalman filter (Post 16) it is a sigma-point spread parameter.',
   },
   {
     tex: '\\mathbf{z}\\ \\text{vs.}\\ \\mathbf{z}_k',

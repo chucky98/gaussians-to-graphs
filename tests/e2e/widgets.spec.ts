@@ -78,3 +78,54 @@ test.describe('post 02 widgets', () => {
     await w.locator('[data-action="step"]').click();
   });
 });
+
+test.describe('post 01 widgets', () => {
+  const post01 = 'posts/where-am-i/';
+
+  test('DriftFan: defaults match the text; zero noise gives zero error; scrubbing and Reset work', async ({ page }) => {
+    await page.goto(post01);
+    const w = page.locator('[data-widget="DriftFan"]');
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    const rms = w.locator('[data-readout="rms"]');
+    await expect(rms).toHaveText('1.98 m');
+    await expect(w).toContainText('69.7 m (lap 2)');
+
+    const time = w.getByRole('slider', { name: 'Distance driven (time)' });
+    await time.focus();
+    await time.press('Home');
+    await expect(rms).toHaveText('0.00 m');
+    await expect(w).toContainText('0.0 m (lap 1)');
+    await time.press('End');
+    await expect(rms).toHaveText('1.98 m');
+
+    const noise = w.getByRole('slider', { name: 'Odometry noise' });
+    await noise.focus();
+    await noise.press('Home');
+    await expect(rms).toHaveText('0.00 m');
+
+    await w.locator('[data-action="reset"]').click();
+    await expect(rms).toHaveText('1.98 m');
+  });
+
+  test('DriftFan: Play animates from the start and Pause stops it', async ({ page }) => {
+    await page.goto(post01);
+    const w = page.locator('[data-widget="DriftFan"]');
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await w.locator('[data-action="play"]').click(); // Replay from 0
+    await page.waitForTimeout(600);
+    await w.locator('[data-action="play"]').click(); // Pause
+    const text = await w.locator('[data-readout="rms"]').textContent();
+    expect(text).not.toBe('1.98 m');
+    await page.waitForTimeout(400);
+    await expect(w.locator('[data-readout="rms"]')).toHaveText(text!);
+  });
+
+  test('post 01 embeds the syllabus map and post 02 now links back to post 01', async ({ page }) => {
+    await page.goto(post01);
+    await expect(page.locator('#series-map li[data-published]')).toHaveCount(32);
+    await page.goto('posts/gaussians-and-covariance/');
+    await expect(page.locator('.prereqs a[href$="/posts/where-am-i/"]')).toBeVisible();
+  });
+});

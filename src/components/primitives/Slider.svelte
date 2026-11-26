@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { renderTex } from './katex';
+  import type { Snippet } from 'svelte';
 
+  /** Plain range slider. For a TeX label use TexSlider (keeps KaTeX out of widgets that don't need it). */
   interface Props {
     /** Plain-text label (accessible name). */
     label: string;
-    /** Optional TeX shown instead of the plain label. */
-    tex?: string;
+    /** Optional visual label shown instead of the plain text (hidden from assistive tech). */
+    labelContent?: Snippet;
     min: number;
     max: number;
     step: number;
@@ -16,7 +17,7 @@
   }
   let {
     label,
-    tex,
+    labelContent,
     min,
     max,
     step,
@@ -31,7 +32,7 @@
 
 <div class="slider">
   <label for={id}>
-    {#if tex}<span aria-hidden="true">{@html renderTex(tex)}</span>{:else}{label}{/if}
+    {#if labelContent}<span aria-hidden="true">{@render labelContent()}</span>{:else}{label}{/if}
   </label>
   <output for={id} aria-hidden="true">{shown}</output>
   <input
