@@ -12,6 +12,7 @@ import { parse as parseYaml } from 'yaml';
 import { postFrontmatter } from '../src/lib/site/schema';
 import { entryBySlug, syllabus, folderName } from '../src/lib/site/syllabus';
 import { basePath, siteOrigin } from '../src/lib/site/config';
+import { notationGroups } from '../src/lib/site/notation';
 
 const root = resolve(dirname(new URL(import.meta.url).pathname), '..');
 const errors: string[] = [];
@@ -121,6 +122,17 @@ for (const folder of existsSync(postsDir) ? readdirSync(postsDir) : []) {
   ];
   for (const tex of math)
     for (const [re, msg] of rules) if (re.test(tex)) err(where, `${msg}: $${tex.trim().slice(0, 60)}$`);
+
+  // Symbols card: display TeX must come from the notation table; match fragments must occur in the math.
+  const squash = (t: string) => t.replace(/\s+/g, '');
+  const notationTex = notationGroups.flatMap((g) => g.rows.map((r) => squash(r.tex)));
+  const allMath = math.join('\n');
+  for (const sym of fm.symbols) {
+    if (!notationTex.some((t) => t.includes(squash(sym.tex))))
+      err(where, `symbol $${sym.tex}$ is not in the notation table (src/lib/site/notation.ts)`);
+    for (const m of sym.match ?? [sym.tex])
+      if (!allMath.includes(m)) err(where, `symbol match "${m}" does not occur in the post's math`);
+  }
 
   // Prose must not contain absolute internal links (base path!).
   for (const l of body.matchAll(/\]\((\/[^)]*)\)/g)) err(where, `absolute internal link ${l[1]}: use a relative link`);

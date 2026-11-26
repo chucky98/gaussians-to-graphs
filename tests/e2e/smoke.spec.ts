@@ -165,3 +165,46 @@ test.describe('post table of contents', () => {
     await expect(page.locator('#when-it-breaks')).toBeInViewport();
   });
 });
+
+test.describe('symbols card and margin notes', () => {
+  const post = 'posts/gaussians-and-covariance/';
+
+  test('wide: symbols rail highlights the current section and steps aside for margin notes', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(post);
+    const card = page.locator('[data-symbols]');
+    await expect(card.locator('.row')).toHaveCount(10);
+    await page.evaluate(() => document.getElementById('why-an-ellipse')!.scrollIntoView({ block: 'start' }));
+    await expect(card).toBeVisible();
+    await expect(card.locator('.row.here')).not.toHaveCount(0);
+    await expect(card.locator('.row.here', { hasText: 'eigenvectors' })).toHaveCount(1);
+    await expect(card.locator('.row.here', { hasText: 'chi-square' })).toHaveCount(0);
+
+    // Margin notes sit in the right column, clear of the text, and the card hides while one is beside it.
+    const note = page.locator('.sidenote').nth(1);
+    await page.evaluate(() => {
+      const n = document.querySelectorAll('.sidenote')[1] as HTMLElement;
+      window.scrollTo(0, n.getBoundingClientRect().top + window.scrollY - 150);
+    });
+    await expect(note).toBeVisible();
+    const nb = (await note.boundingBox())!;
+    const text = (await page.locator('article .content').boundingBox())!;
+    expect(nb.x).toBeGreaterThan(text.x + text.width);
+    await expect(card).toHaveClass(/covered/);
+  });
+
+  test('narrow: symbols card under Contents; margin notes toggle inline', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.goto(post);
+    await expect(page.locator('[data-symbols]')).toBeHidden();
+    const card = page.locator('.symbols.inline');
+    await expect(card.locator('summary')).toContainText('10 in this post');
+    await card.locator('summary').click();
+    await expect(card.getByText('Mahalanobis distance')).toBeVisible();
+
+    const firstNote = page.locator('.sidenote').first();
+    await expect(firstNote).toBeHidden();
+    await page.locator('.sn-ref').first().click();
+    await expect(firstNote).toBeVisible();
+  });
+});

@@ -19,6 +19,23 @@ references:
   - key: eustice2006
     text: 'Eustice, Singh, Leonard. "Exactly sparse delayed-state filters for view-based SLAM." *IEEE Transactions on Robotics*, 22(6), 2006.'
 widgets: [SliceVsProject]
+symbols:
+  - tex: '\mathbf{x}_1, \mathbf{x}_2'
+    meaning: the two blocks of the vector
+    match: ['\mathbf{x}_1']
+  - tex: '\boldsymbol{\Sigma}_{11}, \boldsymbol{\Sigma}_{12}'
+    meaning: blocks of the covariance
+    match: ['\boldsymbol{\Sigma}_{1']
+  - tex: '\boldsymbol{\Omega}'
+    meaning: information matrix, Σ⁻¹
+  - tex: '\boldsymbol{\xi}'
+    meaning: information vector, Ωμ
+  - tex: '\sigma_x,\ \sigma_y,\ \rho'
+    meaning: per-axis standard deviations and correlation
+    match: ['\rho']
+  - tex: 'a'
+    meaning: the observed value of x we condition on
+    match: ['x = a']
 ---
 
 import SliceVsProject from '../../../components/widgets/SliceVsProject/SliceVsProject.svelte';
@@ -106,7 +123,7 @@ The conditional mean moves along a straight line as $a$ changes, and the conditi
 
 ### The Schur complement
 
-The matrix $\boldsymbol{\Sigma}_{11} - \boldsymbol{\Sigma}_{12}\boldsymbol{\Sigma}_{22}^{-1}\boldsymbol{\Sigma}_{21}$ appears so often that it has a name: the **Schur complement** of $\boldsymbol{\Sigma}_{22}$ in $\boldsymbol{\Sigma}$. The term being subtracted, $\boldsymbol{\Sigma}_{12}\boldsymbol{\Sigma}_{22}^{-1}\boldsymbol{\Sigma}_{21}$, is positive semidefinite, so the conditional covariance is never larger than the marginal one in any direction.
+The matrix $\boldsymbol{\Sigma}_{11} - \boldsymbol{\Sigma}_{12}\boldsymbol{\Sigma}_{22}^{-1}\boldsymbol{\Sigma}_{21}$ appears so often that it has a name: the **Schur complement**<Sidenote>After the mathematician Issai Schur. The name was coined by Emilie Haynsworth in 1968.</Sidenote> of $\boldsymbol{\Sigma}_{22}$ in $\boldsymbol{\Sigma}$. The term being subtracted, $\boldsymbol{\Sigma}_{12}\boldsymbol{\Sigma}_{22}^{-1}\boldsymbol{\Sigma}_{21}$, is positive semidefinite, so the conditional covariance is never larger than the marginal one in any direction.
 
 <Callout type="key">
 Conditioning on data can only shrink uncertainty, or leave it unchanged. It shrinks by exactly the amount of the Schur-complement correction, and that amount does not depend on the value that was observed.
@@ -120,7 +137,7 @@ $$
 \boldsymbol{\Omega} = \boldsymbol{\Sigma}^{-1}, \qquad \boldsymbol{\xi} = \boldsymbol{\Omega}\boldsymbol{\mu},
 $$
 
-partitioned into blocks $\boldsymbol{\Omega}_{11}, \boldsymbol{\Omega}_{12}, \ldots$ and $\boldsymbol{\xi}_1, \boldsymbol{\xi}_2$ in the same way. Large entries of $\boldsymbol{\Omega}$ mean high confidence. A standard identity for the inverse of a block matrix says that the top-left block of $\boldsymbol{\Omega}$ is the inverse of the Schur complement:
+partitioned into blocks $\boldsymbol{\Omega}_{11}, \boldsymbol{\Omega}_{12}, \ldots$ and $\boldsymbol{\xi}_1, \boldsymbol{\xi}_2$ in the same way. Large entries of $\boldsymbol{\Omega}$ mean high confidence.<Sidenote>You have met $\boldsymbol{\Omega}$ before: the squared Mahalanobis distance of [Post 2](../gaussians-and-covariance/) is $(\mathbf{x}-\boldsymbol{\mu})\T\boldsymbol{\Omega}(\mathbf{x}-\boldsymbol{\mu})$.</Sidenote> A standard identity for the inverse of a block matrix says that the top-left block of $\boldsymbol{\Omega}$ is the inverse of the Schur complement:
 
 $$
 \boldsymbol{\Omega}_{11} = \left( \boldsymbol{\Sigma}_{11} - \boldsymbol{\Sigma}_{12}\boldsymbol{\Sigma}_{22}^{-1}\boldsymbol{\Sigma}_{21} \right)^{-1} .
@@ -162,7 +179,7 @@ In the widget, $\sigma_x = 1.5$, $\sigma_y = 1$, the mean is zero, and $\rho$ st
 4. Turn on the line of conditional means. It passes through the points where the ellipse is furthest left and furthest right, not along the ellipse's long axis. With the defaults its slope is $0.7 \times 1/1.5 = 0.47$ (about $25^\circ$), flatter than the major axis at about $30^\circ$.
 </TryThis>
 
-The last observation is the geometric face of *regression to the mean*: an unusually large $x$ predicts a $y$ that is large, but less unusual than $x$ itself.
+The last observation is the geometric face of *regression to the mean*:<Sidenote>Francis Galton named the effect in the 1880s, after noticing that the children of unusually tall parents tend to be tall, but less extreme.</Sidenote> an unusually large $x$ predicts a $y$ that is large, but less unusual than $x$ itself.
 
 ## Algorithm
 

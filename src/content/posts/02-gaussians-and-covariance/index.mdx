@@ -20,6 +20,34 @@ references:
   - key: barshalom2001
     text: Bar-Shalom, Li, Kirubarajan. *Estimation with Applications to Tracking and Navigation.* Wiley, 2001. Ch. 1 (review of probability, including the chi-square distribution).
 widgets: [Gaussian1D, CovarianceEllipse]
+symbols:
+  - tex: '\mu,\ \sigma'
+    meaning: mean and standard deviation of a 1D Gaussian
+    match: ['\sigma^2', '\mu \pm']
+  - tex: '\N(\boldsymbol{\mu}, \boldsymbol{\Sigma})'
+    meaning: Gaussian with mean vector μ and covariance Σ
+    match: ['\boldsymbol{\Sigma}']
+  - tex: '\sigma_x,\ \sigma_y,\ \rho'
+    meaning: per-axis standard deviations and correlation
+    match: ['\rho']
+  - tex: '\lambda_1 \ge \lambda_2'
+    meaning: eigenvalues of Σ, the variances along the ellipse axes
+    match: ['\lambda_1']
+  - tex: '\mathbf{v}_1,\ \mathbf{v}_2'
+    meaning: eigenvectors, the directions of the ellipse axes
+    match: ['\mathbf{v}_1']
+  - tex: 'd_M'
+    meaning: Mahalanobis distance
+  - tex: '\mathbf{L}'
+    meaning: Cholesky factor, Σ = LLᵀ
+  - tex: '\mathbf{z} \sim \N(\mathbf{0}, \mathbf{I})'
+    meaning: whitened, standard-normal vector
+    match: ['\mathbf{z}']
+  - tex: '\gamma'
+    meaning: level of a contour, d_M² = γ
+  - tex: '\chi^2_n(p)'
+    meaning: chi-square quantile, the p-region threshold
+    match: ['\chi^2']
 ---
 
 import Gaussian1D from '../../../components/widgets/Gaussian1D/Gaussian1D.svelte';
@@ -27,7 +55,7 @@ import CovarianceEllipse from '../../../components/widgets/CovarianceEllipse/Cov
 
 A robot's GPS receiver reports that the robot is at $x = 3.2$ metres along a corridor. Nobody believes that number to the millimetre. The useful question is how far off it might be, and how likely each error is. A single number cannot say that; a whole curve can.
 
-Almost every estimator in this series answers that question with the same curve: the Gaussian, or bell curve. Here it is. Drag the two handles, or use the sliders.
+Almost every estimator in this series answers that question with the same curve: the Gaussian, or bell curve.<Sidenote>Also called the normal distribution. Gauss used it in 1809 to describe the errors in astronomical observations.</Sidenote> Here it is. Drag the two handles, or use the sliders.
 
 <Gaussian1D client:visible />
 
@@ -73,7 +101,7 @@ $$
 \boldsymbol{\Sigma} = \Cov(\mathbf{x}) = \E\!\left[ (\mathbf{x} - \boldsymbol{\mu})(\mathbf{x} - \boldsymbol{\mu})\T \right] \in \R^{n \times n}.
 $$
 
-Entry $(i, j)$ of $\boldsymbol{\Sigma}$ is the expected product of the errors in components $i$ and $j$. The diagonal holds the variances of each component, and the off-diagonal entries hold the covariances between pairs. Because the product of two errors does not depend on their order, $\boldsymbol{\Sigma}$ is symmetric. It is also positive semidefinite: for any direction $\mathbf{a}$, the variance of $\mathbf{a}\T\mathbf{x}$ is $\mathbf{a}\T\boldsymbol{\Sigma}\mathbf{a}$, and a variance cannot be negative.
+Entry $(i, j)$ of $\boldsymbol{\Sigma}$ is the expected product of the errors in components $i$ and $j$. The diagonal holds the variances of each component, and the off-diagonal entries hold the covariances between pairs. Because the product of two errors does not depend on their order, $\boldsymbol{\Sigma}$ is symmetric. It is also positive semidefinite:<Sidenote>"Semi" allows a variance of exactly zero in some direction. The cloud is then flat, and $\boldsymbol{\Sigma}$ has no inverse.</Sidenote> for any direction $\mathbf{a}$, the variance of $\mathbf{a}\T\mathbf{x}$ is $\mathbf{a}\T\boldsymbol{\Sigma}\mathbf{a}$, and a variance cannot be negative.
 
 The Gaussian density in $n$ dimensions, $\mathbf{x} \sim \N(\boldsymbol{\mu}, \boldsymbol{\Sigma})$, is
 
@@ -125,7 +153,7 @@ $$
 
 ### Mahalanobis distance
 
-The left-hand side of the contour equation deserves its own name. The **Mahalanobis distance** of a point $\mathbf{x}$ from the Gaussian is
+The left-hand side of the contour equation deserves its own name.<Sidenote>After the statistician P. C. Mahalanobis, who introduced it in 1936.</Sidenote> The **Mahalanobis distance** of a point $\mathbf{x}$ from the Gaussian is
 
 $$
 d_M(\mathbf{x}) = \sqrt{ (\mathbf{x} - \boldsymbol{\mu})\T \boldsymbol{\Sigma}^{-1} (\mathbf{x} - \boldsymbol{\mu}) }.
