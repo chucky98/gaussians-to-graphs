@@ -121,18 +121,15 @@ export function kfRun(
 }
 
 /**
- * Batch MAP estimate of the whole trajectory x_0 … x_N of a linear-Gaussian model, from the prior on
- * x_0, every motion step and every measurement: minimize
- *   ‖x_0 − x̂_0‖²_{P_0⁻¹} + Σ_k ‖x_k − F x_{k−1} − B u_k‖²_{Q⁻¹} + Σ_k ‖z_k − H x_k‖²_{R⁻¹}
- * by forming the information matrix Λ and vector η and solving Λ x = η (dense; for tests and small
- * demos). Returns every state's mean and marginal covariance.
+ * Information matrix Λ and vector η of the whole trajectory x_0 … x_N of a linear-Gaussian model: the
+ * normal equations Λ x = η of the batch problem below. Λ is block-tridiagonal (post 19).
  */
-export function batchLinearGaussian(
+export function trajectoryInformation(
   init: KfState,
   m: LinearModel,
   zs: readonly (Vec | null)[],
   us?: readonly Vec[],
-): { x: Vec[]; P: Mat[] } {
+): { Lambda: Mat; eta: Vec } {
   const n = init.x.length;
   const N = zs.length;
   const dim = n * (N + 1);
@@ -177,6 +174,26 @@ export function batchLinearGaussian(
       }
     }
   }
+  return { Lambda: Lam, eta };
+}
+
+/**
+ * Batch MAP estimate of the whole trajectory x_0 … x_N of a linear-Gaussian model, from the prior on
+ * x_0, every motion step and every measurement: minimize
+ *   ‖x_0 − x̂_0‖²_{P_0⁻¹} + Σ_k ‖x_k − F x_{k−1} − B u_k‖²_{Q⁻¹} + Σ_k ‖z_k − H x_k‖²_{R⁻¹}
+ * by forming the information matrix Λ and vector η and solving Λ x = η (dense; for tests and small
+ * demos). Returns every state's mean and marginal covariance.
+ */
+export function batchLinearGaussian(
+  init: KfState,
+  m: LinearModel,
+  zs: readonly (Vec | null)[],
+  us?: readonly Vec[],
+): { x: Vec[]; P: Mat[] } {
+  const n = init.x.length;
+  const N = zs.length;
+  const dim = n * (N + 1);
+  const { Lambda: Lam, eta } = trajectoryInformation(init, m, zs, us);
   const Lc = cholesky(Lam);
   const sol = solveCholesky(Lc, eta);
   const cov = solveCholeskyMat(Lc, identity(dim));

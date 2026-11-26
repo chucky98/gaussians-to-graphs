@@ -1,0 +1,135 @@
+---
+number: 19
+title: The Information Form and the Shape of Sparsity
+description: Information-form updates are cheap, predictions expensive. Over a whole trajectory the information matrix stays sparse while the covariance fills in.
+part: 2
+status: published
+date: 2026-11-26
+prerequisites: [smoothing, conditioning-and-marginalizing]
+objectives:
+  - Write the information filter, and explain why its update is cheap and its prediction expensive, the reverse of the Kalman filter.
+  - Build the information matrix of a whole trajectory, and show that it is block-tridiagonal while its covariance is dense.
+  - Read a zero in the information matrix as conditional independence, and a nonzero covariance as correlation through a chain.
+  - Explain why marginalizing old states destroys sparsity, and why that matters for SLAM.
+references:
+  - key: thrun2005
+    text: Thrun, Burgard, Fox. *Probabilistic Robotics.* MIT Press, 2005. §3.5 (the information filter) and §12.2 (sparsity of the information matrix in SLAM).
+  - key: eustice2006
+    text: 'Eustice, Singh, Leonard. "Exactly sparse delayed-state filters for view-based SLAM." *IEEE Transactions on Robotics* 22(6), 2006.'
+  - key: dellaert2017
+    text: 'Dellaert, Kaess. "Factor Graphs for Robot Perception." *Foundations and Trends in Robotics* 6(1–2), 2017. Ch. 2–3 (smoothing and mapping as sparse least squares, and exploiting its sparsity).'
+  - key: barfoot2024
+    text: Barfoot. *State Estimation for Robotics*, 2nd ed. Cambridge University Press, 2024. Ch. 3 (the block-tridiagonal structure of batch linear-Gaussian estimation).
+widgets: [InfoVsCov]
+symbols:
+  - tex: '\boldsymbol{\Omega} = \mathbf{P}^{-1},\ \boldsymbol{\xi} = \boldsymbol{\Omega}\hat{\mathbf{x}}'
+    meaning: information matrix and information vector
+    match: ['\boldsymbol{\Omega}']
+  - tex: '\mathbf{x}_k'
+    meaning: 'the state at step k; the trajectory is x_0 … x_N'
+    match: ['\mathbf{x}_k']
+  - tex: '\mathbf{H}_k,\ h(\cdot)'
+    meaning: measurement matrix H
+    match: ['\mathbf{H}']
+  - tex: '\mathbf{F}_k,\ f(\cdot)'
+    meaning: state transition F
+    match: ['\mathbf{F}']
+  - tex: 'n_x,\ n_z'
+    meaning: state and measurement dimensions
+    match: ['n_x']
+---
+
+import InfoVsCov from '../../../components/widgets/InfoVsCov/InfoVsCov.svelte';
+
+[Post 18](../smoothing/) ended on a big idea: for linear-Gaussian problems, smoothing is the same as solving for the whole trajectory at once, one Gaussian over every state $\mathbf{x}_0, \ldots, \mathbf{x}_N$. How big is that Gaussian? For post 11's corridor robot after 40 steps it has 41 unknowns, and its covariance matrix has $41^2 = 1681$ entries, every one of them nonzero. Its inverse, the information matrix, has 121.
+
+<InfoVsCov client:visible />
+
+Two heat maps of the same estimate. On the left, the **information matrix** $\boldsymbol{\Omega}$: a thin band along the diagonal, everything else exactly zero. On the right, its inverse, the **covariance** $\mathbf{P}$: the whole square is filled. Drag the slider to add steps: the band grows by a fixed amount per step, the square by a whole new row and column. This difference is the single most important structural fact behind modern SLAM.
+
+## Intuition
+
+In [Post 3](../conditioning-and-marginalizing/) we met the information form of a Gaussian: $\boldsymbol{\Omega} = \mathbf{P}^{-1}$ and $\boldsymbol{\xi} = \boldsymbol{\Omega}\hat{\mathbf{x}}$, and the duality that conditioning is easy in information form while marginalizing is easy in covariance form. Here is a second way to read the two matrices.
+
+An entry of $\mathbf{P}$ says how much two variables are **correlated**: if you learned one, would it tell you about the other? An entry of $\boldsymbol{\Omega}$ says whether they are **directly linked**: does some piece of information, a motion step or a measurement, involve both? The robot's position at step 10 and its position at step 30 are correlated, because the motion model chains them together through every step in between. But no single piece of information connects them directly: each motion step only links neighbours. So $\mathbf{P}$ is dense and $\boldsymbol{\Omega}$ is banded.
+
+Equivalently, a zero in $\boldsymbol{\Omega}$ means **conditional independence**: if you knew the position at step 20, positions 10 and 30 would tell you nothing more about each other. The chain is broken at the known link.
+
+## The math
+
+### The information filter
+
+The Kalman filter can be written entirely in terms of $\boldsymbol{\Omega}$ and $\boldsymbol{\xi}$:
+
+$$
+\begin{aligned}
+\text{update:}\quad \boldsymbol{\Omega}_{k\mid k} &= \boldsymbol{\Omega}_{k\mid k-1} + \mathbf{H}\T\mathbf{R}^{-1}\mathbf{H}, &\quad \boldsymbol{\xi}_{k\mid k} &= \boldsymbol{\xi}_{k\mid k-1} + \mathbf{H}\T\mathbf{R}^{-1}\mathbf{z}_k, \\
+\text{predict:}\quad \boldsymbol{\Omega}_{k\mid k-1} &= \big(\mathbf{F}\,\boldsymbol{\Omega}_{k-1\mid k-1}^{-1}\,\mathbf{F}\T + \mathbf{Q}\big)^{-1}, &\quad \boldsymbol{\xi}_{k\mid k-1} &= \boldsymbol{\Omega}_{k\mid k-1}\,\mathbf{F}\,\hat{\mathbf{x}}_{k-1\mid k-1}.
+\end{aligned}
+\tag{1}
+$$
+
+The update is just addition. Information adds, exactly as $1/P$ did in [Post 11](../kalman-filter-1d/), and several measurements can be added in any order, or all at once. The prediction, though, needs two matrix inverses of size $n_x \times n_x$. The Kalman filter is the other way round: its prediction is cheap and its update needs to invert the $n_z \times n_z$ matrix $\mathbf{S}$. Which form is cheaper depends on the problem: many measurements and few predictions favour the information form.
+
+### The whole trajectory
+
+Now estimate all the states at once. Stack them into one long vector $(\mathbf{x}_0, \ldots, \mathbf{x}_N)$. The batch problem of Post 18 is a sum of squared residuals, one for the prior on $\mathbf{x}_0$, one for each motion step $\mathbf{x}_k - \mathbf{F}\mathbf{x}_{k-1}$, and one for each measurement $\mathbf{z}_k - \mathbf{H}\mathbf{x}_k$. Each residual contributes a term $\mathbf{J}\T\mathbf{W}\mathbf{J}$ to the information matrix of the stack, where $\mathbf{J}$ has nonzero blocks only for the states that residual involves. A motion step involves $\mathbf{x}_{k-1}$ and $\mathbf{x}_k$, so it touches four blocks; a measurement involves only $\mathbf{x}_k$, so it touches one. Adding them all up gives
+
+$$
+\boldsymbol{\Omega} = \begin{bmatrix}
+\boldsymbol{\Omega}_{00} & \boldsymbol{\Omega}_{01} & & & \\
+\boldsymbol{\Omega}_{10} & \boldsymbol{\Omega}_{11} & \boldsymbol{\Omega}_{12} & & \\
+ & \boldsymbol{\Omega}_{21} & \boldsymbol{\Omega}_{22} & \ddots & \\
+ & & \ddots & \ddots & \boldsymbol{\Omega}_{N-1,N} \\
+ & & & \boldsymbol{\Omega}_{N,N-1} & \boldsymbol{\Omega}_{NN}
+\end{bmatrix},
+$$
+
+**block-tridiagonal**: every block more than one step from the diagonal is exactly zero. With $n_x$ numbers per state, it has at most $(3N + 1)\,n_x^2$ nonzero entries: linear in $N$. Its inverse $\mathbf{P}$ has $(N + 1)^2 n_x^2$ entries, and in general none of them is zero.
+
+<Callout type="key">
+For a whole trajectory, the information matrix is sparse and banded, because each motion step and measurement links only neighbouring states; the covariance is dense, because the chain correlates everything. A zero in $\boldsymbol{\Omega}$ is a conditional independence. Storing and solving with $\boldsymbol{\Omega}$ costs time and memory linear in the length of the trajectory.
+</Callout>
+
+### Filtering is marginalization
+
+A filter keeps only the current state. In terms of the trajectory, it **marginalizes out** every past state. In covariance form that would be trivial: delete rows and columns (Post 3). In information form it is a Schur complement, and Post 3 also showed what that does: marginalizing $\mathbf{x}_{k-1}$ out of a chain creates a direct link between its neighbours. Done repeatedly, it leaves a single dense block for the current state, which is all the filter carries. That is fine for a pose, but in SLAM, where the state includes every landmark seen so far, marginalizing the past poses links every landmark to every other one, and the information matrix becomes dense (Post 24). Keeping the past poses, as smoothers and the methods of Part 4 do, keeps it sparse.
+
+## Play with it
+
+<TryThis>
+1. With the corridor problem at 40 steps, $\boldsymbol{\Omega}$ has 121 nonzero entries, 7% of the 1,681, in three diagonals; $\mathbf{P}$ has all 1,681. Step back to 10 steps and forward again: each step adds exactly 3 nonzero entries to $\boldsymbol{\Omega}$ and a whole new row and column to $\mathbf{P}$.
+2. Look at the far corners of $\mathbf{P}$. They are pale but not blank: the correlation between the first and the last position is 0.07 after 10 steps and $3.4 \times 10^{-6}$ after 40. With fixes at every step the correlations fade with distance in time, but they never reach zero.
+3. Switch to the forklift in an aisle, whose state has two numbers per step, position and velocity. The band becomes a band of 2 × 2 blocks: 304 nonzero entries out of 2,704 after 25 steps, each new step adding 12. $\mathbf{P}$ is again completely full.
+</TryThis>
+
+## Algorithm
+
+<AlgorithmBox title="Information filter (one step)" source="src/lib/filters/info.ts">
+1. **Predict:** recover $\mathbf{P} = \boldsymbol{\Omega}^{-1}$ and $\hat{\mathbf{x}}$ (Cholesky solve of $\boldsymbol{\Omega}\hat{\mathbf{x}} = \boldsymbol{\xi}$), push them through the motion model, and invert back: $\boldsymbol{\Omega} \leftarrow (\mathbf{F}\mathbf{P}\mathbf{F}\T + \mathbf{Q})^{-1}$, $\boldsymbol{\xi} \leftarrow \boldsymbol{\Omega}(\mathbf{F}\hat{\mathbf{x}} + \mathbf{B}\mathbf{u})$.
+2. **Update** with each measurement: $\boldsymbol{\Omega} \leftarrow \boldsymbol{\Omega} + \mathbf{H}\T\mathbf{R}^{-1}\mathbf{H}$, $\ \boldsymbol{\xi} \leftarrow \boldsymbol{\xi} + \mathbf{H}\T\mathbf{R}^{-1}\mathbf{z}$.
+3. **Whole trajectory:** add each residual's $\mathbf{J}\T\mathbf{W}\mathbf{J}$ and $\mathbf{J}\T\mathbf{W}\mathbf{b}$ into a block-tridiagonal $\boldsymbol{\Omega}$ and $\boldsymbol{\xi}$, then solve $\boldsymbol{\Omega}\mathbf{x} = \boldsymbol{\xi}$ with a sparse (here banded) Cholesky factorization.
+</AlgorithmBox>
+
+The trajectory version is `trajectoryInformation` in `src/lib/filters/kf.ts`. The unit tests check DESIGN's invariant for this post: the information filter matches the Kalman filter at every step. They also check that updates commute, that the trajectory information matrix is exactly zero beyond the first off-diagonal blocks, and that solving with it reproduces the batch solution of Post 18.
+
+## When it breaks
+
+### Predictions are expensive
+
+Each prediction in (1) inverts the information matrix. For a single robot pose this costs nothing; for a large state it is the reason the information filter is rarely used on its own for tracking. Its natural home is estimation of whole trajectories and maps, where there is no prediction step at all, only residuals to add.
+
+### Getting the estimate back
+
+The information form does not store the mean. Recovering $\hat{\mathbf{x}}$ means solving $\boldsymbol{\Omega}\hat{\mathbf{x}} = \boldsymbol{\xi}$, and recovering a covariance means (partly) inverting $\boldsymbol{\Omega}$. With sparse matrices both are cheap if done carefully; Post 28 shows how the order in which the variables are eliminated decides how much fill-in a factorization creates.
+
+### No information means no inverse
+
+If nothing anchors the estimate, for example a map with no prior on any pose, $\boldsymbol{\Omega}$ is singular: shifting everything by the same amount changes no residual. The covariance form can represent "completely unknown" with an infinite variance; the information form represents it with a zero, and the solver must be told to fix the free directions. This is the **gauge freedom** of Posts 23 and 27.
+
+## Summary
+
+- The information filter stores $\boldsymbol{\Omega} = \mathbf{P}^{-1}$ and $\boldsymbol{\xi} = \boldsymbol{\Omega}\hat{\mathbf{x}}$. Its update adds $\mathbf{H}\T\mathbf{R}^{-1}\mathbf{H}$; its prediction needs inverses. The Kalman filter is the reverse.
+- For a whole trajectory, $\boldsymbol{\Omega}$ is block-tridiagonal and grows linearly; $\mathbf{P}$ is dense and grows quadratically.
+- A zero in $\boldsymbol{\Omega}$ is a conditional independence; a nonzero in $\mathbf{P}$ is a correlation, often through a long chain.
+- Marginalizing old states (filtering) turns sparse into dense; keeping them, as smoothing and SLAM back-ends do, keeps the problem sparse and its solution cheap.

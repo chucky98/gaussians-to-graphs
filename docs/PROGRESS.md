@@ -1,8 +1,8 @@
 # Progress
 
-## Current phase: 2 — Part 2 (in progress: posts 10–18 published)
+## Current phase: 2 — Part 2 complete (posts 01–19 published)
 
-## Next task: Phase 2 — post 19 `information-filter` (InfoVsCov)
+## Next task: Phase 3 — post 20 `rotations` (EulerGimbal, QuaternionSlerp; Threlte, lazy-loaded)
 
 ## Posts
 
@@ -26,7 +26,8 @@
 | 16    | unscented-kalman-filter          | published | UnscentedTransform, UKFvsEKF     | ~2,700 words. Sigma points, α/β/κ (β = 2 − 2α² exact for x²), UKF with augmented control noise; UKF vs EKF on the hall run.  |
 | 17    | particle-filter                  | published | MCL                              | ~2,900 words. Global localization with identical markers; ESS and resampling schemes; kidnapping and augmented MCL; worker.  |
 | 18    | smoothing                        | published | FilterVsSmoother                 | ~2,500 words. Post 11's outage run: filter vs RTS smoother vs batch vs fixed lag; data arriving after the gap.               |
-| 19–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                                |                                                                                                                              |
+| 19    | information-filter               | published | InfoVsCov                        | ~2,300 words. Information filter; trajectory Ω block-tridiagonal vs dense P; conditional independence; marginalization.      |
+| 20–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                                |                                                                                                                              |
 
 ## Infrastructure checklist
 
@@ -128,6 +129,9 @@
 - 2026-11-26 — **Notation addition (post 17):** w_slow, w_fast.
 - 2026-11-26 — **`filters/rts.ts` (post 18):** `rtsSmooth` (gain by Cholesky solve against P_{k+1|k}) and `fixedLagSmooth` (direct, by smoothing up to k + L; O(N²) but N = 40). DESIGN invariant: RTS = batch for every state, means and covariances, including gaps and control inputs. A silent no-op text replacement had dropped the control input from `fixedLagSmooth`; caught because the lag errors were implausible, and now covered by a test with controls.
 - 2026-11-26 — **FilterVsSmoother reuses post 11's outage run (seed 7)** so the gap from post 11 is the one being bridged. Notation: x̂_{k|N}, P_{k|N}, C_k (smoother gain; conflict note with the rotation matrix C), L (lag; conflict note with the Cholesky factor).
+- 2026-11-26 — **`filters/info.ts` (post 19)** (`toInfo`, `fromInfo`, `infoUpdate`, `infoPredict`) and **`trajectoryInformation`** factored out of `batchLinearGaussian` in `kf.ts`. DESIGN invariant: the information filter matches the KF at every step; also tested: updates commute, the trajectory Ω is exactly zero beyond the first off-diagonal blocks, and Λx = η reproduces the batch means.
+- 2026-11-26 — **InfoVsCov** uses post 11's corridor and a 1D constant-velocity forklift (2 numbers per step). The 2D forklift was avoided because its independent x/y problems put exact zeros in P too. Heat maps show |entry| on a 12-decade log scale with exact zeros blank, so "dense but decaying" is visible (first-to-last correlation 3.4e-6 after 40 steps, stated in the post). `Heatmap` gained a `crisp` option for matrix cells.
+- 2026-11-26 — **Phase 2 complete:** posts 10–19 published. Acceptance criteria met: KF = batch, RTS = batch, EKF/UKF = KF on linear models, information filter = KF, and the NEES consistency test all pass.
 - 2026-11-26 — **About page accuracy fix:** it cited "the Kalman filter equals batch least squares" as an existing test; that test arrives with Part 2, so it now cites "recursive least squares equals batch least squares".
 
 ## Follow-ups / known issues
@@ -135,7 +139,7 @@
 - **Owner action (statistics):** GoatCounter site `chucky98` is configured and counting. In GoatCounter → Settings, enable "Allow adding visitor counts on your website"; until then the public counters return 403 and the About section shows "could not be loaded".
 
 - **Owner action:** install the giscus GitHub App on `chucky98/gaussians-to-graphs` (https://github.com/apps/giscus). Then set `giscus.enabled = true` in `src/lib/site/config.ts`.
-- When posts 19, 22, 23, 25, 27, 28, 29 are published: link the plain-text references to them from earlier posts.
+- When posts 20–32 are published (several are already mentioned by number, e.g. 22, 23, 24, 25, 26, 27, 28, 29): link the plain-text references to them from earlier posts.
 - Client-side KaTeX (77 KB gz) still loads for widgets with TeX labels or MatrixView. Consider rendering static TeX at build time and showing live numbers as plain text.
 - `Plot2D` pan/zoom is not implemented yet (no Phase 0 widget needs it). Primitives still to build when first needed: Landmark, Heatmap, Spy.
 - Lighthouse has not been run (optional per §8.4).
@@ -162,4 +166,5 @@
 | Post 16 islands             | UnscentedTransform 4.7 KB, UKFvsEKF 3.1 KB gz; no KaTeX                                     |                                                               |
 | MCL island                  | 4.5 KB gz + worker 3.0 KB gz                                                                | Particle filter off the main thread                           |
 | FilterVsSmoother island     | 3.9 KB gz (+ shared primitives and Svelte runtime)                                          | No KaTeX                                                      |
+| InfoVsCov island            | 2.8 KB gz (+ shared primitives and Svelte runtime)                                          | No KaTeX                                                      |
 | Shared: KaTeX chunk         | 77 KB                                                                                       | Loaded only by Gaussian1D / CovarianceEllipse (post 02)       |

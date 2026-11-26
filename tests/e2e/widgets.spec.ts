@@ -563,3 +563,18 @@ test.describe('post 18 widgets', () => {
     await expect(w.locator('[data-readout="t"]')).toHaveText('26');
   });
 });
+
+test.describe('post 19 widgets', () => {
+  test('InfoVsCov: sparse Ω, dense P, growth per step, the aisle problem', async ({ page }) => {
+    await page.goto('posts/information-filter/');
+    const w = page.locator('[data-widget="InfoVsCov"]');
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="omega"]')).toHaveText('121 of 1681 nonzero (7%)');
+    await expect(w.locator('[data-readout="p"]')).toHaveText('1681 of 1681 nonzero (100%)');
+    await w.getByRole('slider', { name: 'Steps of data' }).fill('10');
+    await expect(w.locator('[data-readout="omega"]')).toHaveText('31 of 121 nonzero (26%)');
+    await w.getByLabel('Problem').selectOption('aisle');
+    await expect(w.locator('[data-readout="omega"]')).toHaveText('304 of 2704 nonzero (11%)');
+  });
+});
