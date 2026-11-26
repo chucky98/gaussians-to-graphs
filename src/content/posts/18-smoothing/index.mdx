@@ -129,7 +129,7 @@ A smoother is not a better real-time filter. A robot deciding where to steer now
 
 ### Storage
 
-The RTS smoother keeps every filtered estimate and covariance. For a pose this is nothing; for a state with thousands of variables over hours of data, it adds up. Part 4's solvers avoid storing dense covariances by working with the sparse information form instead (Post 19).
+The RTS smoother keeps every filtered estimate and covariance. For a pose this is nothing; for a state with thousands of variables over hours of data, it adds up. Part 4's solvers avoid storing dense covariances by working with the sparse information form instead ([Post 19](../information-filter/)).
 
 ### Nonlinear models
 

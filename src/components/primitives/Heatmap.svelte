@@ -13,8 +13,10 @@
     vmax?: number;
     loToken?: string;
     hiToken?: string;
+    /** Draw cells as sharp squares (e.g. matrix entries) instead of interpolating between them. */
+    crisp?: boolean;
   }
-  let { ctx, values, nx, ny, vmax, loToken = '--c-seq-lo', hiToken = '--c-seq-hi' }: Props = $props();
+  let { ctx, values, nx, ny, vmax, loToken = '--c-seq-lo', hiToken = '--c-seq-hi', crisp = false }: Props = $props();
 
   let canvas: HTMLCanvasElement | undefined = $state();
   let themeTick = $state(0);
@@ -48,7 +50,7 @@
     og.putImageData(img, 0, 0);
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.clearRect(0, 0, width, height);
-    g.imageSmoothingEnabled = true;
+    g.imageSmoothingEnabled = !crisp;
     g.drawImage(off, inner.left, inner.top, inner.right - inner.left, inner.bottom - inner.top);
   });
 </script>
