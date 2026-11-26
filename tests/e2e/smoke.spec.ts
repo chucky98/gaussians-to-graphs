@@ -119,8 +119,8 @@ test('search dialog loads the Pagefind index and finds the covariance post', asy
 });
 
 for (const path of builtPages()) {
-  test(`/${path} has no horizontal overflow at 320 and 375 px`, async ({ page }) => {
-    for (const width of [320, 375]) {
+  test(`/${path} has no horizontal overflow from 320 to 1280 px`, async ({ page }) => {
+    for (const width of [320, 375, 1000, 1280]) {
       await page.setViewportSize({ width, height: 800 });
       await page.goto(path);
       await visitWidgets(page);
@@ -129,6 +129,23 @@ for (const path of builtPages()) {
     }
   });
 }
+
+test('wide widgets are centred and clear both margin rails at 1280 and 1500 px', async ({ page }) => {
+  for (const width of [1280, 1500]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('posts/bayes-filter/');
+    const r = await page.evaluate(() => {
+      const w = document.querySelector('[data-widget]')!.getBoundingClientRect();
+      const p = document.querySelector('.prose')!.getBoundingClientRect();
+      const toc = document.querySelector('.toc-col')!.getBoundingClientRect();
+      const sym = document.querySelector('.sym-col')!.getBoundingClientRect();
+      return { wl: w.left, wr: w.right, pc: (p.left + p.right) / 2, tocR: toc.right, symL: sym.left };
+    });
+    expect(Math.abs((r.wl + r.wr) / 2 - r.pc), `widget centred at ${width}px`).toBeLessThan(1);
+    expect(r.wl, `clear of the contents rail at ${width}px`).toBeGreaterThan(r.tocR);
+    expect(r.wr, `clear of the symbols rail at ${width}px`).toBeLessThan(r.symL);
+  }
+});
 
 test.describe('post table of contents', () => {
   const post = 'posts/gaussians-and-covariance/';

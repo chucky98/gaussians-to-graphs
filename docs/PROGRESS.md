@@ -92,6 +92,7 @@
 - 2026-11-26 — **CorridorRobot scenario (post 10):** 30 m loop, 120 cells of 25 cm, six doors with two pairs at the same 3 m spacing (1/4 and 10/13 m) so two hypotheses survive the second door. Defaults α = 0.1 m per 1 m move, hit 0.9, false alarm 0.05, chosen by sweeping layouts/parameters over 60–100 seeds (0.5 m cells made α invisible; α = 0.25 with hit 0.8 rarely localized). Seed 18 is typical: localized (> 90% within ±1 m) at move 21; median over seeds 1–100 is 19. The widget's readings are drawn from the filter's own model (model mismatch is post 13's topic). Each action draws exactly one uniform, so sliders replay the same luck.
 - 2026-11-26 — **Kidnapping probability ε = 0.001 per move** (toggle). Without it the tracking preset (two laps) is still lost 80 moves after a kidnap; with it, back above 90% after 32 moves, at a cost of 94.2% → 92.6% average near-truth mass (seeds 1–100). A "surprise" readout (the normalizer p(zₖ | earlier data)) was tried and dropped: one surprising reading also happens while tracking correctly, so it would teach a misleading signal.
 - 2026-11-26 — **Notation additions (post 10):** z₁:ₖ/u₁:ₖ, predicted belief bel̄(xₖ), scalar normalizer η (conflict note vs bold η of Gauss–Newton), ε kidnapping probability (conflict note vs NEES εₖ); α now also covers "per 1 m move" in post 10.
+- 2026-11-26 — **Wide widgets were never centred (fixed).** `WidgetFrame`'s scoped `margin: … 0` overrode the global `.wide` negative side margins, so widgets started at the text column's left edge: from 721 to 1239 px every post with a widget scrolled horizontally, and at 1280 px widgets ran under the symbols card. Frames (and `Figure`) now set only block margins. The e2e overflow test now also runs at 1000 and 1280 px, and a new test checks that widgets are centred and clear both rails at 1280 and 1500 px.
 - 2026-11-26 — **About page accuracy fix:** it cited "the Kalman filter equals batch least squares" as an existing test; that test arrives with Part 2, so it now cites "recursive least squares equals batch least squares".
 
 ## Follow-ups / known issues
@@ -102,7 +103,6 @@
 - When posts 11, 12, 13, 15, 16, 17, 19, 22, 23, 25, 27, 28, 29 are published: link the plain-text references to them from earlier posts.
 - Client-side KaTeX (77 KB gz) still loads for widgets with TeX labels or MatrixView. Consider rendering static TeX at build time and showing live numbers as plain text.
 - `Plot2D` pan/zoom is not implemented yet (no Phase 0 widget needs it). Primitives still to build when first needed: Landmark, Heatmap, Spy.
-- **Layout bug (pre-existing, all posts):** at 1280 px the sticky "Symbols in this post" card in the right margin overlaps the right ~30 px of wide widgets (seen on posts 08 and 10). Fix in a separate `infra/` PR: either narrow the wide-widget cap to leave room for the symbols column, or fade the card while a widget overlaps it (as is done for margin notes).
 - Lighthouse has not been run (optional per §8.4).
 - Post 01's DriftFan "close the loop" follow-up remains scheduled for Phase 4.
 
