@@ -1,0 +1,180 @@
+---
+number: 1
+title: Where Am I? Why Estimation Matters
+description: Every motion and every sensor reading is uncertain. A robot that ignores this gets lost; estimation is a best guess plus an honest error bar.
+part: 0
+status: published
+date: 2026-11-26
+prerequisites: []
+objectives:
+  - Explain why every motion and every sensor reading a robot relies on is uncertain.
+  - Describe an estimate as a best guess together with an honest statement of how wrong it might be.
+  - Predict how dead-reckoning error grows with distance, and explain why heading errors dominate.
+  - Find your way around the rest of this series.
+references:
+  - key: thrun2005
+    text: Thrun, Burgard, Fox. *Probabilistic Robotics.* MIT Press, 2005. §1.1 (uncertainty in robotics) and §5.4 (the odometry motion model).
+  - key: durrantwhyte2006
+    text: 'Durrant-Whyte, Bailey. "Simultaneous localization and mapping: part I." *IEEE Robotics & Automation Magazine*, 13(2), 2006.'
+  - key: barfoot2024
+    text: Barfoot. *State Estimation for Robotics*, 2nd ed. Cambridge University Press, 2024. Ch. 1 (introduction and a short history of estimation).
+widgets: [DriftFan]
+---
+
+import DriftFan from '../../../components/widgets/DriftFan/DriftFan.svelte';
+import SyllabusMap from '../../../components/layout/SyllabusMap.astro';
+
+Close your eyes, walk ten paces forward, turn left, walk ten more, and point to where you started. You will be close, but not exactly right. Do it again with forty paces and a few more turns and you will be further off. You never stopped knowing roughly where you were. You just became steadily less sure.
+
+A wheeled robot without GPS or cameras is in the same position. It counts wheel rotations to work out how far it has driven and how much it has turned. This is called **odometry**, and adding up its readings to track position is called **dead reckoning**. Every reading is slightly wrong, and the errors pile up. Below, a robot drives two laps of a loop. Each dotted line is what the robot would believe in one run, each run with its own random odometry errors.
+
+<DriftFan client:visible />
+
+The robot always drives the same path, the thin solid line, yet the runs disagree more and more as it goes. Any single run looks like a perfectly reasonable path. Only by looking at many of them together do you see how little the robot really knows about where it is.
+
+## Intuition
+
+### Everything a robot knows is uncertain
+
+Wheels slip on smooth floors and skid in turns. The wheel radius is never exactly what the specification says, and encoders count in whole ticks. A GPS position jumps around by metres near buildings. A laser range finder is accurate to a centimetre or two, except when the beam hits glass. A camera sees a corner, but only to within a pixel, and from far away a pixel covers a lot of ground.
+
+Even the *models* are uncertain. The equations a robot uses to predict its motion assume rigid wheels on flat ground. Real robots wobble.
+
+None of this is a defect to be engineered away. Better sensors shrink the errors but never remove them. The useful question is how to act sensibly anyway.
+
+### An estimate is a guess and an error bar
+
+The answer that runs through this whole series is to keep two things at once:
+
+<Callout type="key">
+An **estimate** is a best guess together with an honest statement of how wrong that guess might be.
+</Callout>
+
+A robot that reports only "I am at $(3.2, 1.7)$" cannot tell a solid fix from a wild guess. A robot that reports "I am at $(3.2, 1.7)$, give or take 2 metres" can decide to slow down, to look around for a landmark, or to trust a new measurement over its own belief. The spread of the runs in the widget is that honest error bar for a dead-reckoning robot.
+
+Notice the word *honest*. An error bar that is too small is dangerous, because the robot will ignore evidence that it is wrong. One that is too large is wasteful, because it ignores evidence that it is right. Much of this series is about keeping the error bar the right size.
+
+### Motion spreads uncertainty; measurements shrink it
+
+Two opposite forces act on a robot's uncertainty. Moving without looking makes it grow, as in the widget. Measuring something about the world, such as the distance to a wall or the position of a landmark, makes it shrink. Every method in this series, from the Kalman filter to modern SLAM back-ends, is a way of balancing these two forces correctly.
+
+## The math
+
+### Poses and dead reckoning
+
+The robot's **pose** at time step $k$ is its position and heading,
+
+$$
+\mathbf{x}_k = \begin{bmatrix} x_k \\ y_k \\ \theta_k \end{bmatrix},
+$$
+
+where $x_k$ and $y_k$ are coordinates in metres and $\theta_k$ is the heading, the angle between the robot's forward direction and the $x$-axis. At each step, odometry reports a reading $\mathbf{u}_k = (d_k, \Delta\theta_k)$: the robot drove $d_k$ metres forward and then turned by $\Delta\theta_k$ radians. Dead reckoning applies the readings one at a time:
+
+$$
+\begin{aligned}
+x_k &= x_{k-1} + d_k \cos\theta_{k-1}, \\
+y_k &= y_{k-1} + d_k \sin\theta_{k-1}, \\
+\theta_k &= \theta_{k-1} + \Delta\theta_k .
+\end{aligned}
+$$
+
+Drive $d_k$ along the current heading, then turn. The widget uses exactly these equations, with steps of about 25 cm: 280 readings for the two 34.8 m laps.
+
+### Noisy readings
+
+The robot never receives the true reading $\mathbf{u}_k$. It receives a measured reading, marked with a tilde,
+
+$$
+\tilde{\mathbf{u}}_k = \mathbf{u}_k + \mathbf{w}_k ,
+$$
+
+where $\mathbf{w}_k$ is a small random error, the **process noise**. In the widget both components of $\mathbf{w}_k$ are independent and Gaussian with zero mean and variance $\alpha^2 d_k$. The number $\alpha$ is the odometry noise level, and the widget shows it as a percentage: with $\alpha = 3\%$, after one metre of driving the distance error has a standard deviation of 3 cm and the heading error one of 0.03 rad. (The bell-shaped Gaussian distribution is the subject of the [next post](../gaussians-and-covariance/).) Dead reckoning runs the equations above with $\tilde{\mathbf{u}}_k$ in place of $\mathbf{u}_k$, and each run in the widget is one draw of all the errors $\mathbf{w}_1, \mathbf{w}_2, \ldots$
+
+### How the errors add up
+
+Independent random errors do not cancel neatly. They partly cancel and partly add, and the rule is that their **variances add**. After driving a total distance $\ell = d_1 + \dots + d_k$, the heading error is the sum of all the turn errors so far, so its variance is $\alpha^2 d_1 + \dots + \alpha^2 d_k = \alpha^2 \ell$ and its standard deviation is
+
+$$
+\sigma_\theta(\ell) = \alpha\sqrt{\ell} .
+$$
+
+The same holds for the total error in distance. Both grow with the square root of the distance driven: slowly, but without limit.
+
+Position error grows much faster, because a heading error does not stay put. A robot that is off by a small angle $\delta$ drifts sideways by about $\delta$ metres for every metre it drives afterwards. Heading errors made early are carried for the whole remaining distance, and they keep accumulating. On a straight drive this makes the sideways error grow like $\ell^{3/2}$.
+
+<Derivation title="Sideways drift on a straight line">
+Drive straight ahead in $n$ equal steps of length $d$, so $\ell = nd$. Let $e_m$ be the turn error in reading $m$. Before step $i$ the heading error is $e_1 + \dots + e_{i-1}$, so for small angles step $i$ moves the robot sideways by about $d\,(e_1 + \dots + e_{i-1})$. Adding up all $n$ steps, error $e_m$ is counted once for every later step, $n - m$ times:
+
+$$
+\text{sideways error} \approx d \sum_{m=1}^{n-1} (n - m)\, e_m .
+$$
+
+The $e_m$ are independent with variance $\alpha^2 d$, so the variances add:
+
+$$
+\operatorname{Var} \approx d^2 \cdot \alpha^2 d \sum_{j=1}^{n-1} j^2 \approx \alpha^2 d^3 \frac{n^3}{3} = \frac{\alpha^2 \ell^3}{3} .
+$$
+
+Taking the square root gives a standard deviation of $\alpha\,\ell^{3/2}/\sqrt{3}$.
+</Derivation>
+
+For $\alpha = 3\%$ and a straight 20 m drive, the heading error is about $0.03 \times \sqrt{20} \approx 0.13$ rad ($7.7^\circ$). The sideways error is about $0.03 \times 20^{3/2}/\sqrt{3} \approx 1.55$ m, more than ten times the 0.13 m error that comes from misread distances alone.
+
+<Callout type="intuition">
+Small heading errors are what get a dead-reckoning robot lost. A wheel that reads 1% long costs you 1% of the distance driven. A heading that is off by one degree costs you 1.7 cm for every metre you drive afterwards, and that keeps adding up.
+</Callout>
+
+On a loop the picture is less tidy. A heading error made at some point rotates the rest of the path around that point. The displacement is largest when the robot is far from where the error happened and smaller when it comes back nearby. That is why the error curve in the widget rises in waves instead of in a smooth $\ell^{3/2}$ curve.
+
+## Play with it
+
+The widget starts at the end of the drive, so you see the full fan at once. Press **Replay** to watch it grow, or drag the time slider. The lower plot shows the root-mean-square (RMS) position error of the runs, a typical distance between a run's position and the truth, against the distance driven. The dashed ellipse is fitted to where the runs currently are and holds 95% of a Gaussian with the same spread. For these defaults, the RMS position error is 1.19 m after one lap and 1.98 m after two, and the worst of the 30 runs ends 4.67 m from the truth.
+
+<TryThis>
+1. Press **Replay** and watch the lower plot. The error rises in waves. It climbs to about 1.4 m after 31 m of driving, dips to 1.05 m, climbs to 1.9 m, dips to 1.4 m and climbs to 2.3 m: each crest and each dip is higher than the one before. The true robot passes its starting point after one lap, but the estimate does not return there with it.
+2. Set the odometry noise to 0. Every run lies exactly on the true path and the error is zero. Now set it to 6%, double the default. The error roughly doubles too, to 2.38 m after one lap and 3.91 m after two.
+3. The RMS heading error after two laps should be close to $\alpha\sqrt{\ell} = 0.03 \times \sqrt{69.7} \approx 14.4^\circ$. With 30 runs the widget shows $13.8^\circ$. Raise the number of runs to 100 and it shows $14.2^\circ$. The runs are a sample, and more of them give a better picture of the spread.
+4. Hide the true path. Nothing in the picture now tells you which run is right, and that is the robot's actual situation. The most it can honestly say is how far apart the runs are.
+</TryThis>
+
+## Algorithm
+
+<AlgorithmBox title="Dead reckoning with noisy odometry, repeated to see the spread" source="src/lib/sim/odometry.ts">
+1. Start every run at the known initial pose $\mathbf{x}_0$.
+2. For each step $k = 1, 2, \ldots$: draw the error $\mathbf{w}_k$, form the reading $\tilde{\mathbf{u}}_k = \mathbf{u}_k + \mathbf{w}_k$, and update $x_k, y_k, \theta_k$ with the dead-reckoning equations.
+3. Repeat with fresh errors for each run (the widget uses a fixed seed per run, so the same run looks the same every time).
+4. At each step, summarize the runs: their RMS distance from the truth, and a Gaussian fitted to their positions.
+</AlgorithmBox>
+
+Repeating a random experiment many times to see the spread of the outcomes is called **Monte Carlo** simulation. Here it shows uncertainty you could not easily see in any other way. Later posts compute the same spread directly, without simulating anything.
+
+## When it breaks
+
+**Pretending odometry is exact.** A robot that integrates odometry and reports a single pose has an error bar of zero, which after two laps is wrong by metres. Any decision built on it, such as "the doorway is 30 cm to my left", inherits that false confidence.
+
+**Systematic errors.** The widget's errors are random with zero mean, so they are as likely to be positive as negative. Real odometry also has *biases*: a wheel that is really 1% smaller than the robot assumes makes every distance reading 1% too large, every time. Biases do not partly cancel the way random errors do, and a model that only allows for random noise will underestimate the spread. Calibration removes most bias; what is left must be part of the noise model.
+
+**Non-Gaussian surprises.** A wheel spinning on a wet patch is not a small Gaussian error. It is a rare, large one. Estimators built on Gaussian assumptions can be badly misled by such outliers. Post 29 deals with them in the setting where they hurt most.
+
+**Coming home does not help on its own.** The robot in the widget passes its starting point after one lap, but nothing in odometry tells it so. Only when it *recognizes* a place it has seen before, a loop closure, can it use that fact to pull the whole estimate back into shape. Post 27 shows how.
+
+## Where this series goes
+
+This series builds, step by step, the tools to turn the fan above into an estimate that stays sharp. It is organized in five parts.
+
+- **Part 0, Foundations,** sets up the language: Gaussian distributions and covariance matrices, how to condition and marginalize them, and how uncertainty passes through functions.
+- **Part 1, Estimation theory,** asks how to get the best guess from data: least squares, likelihood and priors, what makes an estimator good, and how to solve nonlinear problems.
+- **Part 2, Bayes filters,** adds time. The Kalman filter and its relatives combine a motion model like the one above with measurements, and shrink the fan every time the robot sees something.
+- **Part 3, Geometry,** deals properly with rotations and poses. Rotations are why a spread like the one above bends into a curve, and why a single ellipse describes it poorly.
+- **Part 4, SLAM,** lets the robot build a map while using it, and casts the whole problem as one large, sparse optimization. That is how loop closures snap a drifted path back into place.
+
+Each post lists the earlier posts it builds on. Here is the full plan; posts that are not yet published are marked *coming soon*.
+
+<SyllabusMap id="series-map" />
+
+## Summary
+
+- Every motion and every sensor reading a robot relies on is uncertain, and so are the models that interpret them.
+- An estimate is a best guess together with an honest error bar. An error bar that is too small is as harmful as one that is missing.
+- Dead reckoning adds up noisy odometry. Its errors never stop growing: heading error grows like $\sqrt{\ell}$, and position error grows faster still, like $\ell^{3/2}$ on a straight drive.
+- Moving without looking spreads uncertainty; measurements shrink it. The rest of the series is about combining the two correctly.

@@ -1,16 +1,16 @@
 # Progress
 
-## Current phase: 0 — Foundation (complete, 2026-11-26)
+## Current phase: 1 — Parts 0 and 1 (in progress: 2 of 9 posts published)
 
-## Next task: Phase 1 — post 01 `where-am-i` (DriftFan widget; `geometry/se2` basics)
+## Next task: post 03 `conditioning-and-marginalizing` (SliceVsProject widget)
 
 ## Posts
 
-| #     | Slug                             | Status    | Widgets                       | Notes                                                                                                  |
-| ----- | -------------------------------- | --------- | ----------------------------- | ------------------------------------------------------------------------------------------------------ |
-| 01    | where-am-i                       | todo      | DriftFan                      | Phase 1. Post 02 lists it as a prerequisite; it renders as "coming soon" until published.              |
-| 02    | gaussians-and-covariance         | published | Gaussian1D, CovarianceEllipse | Reference implementation of the post template. ~2,200 words. Claims pinned in `tests/unit/posts/02-…`. |
-| 03–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                             |                                                                                                        |
+| #     | Slug                             | Status    | Widgets                       | Notes                                                                                                                       |
+| ----- | -------------------------------- | --------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| 01    | where-am-i                       | published | DriftFan                      | ~2,100 words. Embeds the SyllabusMap. Claims pinned in `tests/unit/posts/01-…`. Phase 4 follow-up: "close the loop" toggle. |
+| 02    | gaussians-and-covariance         | published | Gaussian1D, CovarianceEllipse | Reference implementation of the post template. ~2,200 words. Claims pinned in `tests/unit/posts/02-…`.                      |
+| 03–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                             |                                                                                                                             |
 
 ## Infrastructure checklist
 
@@ -48,13 +48,20 @@
 - 2026-11-26 — **Default OG image** generated once by `scripts/make-og.ts` (per-part images are Phase 5).
 - 2026-11-26 — **Gaussian1D σ range 0.4–2.5** (not 0.3) so the y-axis can stop at 1.05 and the plot stays readable at 320 px.
 - 2026-11-26 — **New seeds are deterministic** (`nextSeed(seed)` in `rng.ts`), so even "New seed" sequences are reproducible.
+- 2026-11-26 — **Phase 0 complete; Phase 1 started** with post 01.
+- 2026-11-26 — **`geometry/so2` + `geometry/se2` Phase 1 subset:** `wrapAngle`, `angleDiff`, `rotate`; `compose`, `inverse`, `act`, `between`. Exp/Log, ⊕/⊖ and Jacobians are deferred to Phase 3 (post 21), where they are first needed and fully tested.
+- 2026-11-26 — **Odometry model ("move, then turn") with random-walk noise scaling.** Each reading (d, Δθ) gets independent noise with std α·√d, so "after 1 m the error std is α" holds for any step size. Implemented in `src/lib/sim/odometry.ts`; the stadium loop is in `src/lib/sim/trajectories.ts`.
+- 2026-11-26 — **Common random numbers in DriftFan.** Run r always uses the same standard-normal draws (seeded per run), so changing the noise slider or the number of runs moves the fan smoothly instead of reshuffling it.
+- 2026-11-26 — **Notation additions (post 01):** x_k, y_k, θ_k (pose components), d_k, Δθ_k (odometry reading), α (odometry noise level), ℓ (distance driven); conflict notes for x_k vs bold x_k and α (odometry) vs α (UKF).
+- 2026-11-26 — **`Slider` no longer imports KaTeX;** TeX labels use the new `TexSlider`. This keeps the 77 KB (gz) KaTeX chunk out of widgets without TeX: DriftFan dropped from ~125 KB to ~45 KB total.
+- 2026-11-26 — **New primitives:** `PathsCanvas` (many polylines on canvas, dash patterns read from tokens) and `Robot2D` (pose glyph).
 
 ## Follow-ups / known issues
 
 - **Owner action:** install the giscus GitHub App on `chucky98/gaussians-to-graphs` (https://github.com/apps/giscus). Then set `giscus.enabled = true` in `src/lib/site/config.ts`.
-- When posts 01, 04, 13, 23, 25 are published: link the references to them from post 02 (prerequisite box links automatically).
-- Client-side KaTeX is ~75 KB gz of the 90 KB shared chunk. Consider rendering only the static parts with KaTeX and showing live numbers as plain text, or lazy-loading KaTeX.
-- `Plot2D` pan/zoom is not implemented yet (no Phase 0 widget needs it). Primitives still to build when first needed: Robot2D, Landmark, Heatmap, Spy.
+- When posts 04, 13, 23, 25, 27, 29 are published: link the plain-text references to them from posts 01 and 02.
+- Client-side KaTeX (77 KB gz) still loads for widgets with TeX labels or MatrixView. Consider rendering static TeX at build time and showing live numbers as plain text.
+- `Plot2D` pan/zoom is not implemented yet (no Phase 0 widget needs it). Primitives still to build when first needed: Landmark, Heatmap, Spy.
 - Lighthouse has not been run (optional per §8.4).
 - Post 01's DriftFan "close the loop" follow-up remains scheduled for Phase 4.
 
@@ -64,6 +71,7 @@
 | -------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------- |
 | Post page before hydration | ~3.2 KB inline (theme, search loader, giscus loader, island runtime) | Budget 50 KB ✓. Pagefind UI loads only when search is opened. |
 | Gaussian1D island          | 2.6 KB                                                               | Budget ~80 KB ✓ (excl. shared)                                |
-| CovarianceEllipse island   | 8.5 KB                                                               | Budget ~80 KB ✓ (excl. shared)                                |
+| CovarianceEllipse island   | 6.0 KB                                                               | Budget ~80 KB ✓ (excl. shared)                                |
 | Shared: Svelte runtime     | 22.8 KB                                                              |                                                               |
-| Shared: KaTeX + primitives | 90.6 KB                                                              | See follow-up above                                           |
+| DriftFan island            | 4.8 KB (+ 13.6 KB shared primitives, 3.3 KB animation, 23 KB Svelte) | Post 01 total ≈ 45 KB; no KaTeX                               |
+| Shared: KaTeX chunk        | 77 KB                                                                | Loaded only by Gaussian1D / CovarianceEllipse (post 02)       |

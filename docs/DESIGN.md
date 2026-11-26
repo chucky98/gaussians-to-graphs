@@ -251,6 +251,10 @@ Typography: scalars are italic ($x$), vectors are bold lowercase ($\mathbf{x}$),
 | $\hat{\mathbf{x}}_{k\mid k-1}$, $\mathbf{P}_{k\mid k-1}$ | predicted mean and covariance |
 | $\hat{\mathbf{x}}_{k\mid k}$, $\mathbf{P}_{k\mid k}$ | updated (posterior) mean and covariance |
 | $\mathbf{u}_k$ | control input / odometry |
+| $x_k, y_k, \theta_k$ | components of a planar pose: position and heading (italic; the bold $\mathbf{x}_k$ is the whole state) |
+| $d_k, \Delta\theta_k$ | odometry reading: distance driven, then turn ("move, then turn" model) |
+| $\alpha$ | odometry noise level, error standard deviation per $\sqrt{\text{m}}$ (Part 0; the UKF's $\alpha$ is a different parameter) |
+| $\ell$ | total distance driven |
 | $\mathbf{z}_k$ | measurement |
 | $\mathbf{F}_k$, $f(\cdot)$ | linear state transition / nonlinear motion model |
 | $\mathbf{B}_k$ | control-input matrix |
