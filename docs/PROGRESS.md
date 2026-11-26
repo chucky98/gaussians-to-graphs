@@ -1,8 +1,8 @@
 # Progress
 
-## Current phase: 2 — Part 2 (in progress: posts 10–14 published)
+## Current phase: 2 — Part 2 (in progress: posts 10–15 published)
 
-## Next task: Phase 2 — post 15 `extended-kalman-filter` (EKFLocalization)
+## Next task: Phase 2 — post 16 `unscented-kalman-filter` (UnscentedTransform, UKFvsEKF)
 
 ## Posts
 
@@ -22,7 +22,8 @@
 | 12    | kalman-filter                    | published | CVTracker2D                      | ~2,700 words. Warehouse forklift from ceiling-camera fixes; constant-velocity model; velocity learned via correlation; turn. |
 | 13    | tuning-and-consistency           | published | TuningLab                        | ~2,500 words. 50 Monte Carlo runs of the forklift tracker; true vs assumed noise; NEES/NIS bounds; NIS blind spot; Joseph.   |
 | 14    | robot-models-2d                  | published | MotionModelSampler, RangeBearing | ~2,600 words. Velocity/odometry models, control vs state noise (V M Vᵀ), range–bearing Jacobians; hospital lobby markers.    |
-| 15–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                                |                                                                                                                              |
+| 15    | extended-kalman-filter           | published | EKFLocalization                  | ~2,600 words. Robot in a hall with 8 mapped markers; EKF vs odometry; blind and bad-start presets; overconfident recovery.   |
+| 16–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                                |                                                                                                                              |
 
 ## Infrastructure checklist
 
@@ -112,6 +113,9 @@
 - 2026-11-26 — **`models/unicycle.ts` + `models/range-bearing.ts` (post 14).** Velocity model written in the sinc form (chord v·dt·sinc(ωdt/2) along θ + ωdt/2), exactly the textbook arc but stable as ω → 0, so there is no straight-line branch; Jacobians F and V derived from it. Odometry model (rot1, trans, rot2) with `odometryBetween`. Range–bearing h, inverse, and Jacobians wrt pose and landmark. All Jacobians tested against central differences, including ω = 0.
 - 2026-11-26 — **RangeBearing draws a true 95% region:** the 95% ellipse of (r, φ) mapped to the floor (a box of two 1.96σ intervals would hold only 90%); tested by simulation. Two Try-this prompts were rewritten after checking: speed noise alone does not make a thin sliver along a 103° arc; the honest lesson is size (0.16 m vs 1.42 m).
 - 2026-11-26 — **Notation additions (post 14):** v, ω; σ_v, σ_ω; bold M_k, V_k; δ_rot1, δ_trans, δ_rot2; r, φ (bearing). Conflict notes: θ heading vs post 4's bearing θ; v vs bold v_k; M vs bold M_k.
+- 2026-11-26 — **`filters/ekf.ts` (post 15):** generic `ekfPredict`/`ekfUpdate` with model-supplied f, F, Q(x, u), h, H, R and a residual function (angle wrapping); the update reuses `kfUpdate` on a pseudo-measurement H x̂ + ν, so the Joseph form and Cholesky gain are shared. DESIGN invariant: EKF = KF within 1e-9 on a linear model.
+- 2026-11-26 — **EKFLocalization scenario:** 20 × 12 m hall, 8 markers, one rounded-rectangle lap plus a straight (120 steps of 0.5 s at 1 m/s), lidar 5 m. Seed 155 chosen as the most typical of 200 (EKF RMS, odometry drift, NEES coverage, and the bad-start recovery). The "break it" preset was found by search: with this many markers the EKF always recovers from a 4.5 m / 150° start, so the honest lesson is overconfidence during recovery (NEES above its range at all of steps 1–31) and failure at a 3 m range.
+- 2026-11-26 — **Process fix:** `gh pr checks --watch` returned before CI had registered on PR #22, which was then merged unverified (CI passed afterwards). Merges now go through a helper that waits for the checks to appear, then for them to pass.
 - 2026-11-26 — **About page accuracy fix:** it cited "the Kalman filter equals batch least squares" as an existing test; that test arrives with Part 2, so it now cites "recursive least squares equals batch least squares".
 
 ## Follow-ups / known issues
@@ -119,7 +123,7 @@
 - **Owner action (statistics):** GoatCounter site `chucky98` is configured and counting. In GoatCounter → Settings, enable "Allow adding visitor counts on your website"; until then the public counters return 403 and the About section shows "could not be loaded".
 
 - **Owner action:** install the giscus GitHub App on `chucky98/gaussians-to-graphs` (https://github.com/apps/giscus). Then set `giscus.enabled = true` in `src/lib/site/config.ts`.
-- When posts 15, 16, 17, 19, 22, 23, 25, 27, 28, 29 are published: link the plain-text references to them from earlier posts.
+- When posts 16, 17, 19, 22, 23, 25, 27, 28, 29 are published: link the plain-text references to them from earlier posts.
 - Client-side KaTeX (77 KB gz) still loads for widgets with TeX labels or MatrixView. Consider rendering static TeX at build time and showing live numbers as plain text.
 - `Plot2D` pan/zoom is not implemented yet (no Phase 0 widget needs it). Primitives still to build when first needed: Landmark, Heatmap, Spy.
 - Lighthouse has not been run (optional per §8.4).
@@ -142,4 +146,5 @@
 | CVTracker2D island          | 5.0 KB gz (+ shared primitives and Svelte runtime)                                          | No KaTeX                                                      |
 | TuningLab island            | 4.9 KB gz (+ shared primitives and Svelte runtime)                                          | No KaTeX; ~7.5 ms per recompute (50 runs)                     |
 | Post 14 islands             | MotionModelSampler 3.9 KB, RangeBearing 4.2 KB gz; no KaTeX                                 |                                                               |
+| EKFLocalization island      | 5.0 KB gz (+ shared primitives and Svelte runtime)                                          | No KaTeX                                                      |
 | Shared: KaTeX chunk         | 77 KB                                                                                       | Loaded only by Gaussian1D / CovarianceEllipse (post 02)       |

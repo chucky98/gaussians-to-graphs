@@ -153,7 +153,7 @@ Now the sensor. Drag the robot around the lobby, or turn it with the outer handl
 
 <AlgorithmBox title="Sampling and linearizing the velocity motion model" source="src/lib/models/unicycle.ts">
 1. **Sample** (as a particle filter will, Post 17): for each step draw $\hat v = v + \sigma_v\varepsilon_1$ and $\hat\omega = \omega + \sigma_\omega\varepsilon_2$ with standard normal $\varepsilon_1, \varepsilon_2$, and apply the exact arc $f(\mathbf{x}, (\hat v, \hat\omega))$.
-2. **Linearize** (as an extended Kalman filter will, Post 15): at the current estimate compute $\mathbf{F}_k$ and $\mathbf{V}_k$, then $\hat{\mathbf{x}} \leftarrow f(\hat{\mathbf{x}}, \mathbf{u})$ and $\mathbf{P} \leftarrow \mathbf{F}_k\mathbf{P}\mathbf{F}_k\T + \mathbf{V}_k\mathbf{M}_k\mathbf{V}_k\T$.
+2. **Linearize** (as an extended Kalman filter will, [Post 15](../extended-kalman-filter/)): at the current estimate compute $\mathbf{F}_k$ and $\mathbf{V}_k$, then $\hat{\mathbf{x}} \leftarrow f(\hat{\mathbf{x}}, \mathbf{u})$ and $\mathbf{P} \leftarrow \mathbf{F}_k\mathbf{P}\mathbf{F}_k\T + \mathbf{V}_k\mathbf{M}_k\mathbf{V}_k\T$.
 3. **Wrap** every heading and every bearing difference to $(-\pi, \pi]$.
 </AlgorithmBox>
 
@@ -163,7 +163,7 @@ The unit tests check every analytic Jacobian in this post, for both motion model
 
 ### Large heading uncertainty
 
-Choose **Long drive, poor heading control** in the sampler: 8 s with a turn-rate noise of 0.5 rad/s. The final heading now spreads by 55°, and the cloud is a full banana around the start. Only 75.8% of the samples fall inside the linearized 95% ellipse, and the linearized centre is 1.34 m from the samples' actual mean, which lies inside the curve of the banana rather than on it. A filter that linearizes (Post 15) will be overconfident and biased here; the remedies are better linearization (Post 16), samples (Post 17), or the tangent-space Gaussians of Post 22.
+Choose **Long drive, poor heading control** in the sampler: 8 s with a turn-rate noise of 0.5 rad/s. The final heading now spreads by 55°, and the cloud is a full banana around the start. Only 75.8% of the samples fall inside the linearized 95% ellipse, and the linearized centre is 1.34 m from the samples' actual mean, which lies inside the curve of the banana rather than on it. A filter that linearizes ([Post 15](../extended-kalman-filter/)) will be overconfident and biased here; the remedies are better linearization (Post 16), samples (Post 17), or the tangent-space Gaussians of Post 22.
 
 ### Angles
 

@@ -1,0 +1,171 @@
+---
+number: 15
+title: The Extended Kalman Filter
+description: Linearize the models at the current estimate, then run a Kalman filter. Localize a robot among mapped markers, and see how a bad start breaks it.
+part: 2
+status: published
+date: 2026-11-26
+prerequisites: [kalman-filter, robot-models-2d]
+objectives:
+  - Derive the extended Kalman filter by linearizing a nonlinear motion and measurement model around the current estimate.
+  - Implement EKF localization with known landmarks, including angle wrapping and sequential updates.
+  - Explain why the EKF uses the nonlinear model for the mean but the Jacobians for the covariance.
+  - Recognize its failure modes, large uncertainty, strong nonlinearity and a poor linearization point, and their symptom, overconfidence.
+references:
+  - key: thrun2005
+    text: Thrun, Burgard, Fox. *Probabilistic Robotics.* MIT Press, 2005. §3.3 (the extended Kalman filter) and §7.4 (EKF localization with known correspondences).
+  - key: simon2006
+    text: Simon. *Optimal State Estimation.* Wiley, 2006. Ch. 13 (nonlinear Kalman filtering, including the extended Kalman filter).
+  - key: barshalom2001
+    text: Bar-Shalom, Li, Kirubarajan. *Estimation with Applications to Tracking and Navigation.* Wiley, 2001. Ch. 10 (state estimation for nonlinear dynamic systems).
+widgets: [EKFLocalization]
+symbols:
+  - tex: '\mathbf{F}_k,\ f(\cdot)'
+    meaning: 'motion model f; F = ∂f/∂x at the estimate'
+    match: ['\mathbf{F}_k']
+  - tex: '\mathbf{H}_k,\ h(\cdot)'
+    meaning: 'measurement model h; H = ∂h/∂x at the prediction'
+    match: ['\mathbf{H}_k']
+  - tex: '\mathbf{M}_k,\ \mathbf{V}_k'
+    meaning: control noise covariance; control Jacobian
+    match: ['\mathbf{V}_k']
+  - tex: '\hat{\mathbf{x}}_{k\mid k-1},\ \mathbf{P}_{k\mid k-1}'
+    meaning: predicted pose and covariance
+    match: ['\hat{\mathbf{x}}_{k\mid k-1}']
+  - tex: '\boldsymbol{\nu}_k,\ \mathbf{S}_k'
+    meaning: innovation (with wrapped bearing) and its covariance
+    match: ['\boldsymbol{\nu}_k']
+  - tex: 'r,\ \phi'
+    meaning: range and bearing of a marker
+    match: ['\phi']
+---
+
+import EKFLocalization from '../../../components/widgets/EKFLocalization/EKFLocalization.svelte';
+
+The delivery robot now works in a hall whose reflective markers have been surveyed: their positions are on the map. It drives a loop at 1 m/s, its wheels slip a little, and every half second its lidar measures the range and bearing of the markers within 5 m. [Post 14](../robot-models-2d/) wrote down both models; neither is linear, so the Kalman filter of [Post 12](../kalman-filter/) cannot be used as it is.
+
+<EKFLocalization client:visible />
+
+The grey dotted path is what the robot would believe from its wheels alone: by the end of the run it is almost 2 m off. The green path is an **extended Kalman filter** (EKF), which uses the same wheels and the markers, and stays within 30 cm of the truth all the way round. Its trick is simple: wherever the models are curved, replace them by straight lines that touch them at the current estimate, and run an ordinary Kalman filter on those.
+
+## Intuition
+
+A Kalman filter needs linear models because only then does a Gaussian stay Gaussian ([Post 4](../propagating-uncertainty/)). But a curve looks straight if you zoom in far enough. If the robot's uncertainty is small, say a few centimetres and a degree or two, then over that small region the motion and sensor models are very nearly linear. So at every step the EKF takes the tangent of each model at its current best guess, and uses that tangent to move the covariance.
+
+The mean is treated differently. There is no reason to approximate the mean with a tangent when the exact model is available, so the EKF pushes its estimate through the real nonlinear motion model, and compares each reading with what the real sensor model predicts.
+
+The approximation is good when the uncertainty is small compared with how sharply the models bend. It is bad when the uncertainty is large, as with the banana of Post 14, or when the best guess is far from the truth, because then the tangent is taken at the wrong place.
+
+## The math
+
+### The nonlinear model
+
+The state is the pose $\mathbf{x}_k = (x_k, y_k, \theta_k)$. The motion model is the velocity model of Post 14 with noisy controls, and each visible marker $\mathbf{m}_j$ gives a range–bearing reading:
+
+$$
+\begin{aligned}
+\mathbf{x}_k &= f(\mathbf{x}_{k-1}, \mathbf{u}_k + \boldsymbol{\delta}_k), &\quad \boldsymbol{\delta}_k &\sim \N(\mathbf{0}, \mathbf{M}_k), \\
+\mathbf{z}_k^{j} &= h(\mathbf{x}_k, \mathbf{m}_j) + \mathbf{v}_k, &\quad \mathbf{v}_k &\sim \N(\mathbf{0}, \mathbf{R}_k),
+\end{aligned}
+$$
+
+with $\mathbf{M}_k = \diag(\sigma_v^2, \sigma_\omega^2)$ and $\mathbf{R}_k = \diag(\sigma_r^2, \sigma_\phi^2)$. In the widget, $\sigma_v = 0.1$ m/s, $\sigma_\omega = 0.05$ rad/s, $\sigma_r = 0.1$ m and $\sigma_\phi = 2°$.
+
+### Predict
+
+Linearize $f$ at the current estimate and the commanded control. With $\mathbf{F}_k = \partial f/\partial\mathbf{x}$ and $\mathbf{V}_k = \partial f/\partial\mathbf{u}$ evaluated there,
+
+$$
+\begin{aligned}
+\hat{\mathbf{x}}_{k\mid k-1} &= f(\hat{\mathbf{x}}_{k-1\mid k-1}, \mathbf{u}_k), \\
+\mathbf{P}_{k\mid k-1} &= \mathbf{F}_k\,\mathbf{P}_{k-1\mid k-1}\,\mathbf{F}_k\T + \mathbf{V}_k\,\mathbf{M}_k\,\mathbf{V}_k\T.
+\end{aligned}
+\tag{1}
+$$
+
+The mean goes through the exact model; the covariance goes through its tangent, as in Post 4's first-order propagation. The heading is wrapped to $(-\pi, \pi]$ after every step.
+
+### Update
+
+For each marker in view, linearize $h$ at the predicted pose, with $\mathbf{H}_k = \partial h/\partial\mathbf{x}$ evaluated at $\hat{\mathbf{x}}_{k\mid k-1}$, and apply the Kalman update:
+
+$$
+\begin{aligned}
+\boldsymbol{\nu}_k &= \mathbf{z}_k^{j} \boxminus h(\hat{\mathbf{x}}_{k\mid k-1}, \mathbf{m}_j), \\
+\mathbf{S}_k &= \mathbf{H}_k\,\mathbf{P}_{k\mid k-1}\,\mathbf{H}_k\T + \mathbf{R}_k, \\
+\mathbf{K}_k &= \mathbf{P}_{k\mid k-1}\,\mathbf{H}_k\T\,\mathbf{S}_k^{-1}, \\
+\hat{\mathbf{x}}_{k\mid k} &= \hat{\mathbf{x}}_{k\mid k-1} + \mathbf{K}_k\,\boldsymbol{\nu}_k, \\
+\mathbf{P}_{k\mid k} &= (\mathbf{I} - \mathbf{K}_k\mathbf{H}_k)\,\mathbf{P}_{k\mid k-1}.
+\end{aligned}
+\tag{2}
+$$
+
+The innovation compares the reading with the *nonlinear* prediction $h(\hat{\mathbf{x}}_{k\mid k-1})$, not with $\mathbf{H}_k\hat{\mathbf{x}}_{k\mid k-1}$, and its bearing component is wrapped: the symbol $\boxminus$ means subtract, then wrap angles to $(-\pi, \pi]$. A bearing of 179° predicted as $-179°$ is a 2° surprise, not a 358° one. When several markers are visible, their readings are independent, so the filter can update with them one at a time; each update uses the result of the previous one.
+
+<Derivation title="Where the EKF comes from">
+Expand $f$ to first order around the current estimate:
+
+$$
+f(\mathbf{x}, \mathbf{u} + \boldsymbol{\delta}) \approx f(\hat{\mathbf{x}}, \mathbf{u}) + \mathbf{F}_k(\mathbf{x} - \hat{\mathbf{x}}) + \mathbf{V}_k\boldsymbol{\delta}.
+$$
+
+The right-hand side is linear in the error $\mathbf{x} - \hat{\mathbf{x}}$ and the noise $\boldsymbol{\delta}$, so if the error is $\N(\mathbf{0}, \mathbf{P})$, the predicted state is Gaussian with mean $f(\hat{\mathbf{x}}, \mathbf{u})$ and covariance $\mathbf{F}_k\mathbf{P}\mathbf{F}_k\T + \mathbf{V}_k\mathbf{M}_k\mathbf{V}_k\T$: that is (1). Similarly $h(\mathbf{x}) \approx h(\hat{\mathbf{x}}_{k\mid k-1}) + \mathbf{H}_k(\mathbf{x} - \hat{\mathbf{x}}_{k\mid k-1})$ makes the state and the reading jointly Gaussian, and conditioning on the reading, as in Post 12, gives (2). Every step drops the second-order terms, which is accurate only if $\mathbf{x} - \hat{\mathbf{x}}$ is small where the models curve.
+</Derivation>
+
+<Callout type="key">
+The EKF propagates the mean through the nonlinear models and the covariance through their Jacobians, evaluated at the current estimate. It is exactly the Kalman filter when the models are linear, and a good approximation when the uncertainty is small compared with their curvature.
+</Callout>
+
+## Play with it
+
+The widget opens at the end of the lap; drag the time slider or press **Play** to watch it from the start.
+
+<TryThis>
+1. Over the lap the EKF's position error is 0.09 m (root mean square) and never more than 0.29 m, while odometry alone ends 1.92 m off. Its NEES ([Post 13](../tuning-and-consistency/)) is inside the 95% range at 118 of the 120 steps: the ellipse is honest.
+2. Watch the ellipse around $t = 43$ s, when for three steps no marker is within 5 m. It grows to a 95% radius of 0.71 m, then snaps back as soon as a marker comes into view.
+3. Increase the sensing range to 10 m: up to 7 markers are in view at once, and the error drops to 0.05 m. Reduce it to 2 m: most of the time no marker is visible, and the error rises to 0.54 m.
+4. Choose **No markers in reach**. The EKF's estimate is now exactly the odometry path, but unlike odometry it knows it is lost: its 95% radius grows to 5.6 m by the end, enough to cover the 1.92 m it has drifted.
+</TryThis>
+
+## Algorithm
+
+<AlgorithmBox title="EKF localization with known markers (one step)" source="src/lib/filters/ekf.ts">
+1. **Predict** with the commanded control $\mathbf{u}_k$: compute $\mathbf{F}_k$ and $\mathbf{V}_k$ at $\hat{\mathbf{x}}$, then $\hat{\mathbf{x}} \leftarrow f(\hat{\mathbf{x}}, \mathbf{u}_k)$, $\mathbf{P} \leftarrow \mathbf{F}_k\mathbf{P}\mathbf{F}_k\T + \mathbf{V}_k\mathbf{M}_k\mathbf{V}_k\T$; wrap the heading.
+2. **For each** marker $j$ in view, with reading $\mathbf{z}^j$: compute $\hat{\mathbf{z}} = h(\hat{\mathbf{x}}, \mathbf{m}_j)$ and $\mathbf{H}_k$ at the current $\hat{\mathbf{x}}$.
+3. Innovation $\boldsymbol{\nu} = \mathbf{z}^j - \hat{\mathbf{z}}$ with the bearing wrapped; $\mathbf{S} = \mathbf{H}_k\mathbf{P}\mathbf{H}_k\T + \mathbf{R}$; $\mathbf{K} = \mathbf{P}\mathbf{H}_k\T\mathbf{S}^{-1}$ (Cholesky solve).
+4. $\hat{\mathbf{x}} \leftarrow \hat{\mathbf{x}} + \mathbf{K}\boldsymbol{\nu}$ (wrap the heading), $\mathbf{P} \leftarrow$ Joseph form; symmetrize.
+</AlgorithmBox>
+
+The scenario code is in `src/lib/demos/ekf-localization.ts`. The unit tests check the defining property from DESIGN's test list: on a *linear* model, the EKF reproduces the Kalman filter to within $10^{-9}$ at every step. The Jacobians it uses were checked against finite differences in Post 14.
+
+## When it breaks
+
+### A bad start
+
+Choose **Break it**. The filter now starts 4.5 m from the truth and believes it is facing the wrong way by 150°. It is honest about its ignorance (a standard deviation of 3 m in position and 180° in heading), so it is not simply overconfident. Yet linearizing at a heading that is 150° off produces Jacobians that point the corrections in wrong directions.
+
+<EKFLocalization client:visible preset="lost" />
+
+<TryThis>
+1. Step through the first seconds. The estimate swings around as it tries to reconcile the readings, and its error reaches 6.1 m before it locks on. From step 23 ($t = 11.5$ s) on, it stays within 0.5 m of the truth.
+2. Look at the **NEES** readout: only 86 of the 120 steps are inside the 95% range. The NEES is above its range at every one of the first 31 steps, during the recovery, and only twice afterwards, as often as an honest filter would miss by chance. While its Jacobians were wrong, the filter shrank its ellipse as if every update had been good: it was confidently wrong.
+3. Now reduce the sensing range to 3 m, so that at most one marker is ever in view. Recovery fails: after the full lap the estimate is still 1.12 m off.
+</TryThis>
+
+The EKF recovered at the default range only because this hall has many markers and the readings kept arriving. A filter that has to start from scratch should not be an EKF: global localization is a job for the histogram filter of [Post 10](../bayes-filter/) or the particle filter of Post 17, which can carry many hypotheses until the data rules them out.
+
+### Strong nonlinearity
+
+Even with a good estimate, linearization fails when the uncertainty is large relative to the curvature: the banana of Post 14, a far-away marker seen with poor bearing accuracy, or a long stretch of dead reckoning. The EKF then predicts an ellipse in the wrong place, of the wrong shape, and reports too little uncertainty. The unscented Kalman filter (Post 16) propagates the mean and covariance more accurately, and particle filters (Post 17) drop the Gaussian assumption altogether.
+
+### Jacobians at the wrong point
+
+The EKF evaluates its Jacobians at its estimate, not at the truth, so any error in the estimate also makes the linearization wrong. This feeds on itself: a slightly wrong estimate gives slightly wrong Jacobians, which give an update that is slightly too confident. In long-running systems such as SLAM (Part 4), this is a known source of inconsistency. Iterated EKFs re-linearize the update at the new estimate, and optimization-based methods (Post 26) re-linearize everything.
+
+## Summary
+
+- The EKF runs a Kalman filter on the tangents of the motion and sensor models, recomputed at the current estimate at every step.
+- The mean goes through the exact nonlinear models; the covariance goes through the Jacobians $\mathbf{F}_k$, $\mathbf{V}_k$ and $\mathbf{H}_k$. Innovations and headings must be wrapped.
+- With known markers it localizes a robot to within decimetres while odometry drifts by metres, and its covariance stays honest when the uncertainty is small.
+- On a linear model it is exactly the Kalman filter.
+- Large uncertainty, strong curvature, or a linearization point far from the truth make it overconfident and can make it fail.

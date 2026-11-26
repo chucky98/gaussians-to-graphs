@@ -468,3 +468,29 @@ test.describe('post 14 widgets', () => {
     await expect(robot).toHaveAttribute('aria-valuetext', /x 4\.10 metres/);
   });
 });
+
+test.describe('post 15 widgets', () => {
+  test('EKFLocalization: default run, no markers, and the bad start', async ({ page }) => {
+    await page.goto('posts/extended-kalman-filter/');
+    const w = page.locator('[data-widget="EKFLocalization"]').first();
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="time"]')).toHaveText('60.0 s');
+    await expect(w.locator('[data-readout="odom"]')).toHaveText('1.92 m');
+    await expect(w.locator('[data-readout="nees"]')).toHaveText('118 of 120 steps');
+    await w.getByLabel('Scenario').selectOption('blind');
+    await expect(w.locator('[data-readout="r95"]')).toHaveText('5.60 m');
+    await w.getByLabel('Scenario').selectOption('default');
+    await w.getByRole('slider', { name: 'Time' }).fill('0');
+    await expect(w.locator('[data-readout="time"]')).toHaveText('0.0 s');
+    await w.locator('[data-action="step"]').click();
+    await expect(w.locator('[data-readout="time"]')).toHaveText('0.5 s');
+
+    const b = page.locator('[data-widget="EKFLocalization"]').nth(1);
+    await b.scrollIntoViewIfNeeded();
+    await expect(b.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(b.locator('[data-readout="nees"]')).toHaveText('86 of 120 steps');
+    await b.getByRole('slider', { name: 'Sensing range' }).fill('3');
+    await expect(b.locator('[data-readout="ekf"]')).toContainText('1.12 m');
+  });
+});
