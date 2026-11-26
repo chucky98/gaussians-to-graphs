@@ -20,6 +20,7 @@
 
 <style>
   .select {
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 0.2rem;
@@ -28,6 +29,10 @@
     font-size: 0.85rem;
   }
   select {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    text-overflow: ellipsis;
     font: inherit;
     font-size: 0.85rem;
     color: var(--c-fg);
