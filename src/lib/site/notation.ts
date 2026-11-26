@@ -67,6 +67,8 @@ export const notationGroups: readonly NotationGroup[] = [
       { tex: '\\mathcal{I}', meaning: 'Fisher information (of one measurement)' },
       { tex: '\\mathbf{a}_k', meaning: 'regressor: row k of the design matrix A' },
       { tex: '\\beta', meaning: 'forgetting factor in recursive least squares; memory ≈ 1/(1 − β)' },
+      { tex: '\\lambda_0', meaning: 'initial Levenberg–Marquardt damping' },
+      { tex: 'z_j', meaning: 'a scalar measurement, e.g. the range to anchor j' },
     ],
   },
   {

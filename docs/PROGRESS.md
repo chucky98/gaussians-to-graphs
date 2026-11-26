@@ -1,8 +1,8 @@
 # Progress
 
-## Current phase: 1 — Parts 0 and 1 (Part 0 complete; Part 1 in progress: posts 05–08 published)
+## Current phase: 1 — Parts 0 and 1 (complete: posts 01–09 published)
 
-## Next task: post 09 `nonlinear-least-squares` (CostLandscape: UWB indoor positioning, Gauss–Newton vs Levenberg–Marquardt)
+## Next task: Phase 2 — post 10 `bayes-filter` (CorridorRobot). First, a link pass: posts 05–08 mention posts 6 and 9 as plain text where links are now possible.
 
 ## Posts
 
@@ -16,7 +16,8 @@
 | 06    | mle-and-map                      | published | BayesGrid1D                   | ~2,100 words. Distance to a wall: odometry prior + ultrasonic readings; two-doorway bimodal prior.                          |
 | 07    | estimator-quality                | published | EstimatorShootout             | ~2,200 words. GPS receiver on a benchmark; open sky vs reflections (10% at ±30 m); CRLB by numerical Fisher information.    |
 | 08    | recursive-least-squares          | published | RLSStream                     | ~2,300 words. Online motor calibration; battery sag; forgetting factor sweet spot.                                          |
-| 09–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                             |                                                                                                                             |
+| 09    | nonlinear-least-squares          | published | CostLandscape                 | ~2,300 words. UWB indoor positioning; mirror minimum with wall anchors; GN divergence vs LM.                                |
+| 10–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                             |                                                                                                                             |
 
 ## Infrastructure checklist
 
@@ -82,11 +83,14 @@
 - 2026-11-26 — **`math/estimators.ts`** (mean, median, shrinkage; Gaussian and contaminated noise densities; numerical Fisher information by Simpson's rule; CRLB). EstimatorShootout precomputes means/medians once per (noise, seed) (~120 ms on a noise/seed change, a discrete click); the n and κ sliders then cost ~2 ms.
 - 2026-11-26 — **Post 07 uses m (not n) for the sample size and κ for the shrinkage weight**, so it matches posts 05–06: shrinkage towards a guess is the MAP estimate of post 06 with a prior worth κ measurements. Axes gained `xTickValues`/`yTickValues`/`yFormat` for log–log plots.
 - 2026-11-26 — **`filters/rls.ts`** (RLS with forgetting, and `batchSolution` of the same exponentially weighted MAP problem). Invariant tests: RLS = batch after every step for β = 1 and β < 1; vague prior → ordinary LS. Written with K, P and ν so post 08 bridges to the Kalman filter. Notation: aₖ (regressor), β (forgetting factor).
+- 2026-11-26 — **`graph/solver.ts` (dense GN and LM with Marquardt scaling, accept/reject, ×10 / ÷10 λ), `math/contour.ts` (marching squares), `models/ranging.ts`.** Tests: GN solves a linear problem in one step; noise-free trilateration reaches cost ≈ 0; LM is monotone; Jacobian = finite differences. Manifold and sparse versions arrive in Phase 4.
+- 2026-11-26 — **CostLandscape presets were found by scanning ~1,600 start points**, not guessed: with corner anchors GN never fails, so the divergence preset uses collinear (south-wall) anchors and a start in line with them, where Λ is nearly singular. New primitive `Landmark`.
+- 2026-11-26 — **Phase 1 complete.** Part 1 uses real-world scenarios throughout (GPS road fixes, ultrasonic ranging, survey benchmark, motor calibration, UWB positioning).
 
 ## Follow-ups / known issues
 
 - **Owner action:** install the giscus GitHub App on `chucky98/gaussians-to-graphs` (https://github.com/apps/giscus). Then set `giscus.enabled = true` in `src/lib/site/config.ts`.
-- When posts 06, 09, 11, 12, 13, 15, 16, 19, 22, 23, 25, 27, 28, 29 are published: link the plain-text references to them from earlier posts.
+- When posts 11, 12, 13, 15, 16, 17, 19, 22, 23, 25, 27, 28, 29 are published: link the plain-text references to them from earlier posts.
 - Client-side KaTeX (77 KB gz) still loads for widgets with TeX labels or MatrixView. Consider rendering static TeX at build time and showing live numbers as plain text.
 - `Plot2D` pan/zoom is not implemented yet (no Phase 0 widget needs it). Primitives still to build when first needed: Landmark, Heatmap, Spy.
 - Lighthouse has not been run (optional per §8.4).
@@ -94,13 +98,14 @@
 
 ## Performance report
 
-| Page / island               | JS (gzipped)                                                         | Notes                                                         |
-| --------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Post page before hydration  | ~3.2 KB inline (theme, search loader, giscus loader, island runtime) | Budget 50 KB ✓. Pagefind UI loads only when search is opened. |
-| Gaussian1D island           | 2.6 KB                                                               | Budget ~80 KB ✓ (excl. shared)                                |
-| CovarianceEllipse island    | 6.0 KB                                                               | Budget ~80 KB ✓ (excl. shared)                                |
-| Shared: Svelte runtime      | 22.8 KB                                                              |                                                               |
-| DriftFan island             | 4.8 KB (+ 13.6 KB shared primitives, 3.3 KB animation, 23 KB Svelte) | Post 01 total ≈ 45 KB; no KaTeX                               |
-| SliceVsProject island       | 4.0 KB (+ KaTeX chunk)                                               | Live formulas use KaTeX                                       |
-| NonlinearPropagation island | 5.8 KB (+ KaTeX chunk)                                               | Two instances on post 04                                      |
-| Shared: KaTeX chunk         | 77 KB                                                                | Loaded only by Gaussian1D / CovarianceEllipse (post 02)       |
+| Page / island               | JS (gzipped)                                                                                | Notes                                                         |
+| --------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Post page before hydration  | ~3.2 KB inline (theme, search loader, giscus loader, island runtime)                        | Budget 50 KB ✓. Pagefind UI loads only when search is opened. |
+| Gaussian1D island           | 2.6 KB                                                                                      | Budget ~80 KB ✓ (excl. shared)                                |
+| CovarianceEllipse island    | 6.0 KB                                                                                      | Budget ~80 KB ✓ (excl. shared)                                |
+| Shared: Svelte runtime      | 22.8 KB                                                                                     |                                                               |
+| DriftFan island             | 4.8 KB (+ 13.6 KB shared primitives, 3.3 KB animation, 23 KB Svelte)                        | Post 01 total ≈ 45 KB; no KaTeX                               |
+| SliceVsProject island       | 4.0 KB (+ KaTeX chunk)                                                                      | Live formulas use KaTeX                                       |
+| NonlinearPropagation island | 5.8 KB (+ KaTeX chunk)                                                                      | Two instances on post 04                                      |
+| Part 1 islands              | LineFit 3.8, BayesGrid1D 4.5, EstimatorShootout 4.9, RLSStream 4.3, CostLandscape 5.8 KB gz | KaTeX chunk only where TeX labels/formulas are used           |
+| Shared: KaTeX chunk         | 77 KB                                                                                       | Loaded only by Gaussian1D / CovarianceEllipse (post 02)       |

@@ -1,0 +1,170 @@
+---
+number: 9
+title: 'Nonlinear Least Squares: Gauss–Newton and Levenberg–Marquardt'
+description: Locate a UWB tag from its ranges to fixed anchors. Linearize, solve, repeat; then see why a damped step and a good starting point matter.
+part: 1
+status: published
+date: 2026-11-26
+prerequisites: [propagating-uncertainty, least-squares]
+objectives:
+  - Write a nonlinear estimation problem as a sum of squared residuals, and compute its Jacobian.
+  - Derive the Gauss–Newton step by linearizing the residuals and solving the normal equations.
+  - Explain Levenberg–Marquardt damping, and how it adapts between Gauss–Newton and gradient descent.
+  - Recognize local minima and poor geometry, and why initialization matters.
+references:
+  - key: nocedal2006
+    text: Nocedal, Wright. *Numerical Optimization*, 2nd ed. Springer, 2006. Ch. 10 (least-squares problems; Gauss–Newton and Levenberg–Marquardt).
+  - key: marquardt1963
+    text: Marquardt. "An algorithm for least-squares estimation of nonlinear parameters." *Journal of the Society for Industrial and Applied Mathematics*, 11(2), 1963.
+  - key: madsen2004
+    text: Madsen, Nielsen, Tingleff. *Methods for Non-Linear Least Squares Problems*, 2nd ed. Lecture notes, Technical University of Denmark, 2004.
+widgets: [CostLandscape]
+symbols:
+  - tex: '\mathbf{m}_j'
+    meaning: position of UWB anchor j
+  - tex: 'c(\mathbf{x}) = \tfrac12\sum_i \lVert \mathbf{r}_i \rVert^2_{\boldsymbol{\Omega}_i}'
+    meaning: total cost of a candidate position
+    match: ['c(\mathbf{x})']
+  - tex: '\mathbf{J}'
+    meaning: stacked Jacobian of the residuals
+  - tex: '\boldsymbol{\Lambda} = \mathbf{J}\T\boldsymbol{\Omega}\mathbf{J}'
+    meaning: Gauss–Newton (information) matrix; η its right-hand side
+    match: ['\boldsymbol{\Lambda}']
+  - tex: '\boldsymbol{\delta},\ \lambda'
+    meaning: the step, and Levenberg–Marquardt damping
+    match: ['\boldsymbol{\delta}']
+---
+
+import CostLandscape from '../../../components/widgets/CostLandscape/CostLandscape.svelte';
+
+Indoors, GPS fails. One common replacement is **ultra-wideband** (UWB) radio: a small tag exchanges pulses with a few anchors fixed to the walls and measures its distance to each one to within about 10 centimetres. Warehouses use it to track forklifts, and some phones use it to find tags. Turning those distances into a position looks like a textbook geometry problem, finding where circles intersect. But with noisy ranges the circles never meet in a point, and the problem becomes a nonlinear least-squares problem, which we solve by guessing, linearizing and improving.
+
+<CostLandscape client:visible />
+
+The heat map shows the total squared range error of every possible tag position; the true tag is the black circle. From a starting guess near the door, both solvers jump to the bottom of the valley in two steps and stop 9.5 cm from the true position, an error caused by the measurement noise, not by the solver.
+
+## Intuition
+
+In [Post 5](../least-squares/) the residuals were *linear* in the unknowns, so the total squared error was a perfect bowl and one formula found its bottom. Distances are not linear: the distance to an anchor grows like a cone around it. Add up several squared cone-shaped errors and you get a landscape with valleys, ridges and sometimes more than one low point.
+
+No formula finds the lowest point of such a landscape. Instead we iterate:
+
+1. Stand at a guess.
+2. Pretend the residuals are linear near the guess, using the tangent idea of [Post 4](../propagating-uncertainty/).
+3. Jump to the bottom of the bowl that the linear model predicts.
+4. Repeat from there.
+
+That is **Gauss–Newton**. Near the answer, where the linear model is good, it converges very fast. Far from the answer the linear model can be badly wrong, and the jump can land somewhere worse. **Levenberg–Marquardt** adds a safety rule: if a jump makes things worse, take it back and try a shorter, more cautious one.
+
+## The math
+
+### The problem
+
+The tag's unknown position is $\mathbf{x} = (x, y)$. Anchor $j$ sits at a known position $\mathbf{m}_j$ and reports a measured range $z_j$, with noise of standard deviation $\sigma = 0.1$ m. The residual of anchor $j$ is the mismatch between the distance predicted by a candidate position and the one measured:
+
+$$
+r_j(\mathbf{x}) = \lVert \mathbf{x} - \mathbf{m}_j \rVert - z_j .
+$$
+
+For Gaussian noise, the maximum-likelihood position ([Post 6](../mle-and-map/)) minimizes the total cost
+
+$$
+c(\mathbf{x}) = \frac{1}{2} \sum_j \frac{r_j(\mathbf{x})^2}{\sigma^2} ,
+$$
+
+which is the landscape in the widget. Each term has weight $\boldsymbol{\Omega}_j = 1/\sigma^2$, the information of one range measurement.
+
+### Linearize, then solve a linear problem
+
+Near a guess $\mathbf{x}$, a small step $\boldsymbol{\delta}$ changes each residual approximately linearly:
+
+$$
+r_j(\mathbf{x} + \boldsymbol{\delta}) \approx r_j(\mathbf{x}) + \mathbf{J}_j\,\boldsymbol{\delta},
+\qquad
+\mathbf{J}_j = \frac{(\mathbf{x} - \mathbf{m}_j)\T}{\lVert \mathbf{x} - \mathbf{m}_j \rVert} .
+$$
+
+The Jacobian row $\mathbf{J}_j$ of a range is just the unit vector pointing from the anchor to the tag. Moving the tag along that direction changes the range one-for-one; moving across it does not change the range at all. Stack the rows into $\mathbf{J}$ and the residuals into $\mathbf{r}$. With the linearized residuals the cost becomes a quadratic bowl in $\boldsymbol{\delta}$, exactly the weighted least-squares problem of Post 5. Its normal equations are
+
+$$
+\boldsymbol{\Lambda}\,\boldsymbol{\delta} = \boldsymbol{\eta},
+\qquad
+\boldsymbol{\Lambda} = \mathbf{J}\T\boldsymbol{\Omega}\mathbf{J},
+\qquad
+\boldsymbol{\eta} = -\mathbf{J}\T\boldsymbol{\Omega}\mathbf{r}, \tag{1}
+$$
+
+with $\boldsymbol{\Omega} = \diag(1/\sigma^2, \ldots)$. Gauss–Newton solves (1), sets $\mathbf{x} \leftarrow \mathbf{x} + \boldsymbol{\delta}$, and repeats until the steps become negligible. The matrix $\boldsymbol{\Lambda}$ is the information matrix of the linearized problem. At the solution, its inverse approximates the covariance of the estimate. With the corner anchors it gives standard deviations of 6.5 cm east and 7.9 cm north.
+
+### When the linear model lies
+
+Two things can go wrong with the full Gauss–Newton step.
+
+**The step overshoots.** The linear model is only a local approximation of the cones. Far from the answer, its predicted minimum can be a long way off and on the wrong side of a ridge, and the true cost at the new point can be *higher* than before.
+
+**$\boldsymbol{\Lambda}$ is nearly singular.** Each anchor constrains the tag only *along* its direction vector. If all direction vectors are nearly parallel, which happens when the guess lies in line with the anchors, $\boldsymbol{\Lambda}$ carries almost no information in the perpendicular direction. Solving (1) then produces an enormous step in that direction.
+
+### Levenberg–Marquardt: a step you can take back
+
+Levenberg–Marquardt adds damping to the normal equations:
+
+$$
+\big( \boldsymbol{\Lambda} + \lambda\,\diag(\boldsymbol{\Lambda}) \big)\,\boldsymbol{\delta} = \boldsymbol{\eta} .
+$$
+
+With $\lambda = 0$ this is Gauss–Newton. With large $\lambda$ the damping term dominates, and the step becomes short and points downhill along $\boldsymbol{\eta}$, the negative gradient of the cost (scaled per coordinate). The damping also keeps the system solvable when $\boldsymbol{\Lambda}$ is nearly singular. The algorithm adapts $\lambda$ as it goes. If a trial step lowers the cost, accept it and divide $\lambda$ by 10, moving towards fast Gauss–Newton steps. If it raises the cost, reject it, keep the old guess, and multiply $\lambda$ by 10, so the next attempt is shorter and more cautious.
+
+<Callout type="key">
+Gauss–Newton trusts its linear model completely. Levenberg–Marquardt trusts it only as far as it has earned: a step that does not lower the actual cost is thrown away, and the next one is more careful. The cost never goes up.
+</Callout>
+
+## Play with it
+
+In the first widget four anchors sit in the room's corners, and the start is near the door, at $(1.5, 6.5)$. The measured ranges are 7.19, 4.55, 6.30 and 8.10 m. Both solvers reach the bottom of the valley, $(6.45, 2.92)$, in two iterations, along nearly identical paths. The final cost is 1.77.
+
+<TryThis>
+1. Click anywhere in the map to start somewhere else, even far outside the room. With anchors in all four corners, the valley is a single wide bowl and both solvers find it from everywhere we tried.
+2. Turn on the range circles. They do not meet in one point, because each range is about 10 cm off. The solution is the point that disagrees least with all four.
+3. Raise $\lambda_0$, the starting damping, to $10^2$. Levenberg–Marquardt now takes five iterations instead of two: heavy damping makes it cautious even when there is nothing to fear.
+4. Switch to *Three anchors on the south wall*, with a start behind that wall at $(3, -2)$. Both solvers converge confidently to $(6.39, -3.09)$, outside the building. Behind the wall there is a second valley, an exact mirror image of the true one: with all anchors on one line, a position and its reflection have identical distances to every anchor, and the same cost, 0.88.
+</TryThis>
+
+The second widget keeps the wall anchors but starts outside the building's south-west corner at $(-4, -0.5)$, almost in line with the anchors.
+
+<CostLandscape client:visible preset="wall-diverge" />
+
+<TryThis>
+1. Step through the iterations. Gauss–Newton's first step goes 164 m south, almost perpendicular to the wall, because $\boldsymbol{\Lambda}$ is nearly singular there. From then on its cost lurches up and down while growing, from $5.7 \times 10^3$ at the start to $9.4 \times 10^{11}$ after 15 iterations: it has left the map and is diverging.
+2. Levenberg–Marquardt rejects seven trial steps, raising $\lambda$ each time, and still reaches the true tag position, $(6.39, 3.09)$, on the correct side of the wall.
+3. Raise $\lambda_0$ to $10^2$. Now even Levenberg–Marquardt has not arrived after 15 iterations: it creeps along the cautious downhill direction. Damping is a safety net, not a free lunch.
+</TryThis>
+
+## Algorithm
+
+<AlgorithmBox title="Levenberg–Marquardt (Gauss–Newton when λ = 0)" source="src/lib/graph/solver.ts">
+1. Start from a guess $\mathbf{x}$ with cost $c(\mathbf{x})$, and a damping $\lambda = \lambda_0$.
+2. Evaluate the residuals $\mathbf{r}$ and the Jacobian $\mathbf{J}$ at $\mathbf{x}$; form $\boldsymbol{\Lambda} = \mathbf{J}\T\boldsymbol{\Omega}\mathbf{J}$ and $\boldsymbol{\eta} = -\mathbf{J}\T\boldsymbol{\Omega}\mathbf{r}$.
+3. Solve $(\boldsymbol{\Lambda} + \lambda\,\diag\boldsymbol{\Lambda})\,\boldsymbol{\delta} = \boldsymbol{\eta}$ with a Cholesky factorization.
+4. If $c(\mathbf{x} + \boldsymbol{\delta}) \lt c(\mathbf{x})$: accept, $\mathbf{x} \leftarrow \mathbf{x} + \boldsymbol{\delta}$, $\lambda \leftarrow \lambda/10$. Otherwise reject and set $\lambda \leftarrow 10\lambda$.
+5. Stop when the step or the decrease in cost is negligible, or after a fixed number of iterations.
+</AlgorithmBox>
+
+The unit tests check that Gauss–Newton solves a linear problem in a single step, that noise-free ranges give a cost of zero at the true position, that Levenberg–Marquardt never increases the cost, and that the analytic range Jacobian matches finite differences.
+
+## When it breaks
+
+**Mirror images and other local minima.** Any solver that only walks downhill finds *a* minimum, not necessarily the right one. With collinear anchors the wrong one is exactly as good as the right one, and no amount of data from those anchors can tell them apart. In practice, mount anchors on more than one wall and at different heights, or add prior knowledge, such as "the tag is inside the building", as an extra cost term ([Post 6](../mle-and-map/)).
+
+**Bad geometry.** Even with a unique minimum, anchors that see the tag from similar directions constrain it poorly across those directions. Surveyors call this *dilution of precision*. The inverse of $\boldsymbol{\Lambda}$ at the solution reports it: with the wall anchors, the east standard deviation is 8.8 cm against 6.5 cm with the corner anchors, for the same 10 cm of range noise.
+
+**Ranges that are not Gaussian.** When a UWB signal is blocked by a person or a shelf, it reaches the tag by a longer path, so the measured range is too long, never too short. Squared errors take such *non-line-of-sight* ranges at face value and pull the estimate away. Post 29 shows how robust kernels down-weight them.
+
+**A wrong Jacobian.** A sign error in $\mathbf{J}$ does not crash anything: Gauss–Newton simply converges slowly, to the wrong place, or not at all. Always check analytic Jacobians against finite differences, as the tests here do.
+
+## Summary
+
+- Nonlinear least squares minimizes $c(\mathbf{x}) = \tfrac12\sum_j r_j(\mathbf{x})^2/\sigma^2$ when the residuals depend nonlinearly on the unknowns, as ranges do on position.
+- Gauss–Newton linearizes the residuals with the Jacobian and solves the normal equations $\boldsymbol{\Lambda}\boldsymbol{\delta} = \boldsymbol{\eta}$ at every iteration. It is fast near the solution and can diverge far from it.
+- Levenberg–Marquardt adds damping $\lambda\,\diag(\boldsymbol{\Lambda})$, accepts only steps that lower the cost, and adapts $\lambda$ between cautious descent and Gauss–Newton.
+- Downhill methods find the minimum nearest their start. Initialization, anchor geometry and prior knowledge decide whether that is the right one.
+- At the solution, $\boldsymbol{\Lambda}^{-1}$ approximates the covariance of the estimate: the same matrix measures both the step and the uncertainty.
