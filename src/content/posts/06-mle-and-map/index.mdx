@@ -1,0 +1,162 @@
+---
+number: 6
+title: 'Likelihood, Priors, and the Posterior'
+description: How far is the wall? Combine what a robot believed with what its ultrasonic sensor reads, and see why least squares is maximum likelihood in disguise.
+part: 1
+status: published
+date: 2026-11-26
+prerequisites: [least-squares]
+objectives:
+  - Tell a likelihood apart from a probability, and write the likelihood of a set of readings.
+  - Find the maximum-likelihood estimate, and show that for Gaussian noise it is least squares.
+  - Combine a prior with readings using Bayes' rule, and find the MAP estimate.
+  - Recognize MAP with a Gaussian prior as regularized least squares, and know when a single best guess misleads.
+references:
+  - key: thrun2005
+    text: Thrun, Burgard, Fox. *Probabilistic Robotics.* MIT Press, 2005. §2.2 (basic concepts in probability, including Bayes rule).
+  - key: kay1993
+    text: 'Kay. *Fundamentals of Statistical Signal Processing, Vol. I: Estimation Theory.* Prentice Hall, 1993. Ch. 7 (maximum likelihood) and Ch. 11 (general Bayesian estimators, including MAP).'
+  - key: barfoot2024
+    text: Barfoot. *State Estimation for Robotics*, 2nd ed. Cambridge University Press, 2024. Ch. 3 (linear-Gaussian estimation, with MAP as a weighted least-squares problem).
+widgets: [BayesGrid1D]
+symbols:
+  - tex: 'p(\cdot)'
+    meaning: density; p(z | d) is the likelihood as a function of d
+    match: ['p(d']
+  - tex: '\mu,\ \sigma'
+    meaning: 'here: σ is the reading noise, σ₀ the prior width'
+    match: ['\sigma']
+  - tex: '\kappa'
+    meaning: prior weight (1 = ordinary Bayes, 0 = ignore the prior)
+  - tex: 'm'
+    meaning: number of readings
+    match: ['_{i=1}^{m}']
+---
+
+import BayesGrid1D from '../../../components/widgets/BayesGrid1D/BayesGrid1D.svelte';
+
+A robot stands in a corridor, facing a wall. Its odometry says it is about 2 metres from the wall, give or take 30 cm. Its ultrasonic sensor disagrees: two readings come back at 2.56 m and 2.79 m. Each reading has about 20 cm of noise. Which should it believe? Neither, entirely. The right answer combines both, and weights each by how much it deserves to be trusted.
+
+<BayesGrid1D client:visible />
+
+The dashed curve is what the robot believed before measuring, and the dash-dot curve is what the readings alone say. The solid curve combines the two. It lands at 2.55 m, between the odometry's 2 m and the readings' 2.67 m, but much closer to the readings because they are more precise. And it is narrower than either: two independent sources of information beat one.
+
+## Intuition
+
+Two different questions are hiding in "where is the wall?"
+
+The first asks only about the data: *which distance would make these readings most likely?* If the wall were at 1 m, readings of 2.56 and 2.79 would be extremely unlikely surprises. If it were at 2.67 m, they would be entirely ordinary. The answer to this question is the **maximum-likelihood estimate**, or MLE. It ignores everything the robot knew before.
+
+The second question asks: *given everything the robot knows, odometry included, which distance is most plausible now?* The answer weighs the readings against the robot's prior belief. It is the peak of the **posterior**, the **maximum a posteriori** estimate, or MAP. With few or noisy readings the prior matters a lot; with many good readings it barely matters at all.
+
+## The math
+
+### Likelihood is not probability
+
+Let $d$ be the unknown distance to the wall and $z_1, \ldots, z_m$ the readings. We model each reading as the true distance plus Gaussian noise with standard deviation $\sigma$, independently:
+
+$$
+z_i = d + v_i, \qquad v_i \sim \N(0, \sigma^2) .
+$$
+
+Before measuring, $p(z \mid d)$ is a probability density over possible readings $z$ for a fixed wall distance $d$. After measuring, the readings are fixed numbers and $d$ is the unknown. Read as a function of $d$, the same expression is the **likelihood**:
+
+$$
+\mathcal{L}(d) = p(z_1, \ldots, z_m \mid d) = \prod_{i=1}^{m} \frac{1}{\sigma\sqrt{2\pi}} \exp\!\left( -\frac{(z_i - d)^2}{2\sigma^2} \right) .
+$$
+
+The product comes from independence. The likelihood says how well each candidate $d$ explains the data. It is *not* a probability distribution over $d$: nothing forces it to integrate to 1 over $d$, and in general it does not. The widget rescales it to unit area only so that it can share a plot with the other curves.
+
+### Maximum likelihood is least squares
+
+Products of exponentials are awkward, so take the logarithm. The log is increasing, so it has its maximum in the same place:
+
+$$
+\log \mathcal{L}(d) = \text{const} - \frac{1}{2\sigma^2} \sum_{i=1}^{m} (z_i - d)^2 .
+$$
+
+Maximizing this is the same as minimizing $\sum_i (z_i - d)^2$, the sum of squared residuals. For Gaussian noise, **maximum likelihood is least squares**. Here the model is a single constant, so the answer is the average of the readings, $\hat{d}_{\text{MLE}} = \tfrac{1}{m}\sum_i z_i$. With readings of different quality, $\sigma_i$ differ and the same calculation gives weighted least squares with $w_i = 1/\sigma_i^2$. This is the justification behind the weights of [Post 5](../least-squares/).
+
+### Bayes' rule
+
+The robot's belief before measuring is the **prior** $p(d)$, here a Gaussian $\N(\mu_0, \sigma_0^2)$ with $\mu_0 = 2$ m and $\sigma_0 = 0.3$ m from odometry. **Bayes' rule** turns prior and likelihood into the **posterior**:
+
+$$
+p(d \mid z_1, \ldots, z_m) = \frac{p(z_1, \ldots, z_m \mid d)\; p(d)}{p(z_1, \ldots, z_m)} \;\propto\; \mathcal{L}(d)\, p(d) .
+$$
+
+The denominator does not depend on $d$; it only rescales the product so that the posterior has area 1. Bayes' rule is just the definition of conditional probability from [Post 3](../conditioning-and-marginalizing/) applied twice. In words: *posterior ∝ likelihood × prior*.
+
+### MAP is regularized least squares
+
+The MAP estimate maximizes the posterior. Taking logs again, with the Gaussian prior,
+
+$$
+\hat{d}_{\text{MAP}} = \arg\min_d \left[ \sum_{i=1}^{m} \frac{(z_i - d)^2}{\sigma^2} + \kappa\,\frac{(d - \mu_0)^2}{\sigma_0^2} \right] ,
+$$
+
+where for now the **prior weight** $\kappa = 1$. The prior has become one more squared term: a *pseudo-measurement* of $d$ equal to $\mu_0$ with standard deviation $\sigma_0$. This is least squares with a penalty for straying from the prior guess, known as regularization. Setting the derivative to zero gives a precision-weighted average:
+
+$$
+\hat{d}_{\text{MAP}} = \frac{\kappa\,\mu_0/\sigma_0^2 + \sum_i z_i/\sigma^2}{\kappa/\sigma_0^2 + m/\sigma^2},
+\qquad
+\sigma_{\text{post}} = \left( \frac{\kappa}{\sigma_0^2} + \frac{m}{\sigma^2} \right)^{-1/2} .
+$$
+
+Each source is weighted by its precision, one over its variance. The odometry prior has precision $1/0.3^2 \approx 11$ per square metre; each reading has $1/0.2^2 = 25$. Two readings outweigh the prior by $50$ to $11$, which is why the MAP sits much closer to the readings. Precisions add, so the posterior is narrower than any single source. The weight $\kappa$ is a dial the widget adds for exploration: $\kappa = 0$ switches the prior off and turns MAP into MLE, and larger $\kappa$ makes the prior count as if it were $\sigma_0/\sqrt{\kappa}$ wide.
+
+<Callout type="key">
+For Gaussian noise, maximum likelihood is least squares, and MAP with a Gaussian prior is least squares with one extra term for the prior. Every estimator in the rest of this series is a version of this.
+</Callout>
+
+## Play with it
+
+The widget starts with the odometry prior and the first two ultrasonic readings, 2.56 m and 2.79 m. The MLE is their average, 2.67 m. The MAP is 2.55 m, and the posterior is $2.55 \pm 0.13$ m.
+
+<TryThis>
+1. Press *Take a reading* repeatedly and watch the prior lose its grip. After 10 readings the MAP is 2.69 m and the MLE 2.72 m; after 30, they are 2.62 m and 2.63 m, and the posterior is $\pm 0.04$ m wide. Turn on the true distance: it is 2.60 m. The odometry was 60 cm short.
+2. Set the prior weight $\kappa$ to 0. The MAP jumps onto the MLE: without a prior, the most plausible distance is simply the one that best explains the readings. Now set $\kappa$ to 4, an overconfident prior, as if odometry claimed $\pm 15$ cm. With the default two readings the MAP falls back to 2.36 m, further from the truth than the readings alone.
+3. Switch the prior to *No idea*. Before any reading there is no most likely distance at all: every distance from 0.2 to 4.8 m is equally plausible, and the widget shows no MAP. After readings, the MAP equals the MLE, because a flat prior adds nothing.
+4. Drag the prior sideways, or click on the plot to add readings of your own, and watch the posterior trade off the two.
+</TryThis>
+
+### When the prior has two peaks
+
+Now the robot knows it is standing in a doorway, but the corridor has two identical doorways, 1.2 m and 3.0 m from the wall. Its prior has two peaks.
+
+<BayesGrid1D client:visible prior="doorways" readings={0} />
+
+<TryThis>
+1. Before any reading, the two doorways are equally likely, and there is no single most likely distance: the MAP is a tie between 1.20 m and 3.00 m. The posterior *mean*, 2.10 m, is worse still. It lies between the doorways, where the robot certainly is not.
+2. Take one reading. It comes back at 2.96 m, and the probability of the far doorway jumps from 50% to more than 99.9%. One reading settles the question.
+3. Clear the readings and click near the middle, around 2.1 m. Readings near the midpoint are surprisingly decisive: a reading exactly halfway, at 2.10 m, leaves the odds at 50 : 50, but one only 5 cm further, at 2.15 m, already makes them about 4 : 1 (81%) for the far doorway.
+</TryThis>
+
+## Algorithm
+
+<AlgorithmBox title="Bayesian estimation on a grid" source="src/lib/math/bayes1d.ts">
+1. Choose a grid of candidate values $d_1, \ldots, d_N$ covering every plausible distance.
+2. Evaluate the prior $p(d_j)$ and the log-likelihood $\log \mathcal{L}(d_j) = -\sum_i (z_i - d_j)^2/2\sigma^2$ at every grid point.
+3. Add $\kappa \log p(d_j)$ and $\log\mathcal{L}(d_j)$, subtract the maximum (to avoid underflow), exponentiate, and normalize so the values sum to one over the grid.
+4. Report the MLE (peak of the likelihood), the MAP (peak of the posterior) and the posterior mean and spread.
+</AlgorithmBox>
+
+A grid works for one or two unknowns and any shape of prior. The unit tests check it against the closed-form Gaussian result above. For many unknowns grids explode in size, and the rest of the series uses Gaussians (Parts 2 and 4) or samples (Post 17) instead.
+
+## When it breaks
+
+**A single number hides the shape.** With two doorways, the MAP is an arbitrary choice and the mean is a place the robot cannot be. Whenever the posterior can have more than one peak, keep the whole distribution, or at least know that it has several peaks.
+
+**An overconfident prior ignores the data.** With $\kappa = 4$ the robot needed many more readings to learn that the odometry was 60 cm off. In a filter, the same mistake makes the estimate lag behind reality. Post 13 shows how to detect it.
+
+**A prior that rules out the truth can never recover.** If the prior is exactly zero somewhere, the posterior is zero there too, whatever the readings say. Give every physically possible value at least a little prior probability.
+
+**Correlated readings are not independent evidence.** The product in the likelihood assumes independent noise. An ultrasonic sensor that keeps catching the same echo off a nearby pillar will repeat the same error, and multiplying those readings together makes the robot far more confident than it should be.
+
+## Summary
+
+- The likelihood $\mathcal{L}(d) = p(\text{data} \mid d)$ scores how well each candidate explains the data. It is not a probability distribution over $d$.
+- For independent Gaussian noise, maximum likelihood is least squares; with unequal noise it is weighted least squares with $w_i = 1/\sigma_i^2$.
+- Bayes' rule: posterior ∝ likelihood × prior. With a Gaussian prior, MAP is least squares plus one pseudo-measurement, a precision-weighted average.
+- Precisions add: combining independent information always narrows the posterior.
+- With many good readings the prior stops mattering. With few, or with a multi-peaked prior, it matters a great deal.

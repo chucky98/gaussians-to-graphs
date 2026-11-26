@@ -60,6 +60,9 @@ export const notationGroups: readonly NotationGroup[] = [
       { tex: '\\mathbf{y}', meaning: 'stacked measurements (or the output of a function, Part 0)' },
       { tex: '\\mathbf{r} = \\mathbf{y} - \\mathbf{A}\\mathbf{x}', meaning: 'residual vector of a linear fit' },
       { tex: '\\mathbf{W} = \\diag(w_1, \\ldots, w_m)', meaning: 'measurement weights, usually wᵢ = 1/σᵢ²' },
+      { tex: '\\mathcal{L}(\\cdot)', meaning: 'likelihood: p(data | parameter) read as a function of the parameter' },
+      { tex: '\\mu_0,\\ \\sigma_0', meaning: 'mean and standard deviation of a Gaussian prior' },
+      { tex: '\\kappa', meaning: 'prior weight in MAP (1 = ordinary Bayes, 0 = ignore the prior)' },
     ],
   },
   {

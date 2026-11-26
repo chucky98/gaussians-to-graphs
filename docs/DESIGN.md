@@ -282,6 +282,9 @@ Typography: scalars are italic ($x$), vectors are bold lowercase ($\mathbf{x}$),
 | $\mathbf{y}$ | stacked measurements in a fit (Part 1); output of a function (Part 0) |
 | $\mathbf{r} = \mathbf{y} - \mathbf{A}\mathbf{x}$ | residual vector of a linear fit (Part 1) |
 | $\mathbf{W} = \diag(w_1, \ldots, w_m)$ | measurement weights, usually $w_i = 1/\sigma_i^2$ (Part 1) |
+| $\mathcal{L}(\cdot)$ | likelihood: $p(\text{data} \mid \text{parameter})$ read as a function of the parameter |
+| $\mu_0, \sigma_0$ | mean and standard deviation of a Gaussian prior (Part 1) |
+| $\kappa$ | prior weight in MAP; 1 is ordinary Bayes, 0 ignores the prior (post 6) |
 | $p(\cdot)$, $\mathrm{bel}(\mathbf{x}_k)$ | density; belief |
 | $n_x, n_z$ | state and measurement dimensions |
 | $\mathcal{X}^{[i]}$, $W^{[i]}_m, W^{[i]}_c$ | sigma points and their mean/covariance weights |
