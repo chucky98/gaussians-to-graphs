@@ -290,3 +290,25 @@ test.describe('post 08 widgets', () => {
     await expect(s.locator('[data-readout="gain"]')).toHaveText('0.189 ± 0.017');
   });
 });
+
+test.describe('post 09 widgets', () => {
+  test('CostLandscape: corners converge; damping; the wall preset diverges for GN only', async ({ page }) => {
+    await page.goto('posts/nonlinear-least-squares/');
+    const w = page.locator('[data-widget="CostLandscape"]').first();
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="gn-pos"]')).toHaveText('(6.45, 2.92)');
+    await expect(w.locator('[data-readout="lm-pos"]')).toHaveText('(6.45, 2.92)');
+    await w.getByLabel('Anchors').selectOption('wall');
+    await expect(w.locator('[data-readout="lm-pos"]')).toHaveText('(6.39, -3.09)');
+    const handle = w.getByRole('slider', { name: /Starting guess/ });
+    for (let i = 0; i < 14; i++) await handle.press('ArrowUp'); // start moves to (3, 5), inside the room
+    await expect(w.locator('[data-readout="lm-pos"]')).toHaveText('(6.39, 3.09)');
+
+    const d = page.locator('[data-widget="CostLandscape"]').nth(1);
+    await d.scrollIntoViewIfNeeded();
+    await expect(d.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(d.locator('[data-readout="gn-pos"]')).toHaveText('off the map');
+    await expect(d.locator('[data-readout="lm-pos"]')).toHaveText('(6.39, 3.09)');
+  });
+});

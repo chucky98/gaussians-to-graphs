@@ -289,6 +289,8 @@ Typography: scalars are italic ($x$), vectors are bold lowercase ($\mathbf{x}$),
 | $\mathcal{I}$ | Fisher information of one measurement (post 7) |
 | $\mathbf{a}_k$ | regressor, row $k$ of the design matrix $\mathbf{A}$ (post 8) |
 | $\beta$ | forgetting factor in recursive least squares; memory $\approx 1/(1-\beta)$ (post 8) |
+| $\lambda_0$ | initial Levenberg–Marquardt damping (post 9) |
+| $z_j$ | a scalar measurement, e.g. the range to anchor $j$ (Part 1) |
 | $p(\cdot)$, $\mathrm{bel}(\mathbf{x}_k)$ | density; belief |
 | $n_x, n_z$ | state and measurement dimensions |
 | $\mathcal{X}^{[i]}$, $W^{[i]}_m, W^{[i]}_c$ | sigma points and their mean/covariance weights |
