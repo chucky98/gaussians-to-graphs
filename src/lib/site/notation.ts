@@ -42,6 +42,12 @@ export const notationGroups: readonly NotationGroup[] = [
         meaning: 'blocks of a partitioned Gaussian and of its covariance / information form',
       },
       { tex: 'a', meaning: 'an observed (conditioned-on) value, as in x = a' },
+      { tex: '\\mathbf{A},\\ \\mathbf{b}', meaning: 'matrix and offset of a linear map y = A x + b' },
+      {
+        tex: '\\mathbf{J} = \\partial f / \\partial \\mathbf{x}',
+        meaning: 'Jacobian of a function, evaluated at the linearization point',
+      },
+      { tex: 'r,\\ \\theta', meaning: 'range and bearing of a polar (range–bearing) reading' },
       { tex: '\\gamma', meaning: 'level of a contour of the quadratic form, d_M² = γ' },
       { tex: '\\chi^2_n(p)', meaning: 'p-quantile of the chi-square distribution with n degrees of freedom' },
     ],

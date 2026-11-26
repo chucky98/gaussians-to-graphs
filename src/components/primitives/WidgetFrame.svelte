@@ -83,7 +83,7 @@
   }
   .body {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--space-3);
     padding: var(--space-3);
   }
@@ -97,6 +97,7 @@
     min-width: 0;
   }
   .side {
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: var(--space-4);

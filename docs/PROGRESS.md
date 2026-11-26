@@ -1,8 +1,8 @@
 # Progress
 
-## Current phase: 1 — Parts 0 and 1 (in progress: 3 of 9 posts published)
+## Current phase: 1 — Parts 0 and 1 (Part 0 complete: posts 01–04 published; Part 1 next)
 
-## Next task: post 04 `propagating-uncertainty` (NonlinearPropagation widget; `models/` nonlinear test functions, `math/autodiff`)
+## Next task: post 05 `least-squares` (LineFit widget; projection `<Figure>`)
 
 ## Posts
 
@@ -11,7 +11,8 @@
 | 01    | where-am-i                       | published | DriftFan                      | ~2,100 words. Embeds the SyllabusMap. Claims pinned in `tests/unit/posts/01-…`. Phase 4 follow-up: "close the loop" toggle. |
 | 02    | gaussians-and-covariance         | published | Gaussian1D, CovarianceEllipse | Reference implementation of the post template. ~2,200 words. Claims pinned in `tests/unit/posts/02-…`.                      |
 | 03    | conditioning-and-marginalizing   | published | SliceVsProject                | ~1,600 words. Covariance/information duality; claims pinned in `tests/unit/posts/03-…`.                                     |
-| 04–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                             |                                                                                                                             |
+| 04    | propagating-uncertainty          | published | NonlinearPropagation          | ~1,600 words. Polar banana, x², sin, linear; claims pinned in `tests/unit/posts/04-…`.                                      |
+| 05–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                             |                                                                                                                             |
 
 ## Infrastructure checklist
 
@@ -60,11 +61,16 @@
 - 2026-11-26 — **New primitive `Heatmap`** (canvas; renders an nx×ny grid to an offscreen bitmap and scales it smoothly; colors interpolate between `--c-seq-lo` and `--c-seq-hi`).
 - 2026-11-26 — **Wide display equations are stacked with `aligned`** so they fit at 375 px instead of scrolling (applied in post 03; worth keeping as a writing rule).
 - 2026-11-26 — **Notation additions (post 03):** partition blocks x₁, x₂, Σ₁₁, Σ₁₂, Ω₁₁, ξ₁, and a (conditioned-on value).
+- 2026-11-26 — **Part 0 (Foundations) complete:** posts 01–04 published.
+- 2026-11-26 — **`math/autodiff` (`numericJacobian`), `models/nonlinear` (polarToCartesian, square, sine, linearMap with analytic Jacobians and exact moments) and `math/propagate` (`linearize`, `monteCarlo`).** `propagate.ts` is not in DESIGN §5.1; it holds the two propagation methods shared by post 04 and, later, the EKF/UKF posts.
+- 2026-11-26 — **NonlinearPropagation adds a "Linear" option** beyond the three functions in DESIGN §11, to show that linearization is exact for linear maps.
+- 2026-11-26 — **Widget grid tracks use `minmax(0, 1fr)`** and selects shrink to their container: a long `<select>` option had pushed post 04 wider than 320 px (caught by the overflow e2e test).
+- 2026-11-26 — **Notation additions (post 04):** A, b (linear map), J (Jacobian of one function), r, θ (range and bearing).
 
 ## Follow-ups / known issues
 
 - **Owner action:** install the giscus GitHub App on `chucky98/gaussians-to-graphs` (https://github.com/apps/giscus). Then set `giscus.enabled = true` in `src/lib/site/config.ts`.
-- When posts 04, 11, 12, 13, 19, 23, 25, 27, 28, 29 are published: link the plain-text references to them from posts 01–03.
+- When posts 11, 12, 13, 15, 16, 19, 22, 23, 25, 27, 28, 29 are published: link the plain-text references to them from posts 01–04.
 - Client-side KaTeX (77 KB gz) still loads for widgets with TeX labels or MatrixView. Consider rendering static TeX at build time and showing live numbers as plain text.
 - `Plot2D` pan/zoom is not implemented yet (no Phase 0 widget needs it). Primitives still to build when first needed: Landmark, Heatmap, Spy.
 - Lighthouse has not been run (optional per §8.4).
@@ -72,12 +78,13 @@
 
 ## Performance report
 
-| Page / island              | JS (gzipped)                                                         | Notes                                                         |
-| -------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Post page before hydration | ~3.2 KB inline (theme, search loader, giscus loader, island runtime) | Budget 50 KB ✓. Pagefind UI loads only when search is opened. |
-| Gaussian1D island          | 2.6 KB                                                               | Budget ~80 KB ✓ (excl. shared)                                |
-| CovarianceEllipse island   | 6.0 KB                                                               | Budget ~80 KB ✓ (excl. shared)                                |
-| Shared: Svelte runtime     | 22.8 KB                                                              |                                                               |
-| DriftFan island            | 4.8 KB (+ 13.6 KB shared primitives, 3.3 KB animation, 23 KB Svelte) | Post 01 total ≈ 45 KB; no KaTeX                               |
-| SliceVsProject island      | 4.0 KB (+ KaTeX chunk)                                               | Live formulas use KaTeX                                       |
-| Shared: KaTeX chunk        | 77 KB                                                                | Loaded only by Gaussian1D / CovarianceEllipse (post 02)       |
+| Page / island               | JS (gzipped)                                                         | Notes                                                         |
+| --------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Post page before hydration  | ~3.2 KB inline (theme, search loader, giscus loader, island runtime) | Budget 50 KB ✓. Pagefind UI loads only when search is opened. |
+| Gaussian1D island           | 2.6 KB                                                               | Budget ~80 KB ✓ (excl. shared)                                |
+| CovarianceEllipse island    | 6.0 KB                                                               | Budget ~80 KB ✓ (excl. shared)                                |
+| Shared: Svelte runtime      | 22.8 KB                                                              |                                                               |
+| DriftFan island             | 4.8 KB (+ 13.6 KB shared primitives, 3.3 KB animation, 23 KB Svelte) | Post 01 total ≈ 45 KB; no KaTeX                               |
+| SliceVsProject island       | 4.0 KB (+ KaTeX chunk)                                               | Live formulas use KaTeX                                       |
+| NonlinearPropagation island | 5.8 KB (+ KaTeX chunk)                                               | Two instances on post 04                                      |
+| Shared: KaTeX chunk         | 77 KB                                                                | Loaded only by Gaussian1D / CovarianceEllipse (post 02)       |

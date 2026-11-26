@@ -154,3 +154,38 @@ test.describe('post 03 widgets', () => {
     await expect(w.locator('[data-readout="cond-mean"]')).toContainText('0.70');
   });
 });
+
+test.describe('post 04 widgets', () => {
+  test('NonlinearPropagation: polar defaults match the text; σθ = 5° fixes linearization; switching functions works', async ({
+    page,
+  }) => {
+    await page.goto('posts/propagating-uncertainty/');
+    const w = page.locator('[data-widget="NonlinearPropagation"]').first();
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="inside-lin"]')).toHaveText('70.0%');
+    await expect(w.locator('[data-readout="inside-mc"]')).toHaveText('93.4%');
+    await expect(w.locator('[data-readout="lin-mean"]')).toHaveText('0.00, 2.00');
+
+    await w.getByRole('slider', { name: 'bearing standard deviation' }).fill('5');
+    await expect(w.locator('[data-readout="inside-lin"]')).toHaveText('94.6%');
+
+    await w.getByLabel('Function').selectOption('square');
+    await expect(w.locator('[data-readout="lin-var"]')).toHaveText('0.250');
+    await expect(w.locator('[data-readout="inside-lin"]')).toHaveText('88.9%');
+
+    await w.locator('[data-action="reset"]').click();
+    await expect(w.locator('[data-readout="inside-lin"]')).toHaveText('70.0%');
+  });
+
+  test('second instance starts on x²', async ({ page }) => {
+    await page.goto('posts/propagating-uncertainty/');
+    const w = page.locator('[data-widget="NonlinearPropagation"]').nth(1);
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="lin-var"]')).toHaveText('0.250');
+    await w.getByRole('slider', { name: 'mean' }).fill('0');
+    await expect(w.locator('[data-readout="lin-var"]')).toHaveText('0.000');
+    await expect(w).toContainText('linearized variance ≈ 0');
+  });
+});

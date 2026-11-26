@@ -274,6 +274,9 @@ Typography: scalars are italic ($x$), vectors are bold lowercase ($\mathbf{x}$),
 | $\chi^2_n(p)$ | $p$-quantile of the chi-square distribution with $n$ degrees of freedom |
 | $\mathbf{x}_1, \mathbf{x}_2$; $\boldsymbol{\Sigma}_{11}, \boldsymbol{\Sigma}_{12}, \ldots$; $\boldsymbol{\Omega}_{11}, \boldsymbol{\xi}_1, \ldots$ | blocks of a partitioned Gaussian, its covariance and its information form (Part 0) |
 | $a$ | an observed value being conditioned on, as in $x = a$ (Part 0) |
+| $\mathbf{A}, \mathbf{b}$ | matrix and offset of a generic linear map $\mathbf{y} = \mathbf{A}\mathbf{x} + \mathbf{b}$ (Part 0) |
+| $\mathbf{J}$ (Part 0–2) | Jacobian $\partial f/\partial\mathbf{x}$ of a single function at the linearization point (Part 4's stacked $\mathbf{J}$ is the same idea for all residuals) |
+| $r, \theta$ | range and bearing of a polar reading |
 | $p(\cdot)$, $\mathrm{bel}(\mathbf{x}_k)$ | density; belief |
 | $n_x, n_z$ | state and measurement dimensions |
 | $\mathcal{X}^{[i]}$, $W^{[i]}_m, W^{[i]}_c$ | sigma points and their mean/covariance weights |
