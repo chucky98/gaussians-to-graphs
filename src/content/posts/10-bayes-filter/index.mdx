@@ -114,7 +114,7 @@ $$
 By assumption 1 the first factor is $p(\mathbf{x}_k \mid \mathbf{x}_{k-1}, \mathbf{u}_k)$. In the second factor, the control $\mathbf{u}_k$ is applied after $\mathbf{x}_{k-1}$ and says nothing about it, so it can be dropped. What is left is $\bel(\mathbf{x}_{k-1})$, which gives (1).
 </Derivation>
 
-Notice that $\eta$ is not just bookkeeping. It equals $1/p(\mathbf{z}_k \mid \mathbf{z}_{1:k-1}, \mathbf{u}_{1:k})$, the reciprocal of how probable the reading was before it arrived. Readings that the filter found improbable are a warning sign, an idea Post 13 develops for Kalman filters.
+Notice that $\eta$ is not just bookkeeping. It equals $1/p(\mathbf{z}_k \mid \mathbf{z}_{1:k-1}, \mathbf{u}_{1:k})$, the reciprocal of how probable the reading was before it arrived. Readings that the filter found improbable are a warning sign, an idea [Post 13](../tuning-and-consistency/) develops for Kalman filters.
 
 ### The corridor as a histogram filter
 
@@ -198,7 +198,7 @@ A cell must be smaller than the features the sensor can tell apart. Here the doo
 
 ### A model that is wrong
 
-In the widget the filter's hit and false-alarm rates are the sensor's true rates. A real filter only has estimates of them. If it trusts its sensor more than it should, each reading pushes the belief too hard, and a few unlucky readings can concentrate it in the wrong place, just like the kidnapped robot. Post 13 shows how to tell, from the readings alone, when a filter is overconfident.
+In the widget the filter's hit and false-alarm rates are the sensor's true rates. A real filter only has estimates of them. If it trusts its sensor more than it should, each reading pushes the belief too hard, and a few unlucky readings can concentrate it in the wrong place, just like the kidnapped robot. [Post 13](../tuning-and-consistency/) shows how to tell, from the readings alone, when a filter is overconfident.
 
 ## Summary
 

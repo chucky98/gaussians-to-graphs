@@ -181,7 +181,7 @@ The constant-velocity model says velocity changes only by small random amounts. 
 2. Raise $q$ to 0.1. The filter now expects the velocity to change, follows the turn, and stays inside its ellipses through it. The price: on the straight stretch from step 10 to 19 the position error rises from 0.37 m to 0.50 m, because each noisy fix now moves the estimate more.
 </TryThis>
 
-Choosing $q$ is a trade-off between following manoeuvres and smoothing out noise, and no single value is right for both. Post 13 shows how to tell from the innovations alone whether $q$ and $\mathbf{R}$ are set well; multiple-model filters run several values at once and weigh them by how well each explains the data.
+Choosing $q$ is a trade-off between following manoeuvres and smoothing out noise, and no single value is right for both. [Post 13](../tuning-and-consistency/) shows how to tell from the innovations alone whether $q$ and $\mathbf{R}$ are set well; multiple-model filters run several values at once and weigh them by how well each explains the data.
 
 ### Numerical trouble
 

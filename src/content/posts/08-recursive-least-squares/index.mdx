@@ -145,7 +145,7 @@ The unit tests check the defining property: after every step, RLS equals the bat
 
 **A prior that is too confident.** A small $\mathbf{P}_0$ means a small initial gain. The estimate then refuses to move away from the datasheet value, just like the overconfident prior of [Post 6](../mle-and-map/).
 
-**Rounding errors.** Equation (1) subtracts from $\mathbf{P}$ at every step, and over thousands of steps rounding can make $\mathbf{P}$ slightly non-symmetric or even indefinite. Symmetrizing after each update helps; Post 13 shows the more robust Joseph form used in Kalman filters.
+**Rounding errors.** Equation (1) subtracts from $\mathbf{P}$ at every step, and over thousands of steps rounding can make $\mathbf{P}$ slightly non-symmetric or even indefinite. Symmetrizing after each update helps; [Post 13](../tuning-and-consistency/) shows the more robust Joseph form used in Kalman filters.
 
 ## Summary
 

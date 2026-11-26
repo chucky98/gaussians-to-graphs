@@ -423,3 +423,22 @@ test.describe('post 12 widgets', () => {
     await expect(t.getByRole('slider', { name: /Process noise/ })).toHaveAttribute('aria-valuetext', /0\.1 m²/);
   });
 });
+
+test.describe('post 13 widgets', () => {
+  test('TuningLab: verdicts for the presets and the NIS blind spot', async ({ page }) => {
+    await page.goto('posts/tuning-and-consistency/');
+    const w = page.locator('[data-widget="TuningLab"]');
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="verdict"]')).toContainText('Consistent');
+    await expect(w.locator('[data-readout="nees"]')).toContainText('3.94');
+    await w.getByLabel('Preset').selectOption('overconfident');
+    await expect(w.locator('[data-readout="verdict"]')).toContainText('Overconfident');
+    await expect(w.locator('[data-readout="nis1"]')).toContainText('14.66');
+    await w.getByLabel('Preset').selectOption('tuned');
+    await w.getByRole('slider', { name: 'Assumed q (times the true q)' }).fill('-1');
+    await w.getByRole('slider', { name: 'Assumed σ (times the true σ)' }).fill('0.15');
+    await expect(w.locator('[data-readout="nis"]')).toContainText('2.23');
+    await expect(w.locator('[data-readout="nees"]')).toContainText('18.51');
+  });
+});

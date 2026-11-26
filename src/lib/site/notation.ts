@@ -129,6 +129,10 @@ export const notationGroups: readonly NotationGroup[] = [
         meaning: 'particle i, its scalar weight, number of particles, effective sample size',
       },
       { tex: '\\epsilon_k,\\ \\epsilon_{\\nu,k}', meaning: 'NEES and NIS' },
+      {
+        tex: 'M,\\ \\bar{\\epsilon}_k',
+        meaning: 'number of Monte Carlo runs; a statistic averaged over them (Post 13)',
+      },
     ],
   },
   {
