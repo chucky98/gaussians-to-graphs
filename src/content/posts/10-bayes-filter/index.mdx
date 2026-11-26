@@ -186,11 +186,11 @@ $$
 \end{aligned}
 $$
 
-After every prediction each cell holds at least $\varepsilon/120$, so no hypothesis is ever ruled out completely. The cost is small: over seeds 1 to 100, the average belief within 1 m of the truth between moves 30 and 60 drops only from 94.2% to 92.6%. The general lesson is that a Bayes filter can only recover from a situation its model says is impossible, or nearly so, as fast as the evidence can overturn the model. Particle filters (Post 17) use the same remedy, sprinkling a few random particles over the map.
+After every prediction each cell holds at least $\varepsilon/120$, so no hypothesis is ever ruled out completely. The cost is small: over seeds 1 to 100, the average belief within 1 m of the truth between moves 30 and 60 drops only from 94.2% to 92.6%. The general lesson is that a Bayes filter can only recover from a situation its model says is impossible, or nearly so, as fast as the evidence can overturn the model. Particle filters ([Post 17](../particle-filter/)) use the same remedy, sprinkling a few random particles over the map.
 
 ### Too many cells
 
-A 30 m corridor needs 120 cells. A 50 m × 50 m floor with 10 cm cells and 5° heading bins needs 18 million, and a prediction step that sums over all previous cells for each cell would be hopeless. Histogram filters work well in one or two dimensions; in three they need coarse grids and careful engineering, and beyond that they are hopeless. The rest of Part 2 offers two ways out: assume the belief is Gaussian, so a mean and a covariance describe it (the Kalman filter, [Posts 11](../kalman-filter-1d/) and [12](../kalman-filter/)), or represent it with samples placed where the probability is (the particle filter, Post 17).
+A 30 m corridor needs 120 cells. A 50 m × 50 m floor with 10 cm cells and 5° heading bins needs 18 million, and a prediction step that sums over all previous cells for each cell would be hopeless. Histogram filters work well in one or two dimensions; in three they need coarse grids and careful engineering, and beyond that they are hopeless. The rest of Part 2 offers two ways out: assume the belief is Gaussian, so a mean and a covariance describe it (the Kalman filter, [Posts 11](../kalman-filter-1d/) and [12](../kalman-filter/)), or represent it with samples placed where the probability is (the particle filter, [Post 17](../particle-filter/)).
 
 ### Cells that are too coarse
 

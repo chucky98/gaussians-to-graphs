@@ -153,6 +153,10 @@ export const notationGroups: readonly NotationGroup[] = [
         tex: '\\mathbf{x}^{[i]},\\ w^{[i]},\\ N_p,\\ N_{\\text{eff}}',
         meaning: 'particle i, its scalar weight, number of particles, effective sample size',
       },
+      {
+        tex: 'w_{\\text{slow}},\\ w_{\\text{fast}}',
+        meaning: 'long- and short-term averages of the measurement likelihood in augmented MCL (Post 17)',
+      },
       { tex: '\\epsilon_k,\\ \\epsilon_{\\nu,k}', meaning: 'NEES and NIS' },
       {
         tex: 'M,\\ \\bar{\\epsilon}_k',

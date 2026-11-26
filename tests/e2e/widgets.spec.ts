@@ -517,3 +517,30 @@ test.describe('post 16 widgets', () => {
     await expect(c.locator('[data-readout="rms-ukf"]')).toHaveText('0.07 m');
   });
 });
+
+test.describe('post 17 widgets', () => {
+  test('MCL: the worker runs the filter; global localization; the kidnapped copy', async ({ page }) => {
+    await page.goto('posts/particle-filter/');
+    const w = page.locator('[data-widget="MCL"]').first();
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="ess"]')).toHaveText('2000 of 2000');
+    for (let i = 0; i < 3; i++) await w.locator('[data-action="step"]').click();
+    await expect(w.locator('[data-readout="time"]')).toHaveText('1.5 s');
+    await expect(w.locator('[data-readout="near"]')).toHaveText('98%');
+    await w.getByRole('combobox', { name: 'Particles', exact: true }).selectOption('500');
+    await w.getByRole('slider', { name: 'Time' }).fill('120');
+    await expect(w.locator('[data-readout="time"]')).toHaveText('60.0 s', { timeout: 15_000 });
+    await expect(w.locator('[data-readout="err"]')).toHaveText('11.24 m');
+
+    const k = page.locator('[data-widget="MCL"]').nth(1);
+    await k.scrollIntoViewIfNeeded();
+    await expect(k.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(k.locator('[data-action="kidnap"]')).toHaveText('Kidnapped at 30.0 s');
+    await expect(k.locator('[data-action="kidnap"]')).toBeDisabled();
+    await k.getByRole('switch', { name: /Add random particles/ }).check();
+    await k.getByRole('slider', { name: 'Time' }).fill('110');
+    await expect(k.locator('[data-readout="time"]')).toHaveText('55.0 s', { timeout: 15_000 });
+    await expect(k.locator('[data-readout="near"]')).not.toHaveText('0%');
+  });
+});

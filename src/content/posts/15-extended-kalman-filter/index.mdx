@@ -152,11 +152,11 @@ Choose **Break it**. The filter now starts 4.5 m from the truth and believes it 
 3. Now reduce the sensing range to 3 m, so that at most one marker is ever in view. Recovery fails: after the full lap the estimate is still 1.12 m off.
 </TryThis>
 
-The EKF recovered at the default range only because this hall has many markers and the readings kept arriving. A filter that has to start from scratch should not be an EKF: global localization is a job for the histogram filter of [Post 10](../bayes-filter/) or the particle filter of Post 17, which can carry many hypotheses until the data rules them out.
+The EKF recovered at the default range only because this hall has many markers and the readings kept arriving. A filter that has to start from scratch should not be an EKF: global localization is a job for the histogram filter of [Post 10](../bayes-filter/) or the particle filter of [Post 17](../particle-filter/), which can carry many hypotheses until the data rules them out.
 
 ### Strong nonlinearity
 
-Even with a good estimate, linearization fails when the uncertainty is large relative to the curvature: the banana of Post 14, a far-away marker seen with poor bearing accuracy, or a long stretch of dead reckoning. The EKF then predicts an ellipse in the wrong place, of the wrong shape, and reports too little uncertainty. The unscented Kalman filter ([Post 16](../unscented-kalman-filter/)) propagates the mean and covariance more accurately, and particle filters (Post 17) drop the Gaussian assumption altogether.
+Even with a good estimate, linearization fails when the uncertainty is large relative to the curvature: the banana of Post 14, a far-away marker seen with poor bearing accuracy, or a long stretch of dead reckoning. The EKF then predicts an ellipse in the wrong place, of the wrong shape, and reports too little uncertainty. The unscented Kalman filter ([Post 16](../unscented-kalman-filter/)) propagates the mean and covariance more accurately, and particle filters ([Post 17](../particle-filter/)) drop the Gaussian assumption altogether.
 
 ### Jacobians at the wrong point
 
