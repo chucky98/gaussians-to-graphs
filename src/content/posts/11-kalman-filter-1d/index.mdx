@@ -181,7 +181,7 @@ The second widget runs the filter for 40 steps. The robot starts near 0 m, but t
 3. **Update** with the reading $z_k$: $K_k = P_{k\mid k-1}/(P_{k\mid k-1} + R)$, $\hat{x}_{k\mid k} = \hat{x}_{k\mid k-1} + K_k(z_k - \hat{x}_{k\mid k-1})$, $P_{k\mid k} = (1-K_k)^2 P_{k\mid k-1} + K_k^2 R$.
 </AlgorithmBox>
 
-The last line is the **Joseph form** of the variance update. At the optimal gain it equals $(1 - K_k)P_{k\mid k-1}$, but it stays positive even when rounding errors creep in; Post 13 explains why that matters in more dimensions. The unit tests check that the update equals both the product of Gaussians and the conditioning formula; that after every step the filter's estimate equals the batch MAP estimate obtained by solving for the whole trajectory at once with least squares; and that the histogram filter of Post 10, run on a 1 cm grid, gives the same means and variances to three decimals.
+The last line is the **Joseph form** of the variance update. At the optimal gain it equals $(1 - K_k)P_{k\mid k-1}$, but it stays positive even when rounding errors creep in; [Post 13](../tuning-and-consistency/) explains why that matters in more dimensions. The unit tests check that the update equals both the product of Gaussians and the conditioning formula; that after every step the filter's estimate equals the batch MAP estimate obtained by solving for the whole trajectory at once with least squares; and that the histogram filter of Post 10, run on a 1 cm grid, gives the same means and variances to three decimals.
 
 ## When it breaks
 
@@ -199,7 +199,7 @@ Here the positioning system goes silent for ten steps, from step 16 to step 25.
 
 ### A reading that is wrong
 
-In the first widget, drag the reading to 16 m, four metres from the prediction. The estimate moves to 14.94 m, where neither the odometry nor the fix put the robot, and its standard deviation is still 0.26 m: the update's variance does not depend on how much the two disagree. A Gaussian has no notion of an outlier. Real filters check each reading's innovation against its expected spread before using it, and reject readings that are too surprising (Post 13 and Post 25).
+In the first widget, drag the reading to 16 m, four metres from the prediction. The estimate moves to 14.94 m, where neither the odometry nor the fix put the robot, and its standard deviation is still 0.26 m: the update's variance does not depend on how much the two disagree. A Gaussian has no notion of an outlier. Real filters check each reading's innovation against its expected spread before using it, and reject readings that are too surprising ([Post 13](../tuning-and-consistency/) and Post 25).
 
 ### A belief that is not one bump
 
@@ -207,7 +207,7 @@ At the start of Post 10 the robot had no idea where it was, and later its belief
 
 ### Wrong noise levels
 
-The filter is only as good as its $Q$ and $R$. In the widget they match the simulated robot exactly. A real filter uses assumed values, and if it assumes too little noise it becomes overconfident: its band shrinks while its error does not. Post 13 shows how to detect this from the innovations alone.
+The filter is only as good as its $Q$ and $R$. In the widget they match the simulated robot exactly. A real filter uses assumed values, and if it assumes too little noise it becomes overconfident: its band shrinks while its error does not. [Post 13](../tuning-and-consistency/) shows how to detect this from the innovations alone.
 
 ## Summary
 

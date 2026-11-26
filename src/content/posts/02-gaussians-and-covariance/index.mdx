@@ -242,7 +242,7 @@ The unit tests for this code check, among other things, that about 95% of 100,00
 
 Drawing a "2σ ellipse" and calling it 95% overstates your confidence. The real figure is $1 - e^{-2} \approx 86.5\%$.
 
-**Correlation near ±1.** The determinant of the 2D covariance is $\sigma_x^2\sigma_y^2(1 - \rho^2)$. As $\lvert\rho\rvert \to 1$ it goes to zero, the ellipse collapses onto a line, $\boldsymbol{\Sigma}^{-1}$ ceases to exist, and the Cholesky factorization fails. Filters meet this when two quantities become almost perfectly linked, and rounding errors can then push $\boldsymbol{\Sigma}$ to be slightly indefinite. The widget caps $\rho$ at $\pm 0.95$ for this reason; Post 13 covers the numerical hygiene that keeps real filters safe.
+**Correlation near ±1.** The determinant of the 2D covariance is $\sigma_x^2\sigma_y^2(1 - \rho^2)$. As $\lvert\rho\rvert \to 1$ it goes to zero, the ellipse collapses onto a line, $\boldsymbol{\Sigma}^{-1}$ ceases to exist, and the Cholesky factorization fails. Filters meet this when two quantities become almost perfectly linked, and rounding errors can then push $\boldsymbol{\Sigma}$ to be slightly indefinite. The widget caps $\rho$ at $\pm 0.95$ for this reason; [Post 13](../tuning-and-consistency/) covers the numerical hygiene that keeps real filters safe.
 
 **Mixing units.** Euclidean distance between, say, a position in metres and a heading in radians has no meaning. The Mahalanobis distance is unitless, because each direction is divided by its own standard deviation. Use it whenever you ask "is this measurement surprising?"; the gating tests of Post 25 are exactly that question.
 

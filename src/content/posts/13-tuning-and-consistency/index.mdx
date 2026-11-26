@@ -1,0 +1,146 @@
+---
+number: 13
+title: Tuning Q and R, and Knowing When a Filter Lies
+description: A Kalman filter reports its own uncertainty. NEES and NIS test whether that report is honest, and NIS works on a real system with no ground truth.
+part: 2
+status: published
+date: 2026-11-26
+prerequisites: [kalman-filter, estimator-quality]
+objectives:
+  - Explain how Q and R set the gain, and why their scale matters for the covariance even when it does not change the estimate.
+  - Compute NEES and NIS, state their chi-square distributions, and build 95% bounds for single runs, time averages and Monte Carlo averages.
+  - Diagnose an overconfident, underconfident or diverging filter from these statistics.
+  - Use the Joseph form, and explain why the short covariance update is only valid at the optimal gain.
+references:
+  - key: barshalom2001
+    text: 'Bar-Shalom, Li, Kirubarajan. *Estimation with Applications to Tracking and Navigation.* Wiley, 2001. §5.4 (consistency of state estimators: the NEES and NIS tests).'
+  - key: simon2006
+    text: Simon. *Optimal State Estimation.* Wiley, 2006. Ch. 5 (the discrete-time Kalman filter, including the Joseph form) and §5.5 (filter divergence).
+  - key: thrun2005
+    text: Thrun, Burgard, Fox. *Probabilistic Robotics.* MIT Press, 2005. §3.2 (the Kalman filter).
+widgets: [TuningLab]
+symbols:
+  - tex: '\epsilon_k,\ \epsilon_{\nu,k}'
+    meaning: NEES (needs the truth) and NIS (needs only the innovations)
+    match: ['\epsilon_k']
+  - tex: 'M,\ \bar{\epsilon}_k'
+    meaning: number of runs; a run-averaged statistic
+    match: ['\bar{\epsilon}_k']
+  - tex: '\boldsymbol{\nu}_k,\ \mathbf{S}_k'
+    meaning: innovation and its predicted covariance
+    match: ['\boldsymbol{\nu}_k']
+  - tex: '\mathbf{w}_k \sim \N(\mathbf{0},\mathbf{Q}_k)'
+    meaning: process noise covariance Q (assumed by the filter)
+    match: ['\mathbf{Q}']
+  - tex: '\mathbf{v}_k \sim \N(\mathbf{0},\mathbf{R}_k)'
+    meaning: measurement noise covariance R (assumed by the filter)
+    match: ['\mathbf{R}']
+  - tex: '\chi^2_n(p)'
+    meaning: p-quantile of the chi-square distribution
+    match: ['\chi^2']
+---
+
+import TuningLab from '../../../components/widgets/TuningLab/TuningLab.svelte';
+
+In [Post 12](../kalman-filter/) the forklift tracker was handed the right noise levels, because we wrote the simulator. A real forklift does not report how erratically it is driven, and the camera vendor's "half a metre" is an optimistic average. Yet every Kalman filter needs a process noise $\mathbf{Q}$ and a measurement noise $\mathbf{R}$, and it reports its uncertainty, the covariance $\mathbf{P}$, entirely on the strength of those two guesses. Is that report honest?
+
+<TuningLab client:visible />
+
+The widget runs the forklift tracker 50 times. The upper group of controls sets the real world; the lower group sets what the filter believes. The charts compare the filter's claims with what actually happens, and the verdict at the top says whether the claims hold up. With the defaults, both match, and the filter is **consistent**.
+
+## Intuition
+
+A Kalman filter does not just estimate; it also says how wrong its estimate might be. That second statement can be checked. If the filter claims a standard deviation of 0.34 m and its actual errors are typically 1 m, it is **overconfident**: it will trust its prediction too much, ignore measurements it should use, and report safety margins that are too thin. If its errors are much smaller than it claims, it is **underconfident**: safe, but sluggish and wasteful.
+
+The check is simple in principle: divide each error by the uncertainty the filter claimed for it. For an honest filter these normalized errors have a known distribution, whatever the noise levels are. Too large means overconfident, too small means underconfident.
+
+There are two places to do this. If the truth is known, as in a simulation, compare the estimate with the true state. On a real system, compare each measurement with the filter's prediction of it, because the filter also claims how large that surprise should be.
+
+## The math
+
+### What Q and R do
+
+The gain balances the predicted uncertainty against the measurement noise: $\mathbf{K}_k = \mathbf{P}_{k\mid k-1}\mathbf{H}\T(\mathbf{H}\mathbf{P}_{k\mid k-1}\mathbf{H}\T + \mathbf{R})^{-1}$, and $\mathbf{P}_{k\mid k-1}$ grows by $\mathbf{Q}$ at every step. A larger $\mathbf{Q}$ (the state may change more) or a smaller $\mathbf{R}$ (the sensor is better) raises the gain, so the filter follows the measurements more closely. A smaller $\mathbf{Q}$ or larger $\mathbf{R}$ lowers it, so the filter smooths more and reacts more slowly.
+
+In steady state only the *ratio* of $\mathbf{Q}$ to $\mathbf{R}$ affects the estimates: multiplying both by the same factor $c$ leaves every gain unchanged and multiplies $\mathbf{P}$ by $c$. So two filters can produce identical estimates while one claims ten times the uncertainty of the other. The estimate depends on the ratio; the honesty of the covariance depends on the scale. Tuning has to get both right.
+
+### NEES: checking the state
+
+The **normalized estimation error squared** compares the estimation error with the claimed covariance:
+
+$$
+\epsilon_k = (\hat{\mathbf{x}}_{k\mid k} - \mathbf{x}_k)\T\, \mathbf{P}_{k\mid k}^{-1}\, (\hat{\mathbf{x}}_{k\mid k} - \mathbf{x}_k).
+$$
+
+This is the squared Mahalanobis distance of [Post 2](../gaussians-and-covariance/) between the estimate and the truth. If the filter is consistent, the error is $\N(\mathbf{0}, \mathbf{P}_{k\mid k})$ and $\epsilon_k$ follows a chi-square distribution with $n_x$ degrees of freedom: its mean is $n_x = 4$ for the forklift.
+
+One value is very noisy, so average over $M$ independent simulated runs: $\bar{\epsilon}_k = \frac{1}{M}\sum_{i=1}^{M} \epsilon_k^{(i)}$. Then $M\bar{\epsilon}_k$ is chi-square with $M n_x$ degrees of freedom, and a consistent filter keeps $\bar{\epsilon}_k$ inside
+
+$$
+\left[\, \frac{\chi^2_{Mn_x}(0.025)}{M},\ \frac{\chi^2_{Mn_x}(0.975)}{M} \,\right] = [3.25,\ 4.82] \quad \text{for } M = 50,\ n_x = 4,
+$$
+
+95% of the time. NEES needs the true state, so it is a tool for simulations, before the filter meets the real world.
+
+### NIS: checking the measurements
+
+The innovation $\boldsymbol{\nu}_k = \mathbf{z}_k - \mathbf{H}\hat{\mathbf{x}}_{k\mid k-1} = \mathbf{H}(\mathbf{x}_k - \hat{\mathbf{x}}_{k\mid k-1}) + \mathbf{v}_k$ is a prediction error plus fresh sensor noise. If the filter's $\mathbf{P}_{k\mid k-1}$ and $\mathbf{R}$ are right, its covariance is exactly $\mathbf{S}_k$, which the filter computes anyway. The **normalized innovation squared** is
+
+$$
+\epsilon_{\nu,k} = \boldsymbol{\nu}_k\T\, \mathbf{S}_k^{-1}\, \boldsymbol{\nu}_k,
+$$
+
+chi-square with $n_z$ degrees of freedom, mean $n_z = 2$ here. It needs no truth, only quantities the filter already has. Better still, the innovations of an optimal filter are **white**: uncorrelated from one step to the next. So the time average of $K$ steps of a *single* run, times $K$, is chi-square with $K n_z$ degrees of freedom. For the 35 steps the widget uses, that gives the bounds $[1.39, 2.71]$: a test a deployed filter can run on itself, online.
+
+<Callout type="key">
+A consistent filter's NEES averages $n_x$ and its NIS averages $n_z$, each within chi-square bounds. Values above the bounds mean the filter is overconfident (its covariance is too small); values below mean it is underconfident. NIS needs no ground truth, so it works on real data.
+</Callout>
+
+## Play with it
+
+The verdict ignores the first five steps, while the prior still dominates the errors.
+
+<TryThis>
+1. **Well tuned.** The averaged NEES is 3.94, inside [3.25, 4.82], and the averaged NIS is 2.15, inside [1.48, 2.59]. The single run's error stays inside its own 95% band at every step, and that run's time-averaged NIS, 2.13, is inside its one-run bounds [1.39, 2.71].
+2. **Assumes cameras 3× better.** The filter now trusts each fix too much and claims a position σ less than half the real one. NEES jumps to 22.48 and NIS to 14.71, far above their bands, and the single run's error escapes its band at 18 of the 40 steps. One run's NIS (14.66) is enough to see it.
+3. **Assumes cameras 3× worse.** The filter is too cautious: NEES drops to 2.08 and NIS to 0.40, below their bands. Its estimates are still good, but its error bands are far wider than they need to be.
+4. **A blind spot.** Choose *Custom* by moving the sliders to an assumed q of × 0.1 and an assumed σ of × 1.4. The two mistakes cancel in the innovations: NIS is 2.23, inside its band, and the NIS verdict says consistent. NEES is 18.51: the state covariance is badly overconfident. NIS can tell that $\mathbf{S}$ is right without telling whether $\mathbf{Q}$ and $\mathbf{R}$ are.
+</TryThis>
+
+## Algorithm
+
+<AlgorithmBox title="Checking a filter's consistency" source="src/lib/filters/consistency.ts">
+1. **In simulation:** generate $M$ runs from the true model and run the filter on each. At every step compute the NEES $\epsilon_k$ and average it over the runs.
+2. Compare $\bar{\epsilon}_k$ with $[\chi^2_{Mn_x}(0.025)/M,\ \chi^2_{Mn_x}(0.975)/M]$. Mostly above: increase $\mathbf{Q}$ or $\mathbf{R}$. Mostly below: decrease them.
+3. **On real data:** record the NIS $\epsilon_{\nu,k}$ of each update, and compare its average over $K$ steps with $[\chi^2_{Kn_z}(0.025)/K,\ \chi^2_{Kn_z}(0.975)/K]$. Also check that the innovations are uncorrelated in time.
+</AlgorithmBox>
+
+The unit tests run the well-tuned filter 200 times and check the property in DESIGN's test list: at least 90% of the run-averaged NEES values lie inside their 95% bounds, and their overall mean is within 0.15 of $n_x$. They also check that each mistuned preset gets the right verdict.
+
+## When it breaks
+
+### Divergence
+
+Choose **Assumes q 1000× too small**. The filter now believes the forklift's velocity hardly ever changes. As data accumulates its covariance shrinks, its gain falls, and it starts to ignore the cameras: when the forklift changes speed, the estimate drifts away and the filter does not notice, because it is certain it is right. The averaged NEES reaches 900, and the single run's error is outside its band at 27 of the 40 steps. This is **divergence**: not a numerical failure but a model that leaves no room for reality. Its signature is a growing NIS, here 13.29 against an expected 2. The usual fix is to never let $\mathbf{Q}$ be zero: some process noise always stands in for what the model leaves out.
+
+### The short covariance update
+
+The covariance update $\mathbf{P}_{k\mid k} = (\mathbf{I} - \mathbf{K}\mathbf{H})\mathbf{P}_{k\mid k-1}$ is correct only when $\mathbf{K}$ is exactly the optimal gain. Engineers sometimes fix a gain by hand, or compute it from a slightly different $\mathbf{R}$, and rounding errors always perturb it. The **Joseph form**
+
+$$
+\mathbf{P}_{k\mid k} = (\mathbf{I} - \mathbf{K}\mathbf{H})\,\mathbf{P}_{k\mid k-1}\,(\mathbf{I} - \mathbf{K}\mathbf{H})\T + \mathbf{K}\mathbf{R}\mathbf{K}\T
+$$
+
+is the actual covariance of the updated error for *any* gain, and it is symmetric and positive semidefinite by construction. In one dimension with $P_{k\mid k-1} = R = 1$ the optimal gain is 0.5. With a gain of 1.5, the short form gives a variance of $-0.5$, which is impossible; the Joseph form gives 2.5, which the unit tests confirm by simulation. Use the Joseph form, symmetrize $\mathbf{P}$ after each step, and compute the gain with a Cholesky solve rather than an explicit inverse, as the code in this series does.
+
+### Other things that break consistency
+
+Consistency checks find symptoms, not causes. An overconfident NIS can come from a $\mathbf{Q}$ or $\mathbf{R}$ that is too small, but also from a model error, such as the unexpected turn of Post 12, a sensor bias, a wrong time step, or outliers. A lone very large NIS value is the classic sign of an outlier, and the same statistic is used to reject such measurements before the update (Post 25).
+
+## Summary
+
+- $\mathbf{Q}$ and $\mathbf{R}$ set the gain through their ratio, and the honesty of the reported covariance through their scale.
+- NEES $\epsilon_k$ compares the estimation error with $\mathbf{P}$; it needs the truth and averages $n_x$ for a consistent filter. NIS $\epsilon_{\nu,k}$ compares the innovation with $\mathbf{S}$; it needs no truth and averages $n_z$.
+- Chi-square bounds turn averages over runs or over time into 95% tests. Above the bounds: overconfident. Below: underconfident.
+- NIS has blind spots: errors in $\mathbf{Q}$ and $\mathbf{R}$ can cancel. Use NEES in simulation before trusting a tuning.
+- A filter with too little process noise diverges. The Joseph form keeps $\mathbf{P}$ a valid covariance for any gain.

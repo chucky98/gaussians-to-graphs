@@ -1,8 +1,8 @@
 # Progress
 
-## Current phase: 2 — Part 2 (in progress: posts 10–12 published)
+## Current phase: 2 — Part 2 (in progress: posts 10–13 published)
 
-## Next task: Phase 2 — post 13 `tuning-and-consistency` (TuningLab)
+## Next task: Phase 2 — post 14 `robot-models-2d` (MotionModelSampler, RangeBearing)
 
 ## Posts
 
@@ -20,7 +20,8 @@
 | 10    | bayes-filter                     | published | CorridorRobot                 | ~2,400 words. Delivery robot on a 30 m loop corridor, door detector; histogram filter; kidnapping and the ε fix.             |
 | 11    | kalman-filter-1d                 | published | GaussianProduct, Tracker1D    | ~2,500 words. Same robot in a straight corridor: odometry + position fixes; gain as trust ratio; steady state; outage.       |
 | 12    | kalman-filter                    | published | CVTracker2D                   | ~2,700 words. Warehouse forklift from ceiling-camera fixes; constant-velocity model; velocity learned via correlation; turn. |
-| 13–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                             |                                                                                                                              |
+| 13    | tuning-and-consistency           | published | TuningLab                     | ~2,500 words. 50 Monte Carlo runs of the forklift tracker; true vs assumed noise; NEES/NIS bounds; NIS blind spot; Joseph.   |
+| 14–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                             |                                                                                                                              |
 
 ## Infrastructure checklist
 
@@ -104,6 +105,9 @@
 - 2026-11-26 — **`filters/kf.ts` + `models/linear.ts` (post 12).** Multivariate KF: `kfPredict`, `kfUpdate` (Joseph by default, gain by Cholesky solve, returns ν, S, K, NIS), `kfRun` with missing measurements, and `batchLinearGaussian` (dense batch MAP over the whole trajectory with every state's marginal covariance; reused by post 18). `constantVelocity(dim, dt, q)` (white-noise acceleration; Q checked against its defining integral) and `positionSensor`. Invariants: KF = batch MAP after every step (with gaps); P symmetric PSD; Joseph = short form; update = conditioning; 1D case = `kf1d`.
 - 2026-11-26 — **CVTracker2D scenario:** Δt = 1 s, q = 0.01 m²/s³, σ = 0.5 m. The filter's prior is honestly vague about velocity (0 ± 2 m/s) while the true forklift starts at about 1.5 m/s east; with a fixed floor plan most seeds wandered off it, so the map fits itself to the path. Seed 50 chosen as the most typical of 200 (position, fix and velocity RMS all within 3% of the medians). "turn" preset: scripted 90° left turn at t = 20 s from the prior position. q slider is logarithmic (0.001–1).
 - 2026-11-26 — **Notation additions (post 12):** Δt, q (white-noise acceleration density).
+- 2026-11-26 — **`filters/consistency.ts` (post 13):** `nees`, `nis`, `averageBounds(dof, count)` (χ²_{count·dof} quantiles / count), `verdict`, `fractionInside`. DESIGN §8.1 consistency invariant: 200 seeded runs of the tuned filter keep ≥ 90% of the run-averaged NEES values inside their 95% bounds and the grand mean within 0.15 of n_x.
+- 2026-11-26 — **TuningLab:** truth drawn from the filter's exact model (including the prior) so the tuned case is consistent by construction. 50 runs × 40 steps recomputed on every slider change in ~7.5 ms: the covariances and gains are data-independent, so they are computed once and each run only propagates its mean (tested equal to the full KF). Presets use exact factors (sliders round to 2 significant digits). Found and used a NIS blind spot: q × 0.1 with σ × 1.4 gives a consistent NIS but NEES 18.5.
+- 2026-11-26 — **Notation additions (post 13):** M (Monte Carlo runs), ε̄_k (run-averaged statistic). Posts 02, 06, 08, 10, 11, 12 now link Post 13.
 - 2026-11-26 — **About page accuracy fix:** it cited "the Kalman filter equals batch least squares" as an existing test; that test arrives with Part 2, so it now cites "recursive least squares equals batch least squares".
 
 ## Follow-ups / known issues
@@ -111,7 +115,7 @@
 - **Owner action (statistics):** GoatCounter site `chucky98` is configured and counting. In GoatCounter → Settings, enable "Allow adding visitor counts on your website"; until then the public counters return 403 and the About section shows "could not be loaded".
 
 - **Owner action:** install the giscus GitHub App on `chucky98/gaussians-to-graphs` (https://github.com/apps/giscus). Then set `giscus.enabled = true` in `src/lib/site/config.ts`.
-- When posts 13, 15, 16, 17, 19, 22, 23, 25, 27, 28, 29 are published: link the plain-text references to them from earlier posts.
+- When posts 15, 16, 17, 19, 22, 23, 25, 27, 28, 29 are published: link the plain-text references to them from earlier posts.
 - Client-side KaTeX (77 KB gz) still loads for widgets with TeX labels or MatrixView. Consider rendering static TeX at build time and showing live numbers as plain text.
 - `Plot2D` pan/zoom is not implemented yet (no Phase 0 widget needs it). Primitives still to build when first needed: Landmark, Heatmap, Spy.
 - Lighthouse has not been run (optional per §8.4).
@@ -132,4 +136,5 @@
 | CorridorRobot island        | 5.9 KB gz (+ shared primitives and Svelte runtime)                                          | No KaTeX (plain-text slider labels)                           |
 | Post 11 islands             | GaussianProduct 2.7 KB, Tracker1D 4.6 KB gz (+ shared primitives and Svelte runtime)        | No KaTeX                                                      |
 | CVTracker2D island          | 5.0 KB gz (+ shared primitives and Svelte runtime)                                          | No KaTeX                                                      |
+| TuningLab island            | 4.9 KB gz (+ shared primitives and Svelte runtime)                                          | No KaTeX; ~7.5 ms per recompute (50 runs)                     |
 | Shared: KaTeX chunk         | 77 KB                                                                                       | Loaded only by Gaussian1D / CovarianceEllipse (post 02)       |

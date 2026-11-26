@@ -303,6 +303,7 @@ Typography: scalars are italic ($x$), vectors are bold lowercase ($\mathbf{x}$),
 | $\mathcal{X}^{[i]}$, $W^{[i]}_m, W^{[i]}_c$ | sigma points and their mean/covariance weights |
 | $\mathbf{x}^{[i]}$, $w^{[i]}$ | particle $i$ and its (scalar) weight; $N_p$ particles; $N_{\text{eff}}$ effective sample size |
 | $\epsilon_k$, $\epsilon_{\nu,k}$ | NEES and NIS |
+| $M$, $\bar{\epsilon}_k$ | number of Monte Carlo runs; a statistic averaged over them (post 13) |
 | $d_M$ | Mahalanobis distance |
 | $\mathbf{C} \in SO(n)$ | **rotation matrix** (Barfoot convention; $\mathbf{R}$ is reserved for measurement noise) |
 | $\mathbf{T} \in SE(n)$ | pose / rigid transform; $\mathbf{T}_{ij}$ relative pose of $j$ in frame $i$ |
