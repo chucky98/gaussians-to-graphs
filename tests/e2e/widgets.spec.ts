@@ -312,3 +312,48 @@ test.describe('post 09 widgets', () => {
     await expect(d.locator('[data-readout="lm-pos"]')).toHaveText('(6.39, 3.09)');
   });
 });
+
+test.describe('post 10 widgets', () => {
+  test('CorridorRobot: two hypotheses after two doors; missed door; uniform with a useless sensor; kidnapping', async ({
+    page,
+  }) => {
+    await page.goto('posts/bayes-filter/');
+    const w = page.locator('[data-widget="CorridorRobot"]').first();
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="hyps"]')).toHaveText('none (spread out)');
+    const sense = w.locator('[data-action="sense"]');
+    const move = w.locator('[data-action="move"]');
+    await sense.click();
+    for (let i = 0; i < 4; i++) {
+      await move.click();
+      await sense.click();
+    }
+    await expect(w.locator('[data-readout="hyps"]')).toHaveText('2');
+    await expect(w.locator('[data-readout="near"]')).toHaveText('40%');
+    for (let i = 0; i < 6; i++) {
+      await move.click();
+      await sense.click();
+    }
+    await expect(w.locator('[data-readout="steps"]')).toHaveText('10 / 11');
+    await expect(w.locator('[data-readout="best"]')).toHaveText('19.4 m');
+    await expect(w.locator('[data-readout="truth"]')).toHaveText('10.1 m');
+    await expect(w.locator('[data-readout="near"]')).toHaveText('17%');
+    await w.locator('[data-action="undo"]').click();
+    await expect(w.locator('[data-readout="steps"]')).toHaveText('10 / 10');
+    await w.getByRole('slider', { name: 'Hit rate p(door | at a door)' }).fill('0.5');
+    await w.getByRole('slider', { name: 'False-alarm rate p(door | at a wall)' }).fill('0.5');
+    await expect(w.locator('[data-readout="near"]')).toHaveText('8%');
+    await expect(w.locator('[data-readout="hyps"]')).toHaveText('none (spread out)');
+
+    const t = page.locator('[data-widget="CorridorRobot"]').nth(1);
+    await t.scrollIntoViewIfNeeded();
+    await expect(t.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(t.locator('[data-readout="near"]')).toHaveText('100%');
+    await t.locator('[data-action="kidnap"]').click();
+    await expect(t.locator('[data-readout="truth"]')).toHaveText('20.6 m');
+    await expect(t.locator('[data-readout="near"]')).toHaveText('0%');
+    await t.getByRole('switch', { name: /Allow for kidnapping/ }).check();
+    await expect(t.locator('[data-readout="truth"]')).toHaveText('20.6 m');
+  });
+});

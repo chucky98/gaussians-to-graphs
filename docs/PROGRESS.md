@@ -1,8 +1,8 @@
 # Progress
 
-## Current phase: 1 — Parts 0 and 1 (complete: posts 01–09 published)
+## Current phase: 2 — Part 2 (in progress: post 10 published)
 
-## Next task: Phase 2 — post 10 `bayes-filter` (CorridorRobot)
+## Next task: Phase 2 — post 11 `kalman-filter-1d` (GaussianProduct, Tracker1D)
 
 ## Posts
 
@@ -17,7 +17,8 @@
 | 07    | estimator-quality                | published | EstimatorShootout             | ~2,200 words. GPS receiver on a benchmark; open sky vs reflections (10% at ±30 m); CRLB by numerical Fisher information.    |
 | 08    | recursive-least-squares          | published | RLSStream                     | ~2,300 words. Online motor calibration; battery sag; forgetting factor sweet spot.                                          |
 | 09    | nonlinear-least-squares          | published | CostLandscape                 | ~2,300 words. UWB indoor positioning; mirror minimum with wall anchors; GN divergence vs LM.                                |
-| 10–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                             |                                                                                                                             |
+| 10    | bayes-filter                     | published | CorridorRobot                 | ~2,400 words. Delivery robot on a 30 m loop corridor, door detector; histogram filter; kidnapping and the ε fix.            |
+| 11–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                             |                                                                                                                             |
 
 ## Infrastructure checklist
 
@@ -87,6 +88,10 @@
 - 2026-11-26 — **CostLandscape presets were found by scanning ~1,600 start points**, not guessed: with corner anchors GN never fails, so the divergence preset uses collinear (south-wall) anchors and a start in line with them, where Λ is nearly singular. New primitive `Landmark`.
 - 2026-11-26 — **Phase 1 complete.** Part 1 uses real-world scenarios throughout (GPS road fixes, ultrasonic ranging, survey benchmark, motor calibration, UWB positioning).
 - 2026-11-26 — **Public site statistics (owner request: public counters only, at the end of About).** GoatCounter (cookieless, no personal data; consistent with DESIGN §1.2's "no tracking cookies"). The counting script loads only in production builds and only when `siteConfig.stats.goatcounterCode` is set; the About page then shows total views and views per post (most read first) from GoatCounter's public JSON counters, and its privacy text says so. With no code configured nothing loads and the privacy text stays "no analytics". Verified with mocked endpoints (numbers, sorting, failure message); the real CORS behaviour can only be confirmed once the account exists.
+- 2026-11-26 — **Phase 2 started with post 10.** `filters/histogram.ts` (uniform/point beliefs, `gaussianKernel` = Gaussian move rounded to cells by bin mass, `predict` with cyclic/bounded corridors and an optional kidnapping mix-in, `update` returning the evidence, `sampleOffset`, `massNear`, `entropyBits`). Key invariant test: on a small corridor the recursive filter equals the brute-force posterior over every path, and the product of normalizers equals p(z₁:ₖ).
+- 2026-11-26 — **CorridorRobot scenario (post 10):** 30 m loop, 120 cells of 25 cm, six doors with two pairs at the same 3 m spacing (1/4 and 10/13 m) so two hypotheses survive the second door. Defaults α = 0.1 m per 1 m move, hit 0.9, false alarm 0.05, chosen by sweeping layouts/parameters over 60–100 seeds (0.5 m cells made α invisible; α = 0.25 with hit 0.8 rarely localized). Seed 18 is typical: localized (> 90% within ±1 m) at move 21; median over seeds 1–100 is 19. The widget's readings are drawn from the filter's own model (model mismatch is post 13's topic). Each action draws exactly one uniform, so sliders replay the same luck.
+- 2026-11-26 — **Kidnapping probability ε = 0.001 per move** (toggle). Without it the tracking preset (two laps) is still lost 80 moves after a kidnap; with it, back above 90% after 32 moves, at a cost of 94.2% → 92.6% average near-truth mass (seeds 1–100). A "surprise" readout (the normalizer p(zₖ | earlier data)) was tried and dropped: one surprising reading also happens while tracking correctly, so it would teach a misleading signal.
+- 2026-11-26 — **Notation additions (post 10):** z₁:ₖ/u₁:ₖ, predicted belief bel̄(xₖ), scalar normalizer η (conflict note vs bold η of Gauss–Newton), ε kidnapping probability (conflict note vs NEES εₖ); α now also covers "per 1 m move" in post 10.
 - 2026-11-26 — **About page accuracy fix:** it cited "the Kalman filter equals batch least squares" as an existing test; that test arrives with Part 2, so it now cites "recursive least squares equals batch least squares".
 
 ## Follow-ups / known issues
@@ -97,6 +102,7 @@
 - When posts 11, 12, 13, 15, 16, 17, 19, 22, 23, 25, 27, 28, 29 are published: link the plain-text references to them from earlier posts.
 - Client-side KaTeX (77 KB gz) still loads for widgets with TeX labels or MatrixView. Consider rendering static TeX at build time and showing live numbers as plain text.
 - `Plot2D` pan/zoom is not implemented yet (no Phase 0 widget needs it). Primitives still to build when first needed: Landmark, Heatmap, Spy.
+- **Layout bug (pre-existing, all posts):** at 1280 px the sticky "Symbols in this post" card in the right margin overlaps the right ~30 px of wide widgets (seen on posts 08 and 10). Fix in a separate `infra/` PR: either narrow the wide-widget cap to leave room for the symbols column, or fade the card while a widget overlaps it (as is done for margin notes).
 - Lighthouse has not been run (optional per §8.4).
 - Post 01's DriftFan "close the loop" follow-up remains scheduled for Phase 4.
 
@@ -112,4 +118,5 @@
 | SliceVsProject island       | 4.0 KB (+ KaTeX chunk)                                                                      | Live formulas use KaTeX                                       |
 | NonlinearPropagation island | 5.8 KB (+ KaTeX chunk)                                                                      | Two instances on post 04                                      |
 | Part 1 islands              | LineFit 3.8, BayesGrid1D 4.5, EstimatorShootout 4.9, RLSStream 4.3, CostLandscape 5.8 KB gz | KaTeX chunk only where TeX labels/formulas are used           |
+| CorridorRobot island        | 5.9 KB gz (+ shared primitives and Svelte runtime)                                          | No KaTeX (plain-text slider labels)                           |
 | Shared: KaTeX chunk         | 77 KB                                                                                       | Loaded only by Gaussian1D / CovarianceEllipse (post 02)       |

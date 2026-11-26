@@ -1,0 +1,200 @@
+---
+number: 10
+title: 'The Bayes Filter: Predict, Update, Repeat'
+description: A delivery robot wakes up somewhere on a loop corridor. Moving blurs its belief, each door reading sharpens it, and the loop of the two is the Bayes filter.
+part: 2
+status: published
+date: 2026-11-26
+prerequisites: [mle-and-map]
+objectives:
+  - Describe what a robot knows as a belief, a probability distribution over its state given all data so far.
+  - State the Markov assumptions, and derive the Bayes filter's prediction and update steps from them.
+  - Recognize prediction as a convolution with the motion model, and the update as multiplication by the likelihood followed by normalization.
+  - Implement a histogram filter, and explain why it needs a kidnapping term to recover from a wrong belief.
+references:
+  - key: thrun2005
+    text: Thrun, Burgard, Fox. *Probabilistic Robotics.* MIT Press, 2005. §2.4 (the Bayes filter and its derivation), §4.1 (the histogram filter) and §7.2 (Markov localization, with a corridor-and-doors illustration).
+  - key: fox1999
+    text: 'Fox, Burgard, Thrun. "Markov localization for mobile robots in dynamic environments." *Journal of Artificial Intelligence Research* 11, 1999 (grid-based Markov localization on real robots).'
+  - key: arulampalam2002
+    text: 'Arulampalam, Maskell, Gordon, Clapp. "A tutorial on particle filters for online nonlinear/non-Gaussian Bayesian tracking." *IEEE Transactions on Signal Processing* 50(2), 2002. §II (the recursive Bayesian solution) and §III-B (grid-based methods).'
+widgets: [CorridorRobot]
+symbols:
+  - tex: '\bel(\mathbf{x}_k)'
+    meaning: 'belief: here bel(x_k), a probability for each 25 cm cell'
+    match: ['\bel(']
+  - tex: '\overline{\bel}(\mathbf{x}_k)'
+    meaning: predicted belief, after the move and before the reading
+    match: ['\overline{\bel}']
+  - tex: '\mathbf{z}_{1:k},\ \mathbf{u}_{1:k}'
+    meaning: 'all readings and moves so far (scalars z_k, u_k here)'
+    match: ['_{1:k}']
+  - tex: '\eta'
+    meaning: normalizer that makes the belief sum to 1
+  - tex: '\alpha'
+    meaning: motion noise, error std per 1 m move
+  - tex: '\varepsilon'
+    meaning: kidnapping probability per move
+---
+
+import CorridorRobot from '../../../components/widgets/CorridorRobot/CorridorRobot.svelte';
+
+A hospital delivery robot is switched on somewhere on the loop corridor that runs around the building's core. It has a map, so it knows where the doors are. It has a sideways-looking sensor that reports, at each stop, whether it is facing a door or a plain wall. What it does not know is where on the loop it is. Every 25 cm cell of the corridor is equally likely.
+
+One reading cannot settle this: the corridor has six doors, and "door" fits all of them. The robot has to drive, read, drive and read again, and keep track of everything those readings imply. In [Post 6](../mle-and-map/) a robot combined a prior with a few readings of one fixed distance. Now the robot moves between readings, so its prior keeps changing.
+
+<CorridorRobot client:visible />
+
+Press **Play**, or alternate **Sense** and **Move 1 m** yourself, and watch the lower chart. It is the robot's belief about where it is, and it starts flat.
+
+## Intuition
+
+The robot's knowledge is a histogram: one probability for each cell of the corridor, adding up to 1. Two things change it.
+
+**Moving makes the robot less sure.** If it believed it was at 4 m and then drove 1 m, it now believes it is at 5 m, but wheels slip, so "about 5 m" is a little vaguer than "about 4 m" was. The whole histogram shifts 1 m to the right and blurs.
+
+**Sensing makes the robot more sure.** If the sensor says "door", every cell in front of a door becomes more plausible and every cell in front of a wall becomes less plausible. The histogram is multiplied, cell by cell, by how well each position explains the reading, and then rescaled so it adds up to 1 again.
+
+Repeat forever: predict, update, predict, update. That loop is the **Bayes filter**. Each update is exactly Bayes' rule from Post 6, where the prior is whatever the last prediction produced.
+
+## The math
+
+### Belief
+
+Let $\mathbf{x}_k$ be the robot's state at time $k$, $\mathbf{u}_{1:k} = (\mathbf{u}_1, \ldots, \mathbf{u}_k)$ the controls it has applied, and $\mathbf{z}_{1:k}$ the measurements it has received. The robot's **belief** is the distribution of its state given everything it has seen and done:
+
+$$
+\bel(\mathbf{x}_k) = p(\mathbf{x}_k \mid \mathbf{z}_{1:k}, \mathbf{u}_{1:k}).
+$$
+
+It is not a single best guess; it is the whole distribution, so it can have several humps when the data cannot yet tell places apart. In the corridor the state is a single number, the position $x_k$ along the loop, divided into 120 cells of 25 cm. Each control $u_k$ is a command to drive 1 m, and each measurement $z_k$ is "door" or "wall".
+
+### Two assumptions
+
+The belief conditions on the entire history, which grows without end. Two assumptions make it manageable. Together they are called the **Markov assumption**: the current state summarizes the past.
+
+1. **Motion depends only on the last state and the control:** $p(\mathbf{x}_k \mid \mathbf{x}_{0:k-1}, \mathbf{z}_{1:k-1}, \mathbf{u}_{1:k}) = p(\mathbf{x}_k \mid \mathbf{x}_{k-1}, \mathbf{u}_k)$. Where the robot ends up depends on where it was and what it was told to do, not on how it got there.
+2. **A measurement depends only on the current state:** $p(\mathbf{z}_k \mid \mathbf{x}_{0:k}, \mathbf{z}_{1:k-1}, \mathbf{u}_{1:k}) = p(\mathbf{z}_k \mid \mathbf{x}_k)$. What the sensor reports depends on where the robot is now, not on earlier readings.
+
+These are the **motion model** and the **measurement model**. They are all the filter needs to know about the robot.
+
+### Predict, then update
+
+Under these assumptions the belief can be updated recursively, in two steps:
+
+$$
+\overline{\bel}(\mathbf{x}_k) = \int p(\mathbf{x}_k \mid \mathbf{x}_{k-1}, \mathbf{u}_k)\, \bel(\mathbf{x}_{k-1})\, d\mathbf{x}_{k-1} \tag{1}
+$$
+
+$$
+\bel(\mathbf{x}_k) = \eta\, p(\mathbf{z}_k \mid \mathbf{x}_k)\, \overline{\bel}(\mathbf{x}_k) \tag{2}
+$$
+
+Equation (1) is the **prediction**: the probability of being at $\mathbf{x}_k$ now adds up every way of getting there, from every previous state, weighted by how likely that previous state was. The result $\overline{\bel}(\mathbf{x}_k)$ is the **predicted belief**, before the new measurement. Equation (2) is the **update**: Bayes' rule, with the predicted belief as the prior and $p(\mathbf{z}_k \mid \mathbf{x}_k)$ as the likelihood. The constant $\eta$ rescales the product so that it sums (or integrates) to 1.
+
+<Derivation title="Deriving (1) and (2) from the Markov assumption">
+Apply Bayes' rule to the newest measurement $\mathbf{z}_k$, keeping everything else as given:
+
+$$
+\bel(\mathbf{x}_k) = \frac{p(\mathbf{z}_k \mid \mathbf{x}_k, \mathbf{z}_{1:k-1}, \mathbf{u}_{1:k})\; p(\mathbf{x}_k \mid \mathbf{z}_{1:k-1}, \mathbf{u}_{1:k})}{p(\mathbf{z}_k \mid \mathbf{z}_{1:k-1}, \mathbf{u}_{1:k})}.
+$$
+
+By assumption 2 the first factor is $p(\mathbf{z}_k \mid \mathbf{x}_k)$. The denominator does not depend on $\mathbf{x}_k$; call it $1/\eta$. The second factor is $\overline{\bel}(\mathbf{x}_k)$, which gives (2). To compute it, sum over the previous state (the law of total probability):
+
+$$
+\overline{\bel}(\mathbf{x}_k) = \int p(\mathbf{x}_k \mid \mathbf{x}_{k-1}, \mathbf{z}_{1:k-1}, \mathbf{u}_{1:k})\, p(\mathbf{x}_{k-1} \mid \mathbf{z}_{1:k-1}, \mathbf{u}_{1:k})\, d\mathbf{x}_{k-1}.
+$$
+
+By assumption 1 the first factor is $p(\mathbf{x}_k \mid \mathbf{x}_{k-1}, \mathbf{u}_k)$. In the second factor, the control $\mathbf{u}_k$ is applied after $\mathbf{x}_{k-1}$ and says nothing about it, so it can be dropped. What is left is $\bel(\mathbf{x}_{k-1})$, which gives (1).
+</Derivation>
+
+Notice that $\eta$ is not just bookkeeping. It equals $1/p(\mathbf{z}_k \mid \mathbf{z}_{1:k-1}, \mathbf{u}_{1:k})$, the reciprocal of how probable the reading was before it arrived. Readings that the filter found improbable are a warning sign, an idea Post 13 develops for Kalman filters.
+
+### The corridor as a histogram filter
+
+With 120 cells, the integral in (1) becomes a sum over cells and the belief becomes a vector of 120 probabilities. This is the **histogram filter**.
+
+**Motion model.** A move of $u_k = 1$ m ends 1 m further on, with a Gaussian error of standard deviation $\alpha$, rounded to the nearest cell. This is the same $\alpha$ as the odometry noise level in [Post 1](../where-am-i/), the error standard deviation per $\sqrt{\text{m}}$: for a 1 m move, the error standard deviation is $\alpha$. The default is $\alpha = 0.1$ m. Leaving the end of the loop at 30 m brings the robot back in at 0 m. Prediction (1) becomes
+
+$$
+\overline{\bel}(x_k) = \sum_{x_{k-1}} p(x_k \mid x_{k-1}, u_k)\, \bel(x_{k-1}).
+$$
+
+The chance of moving from $x_{k-1}$ to $x_k$ depends only on the distance between them, so this sum is a **convolution**: each cell's probability is spread over the cells about 1 m ahead in the same pattern. The result shifts and blurs, exactly as the intuition said.
+
+**Measurement model.** The door detector has two numbers. In front of a door it says "door" with probability 0.9 (the hit rate); in front of a wall it falsely says "door" with probability 0.05 (the false-alarm rate):
+
+$$
+p(z_k = \text{door} \mid x_k) = \begin{cases} 0.9 & \text{if } x_k \text{ faces a door,} \\ 0.05 & \text{if } x_k \text{ faces a wall,} \end{cases}
+$$
+
+and $p(z_k = \text{wall} \mid x_k) = 1 - p(z_k = \text{door} \mid x_k)$. A "door" reading therefore multiplies every door cell by 0.9 and every wall cell by 0.05, a ratio of 18 to 1. A "wall" reading multiplies them by 0.1 and 0.95, a gentler ratio of 9.5 to 1 in the other direction. Update (2) is that multiplication, followed by dividing every cell by the sum.
+
+<Callout type="key">
+The Bayes filter alternates two steps. Prediction convolves the belief with the motion model, which shifts it and spreads it out. The update multiplies it by the likelihood of the new measurement and normalizes, which concentrates it. The Kalman filters and particle filters in the rest of Part 2 are ways of carrying out these same two steps for particular kinds of belief.
+</Callout>
+
+## Play with it
+
+Use the widget at the top of the post. The robot starts at 0.1 m, just before the first door, and the corridor has two pairs of doors with the same 3 m spacing: at 1 and 4 m, and at 10 and 13 m.
+
+<TryThis>
+1. Press **Play** and watch the **Hypotheses** readout. The first reading, "wall", barely changes the flat belief, since most of the loop is wall. After move 1 the robot reads "door", and the belief jumps into six bumps, one in front of each door. After move 4 it sees a second door 3 m after the first: only the two door pairs fit, and two bumps of equal height remain.
+2. Keep going. At move 10 the robot stands in the doorway at 10 m, but the sensor misses it and reports "wall". That reading favours the wrong bump: the most likely position becomes 19.4 m while the robot is at 10.1 m, and only 17% of the belief lies within 1 m of the truth. The filter does not discard the true bump, though. By move 19 it is the only one left (84%), and after the wide door at 20 m (move 21), 97% of the belief is within 1 m of the truth.
+3. Press **Reset**, set the motion noise $\alpha$ to 0.5 m and play again. Each move now blurs the bumps visibly and the readings cannot keep up: after 30 moves only 28% of the belief is within 1 m of the truth, against 98% with the default $\alpha = 0.1$ m.
+4. Set both the hit rate and the false-alarm rate to 0.5. A door and a wall now produce the same readings, the likelihood is flat, and the belief stays exactly uniform however long the robot drives.
+</TryThis>
+
+The **Undo** button steps back one action. Changing a slider replays the same sequence of actions with the same random draws, so you can compare settings on identical luck.
+
+## Algorithm
+
+<AlgorithmBox title="Histogram filter (one step)" source="src/lib/filters/histogram.ts">
+1. **Predict** after a move $u_k$: for every cell $i$, $\overline{\bel}(i) = \sum_j p(i \mid j, u_k)\,\bel(j)$, a convolution with the motion kernel.
+2. **Update** after a reading $z_k$: for every cell $i$, $b(i) = p(z_k \mid i)\,\overline{\bel}(i)$.
+3. **Normalize**: $\bel(i) = b(i) / \sum_j b(j)$. The sum is $p(z_k \mid \mathbf{z}_{1:k-1}, \mathbf{u}_{1:k}) = 1/\eta$.
+</AlgorithmBox>
+
+The unit tests check that the belief always sums to 1, that a noise-free move is an exact shift, and the property that justifies the whole recursion: on a small corridor, the filter's belief equals the posterior computed by brute force, enumerating every possible path the robot could have taken and applying Bayes' rule to the entire history at once.
+
+## When it breaks
+
+### The kidnapped robot
+
+The robot below has already driven two laps from the same start and is sure where it is: 100% of its belief lies within 1 m of the truth.
+
+<CorridorRobot client:visible preset="tracking" />
+
+<TryThis>
+1. Press **Kidnap the robot**. Someone picks it up and carries it 20 m along the loop, to 20.6 m, without telling the filter. The belief does not change, because nothing told it to.
+2. Press **Play**. The bump keeps marching 1 m per move, tracking a robot that is not there. Readings contradict it, yet 80 moves later only 8% of the belief is near the truth. Before the kidnap, two laps of consistent readings had pushed the probability of the true region down to about $3 \times 10^{-8}$, and each contradicting reading can raise it by at most a factor of 18.
+3. Switch on **Allow for kidnapping**, which replays the run with $\varepsilon = 0.001$. The filter now admits that any move might, with that small probability, end anywhere. Right after the kidnap the true region holds about $10^{-4}$ instead of $3 \times 10^{-8}$, and 32 moves later more than 90% of the belief is back within 1 m of the truth.
+</TryThis>
+
+The motion model that allows for kidnapping mixes a little of the uniform distribution into every prediction:
+
+$$
+\overline{\bel}(x_k) = (1 - \varepsilon) \sum_{x_{k-1}} p(x_k \mid x_{k-1}, u_k)\, \bel(x_{k-1}) + \frac{\varepsilon}{120}.
+$$
+
+After every prediction each cell holds at least $\varepsilon/120$, so no hypothesis is ever ruled out completely. The cost is small: over seeds 1 to 100, the average belief within 1 m of the truth between moves 30 and 60 drops only from 94.2% to 92.6%. The general lesson is that a Bayes filter can only recover from a situation its model says is impossible, or nearly so, as fast as the evidence can overturn the model. Particle filters (Post 17) use the same remedy, sprinkling a few random particles over the map.
+
+### Too many cells
+
+A 30 m corridor needs 120 cells. A 50 m × 50 m floor with 10 cm cells and 5° heading bins needs 18 million, and a prediction step that sums over all previous cells for each cell would be hopeless. Histogram filters work well in one or two dimensions; in three they need coarse grids and careful engineering, and beyond that they are hopeless. The rest of Part 2 offers two ways out: assume the belief is Gaussian, so a mean and a covariance describe it (the Kalman filter, Posts 11 and 12), or represent it with samples placed where the probability is (the particle filter, Post 17).
+
+### Cells that are too coarse
+
+A cell must be smaller than the features the sensor can tell apart. Here the doors are 1 to 1.5 m wide and the cells 25 cm, which is fine. With 2 m cells a door and the wall next to it would share a cell, and the filter could no longer use the door's edge to fix its position.
+
+### A model that is wrong
+
+In the widget the filter's hit and false-alarm rates are the sensor's true rates. A real filter only has estimates of them. If it trusts its sensor more than it should, each reading pushes the belief too hard, and a few unlucky readings can concentrate it in the wrong place, just like the kidnapped robot. Post 13 shows how to tell, from the readings alone, when a filter is overconfident.
+
+## Summary
+
+- The belief $\bel(\mathbf{x}_k)$ is the full distribution of the state given all measurements and controls so far. It can have several humps when the data are ambiguous.
+- The Markov assumption, that the current state summarizes the past, turns the growing history into a two-step recursion.
+- Prediction convolves the belief with the motion model and makes it less certain; the update multiplies it by the measurement likelihood and normalizes, which makes it more certain.
+- The histogram filter carries out both steps exactly on a grid. It equals Bayes' rule applied to the whole history, but its cost explodes with the number of dimensions.
+- A filter recovers from a wrong belief only as fast as its model allows. A small kidnapping probability $\varepsilon$ keeps every hypothesis alive at little cost.
