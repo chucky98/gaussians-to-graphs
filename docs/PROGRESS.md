@@ -1,8 +1,8 @@
 # Progress
 
-## Current phase: 1 — Parts 0 and 1 (Part 0 complete: posts 01–04 published; Part 1 next)
+## Current phase: 1 — Parts 0 and 1 (Part 0 complete; Part 1 in progress: post 05 published)
 
-## Next task: post 05 `least-squares` (LineFit widget; projection `<Figure>`)
+## Next task: post 06 `mle-and-map` (BayesGrid1D: map prior + ultrasonic range readings)
 
 ## Posts
 
@@ -12,7 +12,8 @@
 | 02    | gaussians-and-covariance         | published | Gaussian1D, CovarianceEllipse | Reference implementation of the post template. ~2,200 words. Claims pinned in `tests/unit/posts/02-…`.                      |
 | 03    | conditioning-and-marginalizing   | published | SliceVsProject                | ~1,600 words. Covariance/information duality; claims pinned in `tests/unit/posts/03-…`.                                     |
 | 04    | propagating-uncertainty          | published | NonlinearPropagation          | ~1,600 words. Polar banana, x², sin, linear; claims pinned in `tests/unit/posts/04-…`.                                      |
-| 05–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                             |                                                                                                                             |
+| 05    | least-squares                    | published | LineFit                       | ~2,300 words. Road from phone GPS fixes; multipath outlier; weights from reported accuracy. Projection figure.              |
+| 06–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                             |                                                                                                                             |
 
 ## Infrastructure checklist
 
@@ -68,11 +69,16 @@
 - 2026-11-26 — **Notation additions (post 04):** A, b (linear map), J (Jacobian of one function), r, θ (range and bearing).
 - 2026-11-26 — **Right margin (owner request): "Symbols in this post" card + margin notes.** Posts list key symbols in frontmatter (`symbols: [{tex, meaning, match?}]`); the card is KaTeX-rendered at build time, sticky in the right margin from 1240 px, and highlights the symbols whose TeX occurs in the section being read (client script scans KaTeX annotations). Below 1240 px it is a collapsible card under Contents. The validator requires each symbol's TeX to be in the notation table and each match fragment to occur in the post's math.
 - 2026-11-26 — **Margin notes moved to the symbols column** (from 1240 px, right edge on the page gutter); the card fades while a note overlaps it. Posts 01–04 each got three notes (etymology, attributions, back-references), all facts checked to well-established sources.
+- 2026-11-26 — **Part 1 uses real-world scenarios (owner request):** 05 GPS fixes along a road, 06 ultrasonic ranging to a wall with a map prior, 07 a stationary GPS receiver (multipath = heavy tails), 08 online motor calibration with a battery-sag jump, 09 UWB indoor positioning (trilateration).
+- 2026-11-26 — **`math/leastsquares.ts`** (`lstsq` via normal equations + Cholesky with a relative rank check, `fitLine`, exact `fitLineLAD` by searching lines through pairs of points). Not in DESIGN §5.1; it is the linear core reused by RLS (08) and Gauss–Newton (09).
+- 2026-11-26 — **Seeds for demo data are chosen to be typical, not lucky or unlucky.** LineFit's seed 11 gives a clean fit 0.17 standard errors from the true slope (seed 5 was 2.4 SE off). Outlier effects come from explicit presets, never from an unusual seed.
+- 2026-11-26 — **Validator reports invalid YAML** instead of crashing (reference titles with ": " must be quoted).
+- 2026-11-26 — **Notation additions (post 05):** m, tᵢ/yᵢ, bold y, r = y − Ax, W; new "Part 1" group on /notation.
 
 ## Follow-ups / known issues
 
 - **Owner action:** install the giscus GitHub App on `chucky98/gaussians-to-graphs` (https://github.com/apps/giscus). Then set `giscus.enabled = true` in `src/lib/site/config.ts`.
-- When posts 11, 12, 13, 15, 16, 19, 22, 23, 25, 27, 28, 29 are published: link the plain-text references to them from posts 01–04.
+- When posts 06, 09, 11, 12, 13, 15, 16, 19, 22, 23, 25, 27, 28, 29 are published: link the plain-text references to them from earlier posts.
 - Client-side KaTeX (77 KB gz) still loads for widgets with TeX labels or MatrixView. Consider rendering static TeX at build time and showing live numbers as plain text.
 - `Plot2D` pan/zoom is not implemented yet (no Phase 0 widget needs it). Primitives still to build when first needed: Landmark, Heatmap, Spy.
 - Lighthouse has not been run (optional per §8.4).

@@ -47,7 +47,14 @@ for (const folder of existsSync(postsDir) ? readdirSync(postsDir) : []) {
     err(where, 'missing frontmatter');
     continue;
   }
-  const parsed = postFrontmatter.safeParse(parseYaml(m[1]!));
+  let raw: unknown;
+  try {
+    raw = parseYaml(m[1]!);
+  } catch (e) {
+    err(where, `frontmatter is not valid YAML (quote strings containing ": "): ${(e as Error).message.split('\n')[0]}`);
+    continue;
+  }
+  const parsed = postFrontmatter.safeParse(raw);
   if (!parsed.success) {
     err(
       where,
