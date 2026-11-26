@@ -1,0 +1,95 @@
+---
+/** Static diagram for post 05: least squares as orthogonal projection onto the column space of A. */
+---
+
+<svg
+  class="proj"
+  viewBox="0 0 520 300"
+  width="520"
+  height="300"
+  role="img"
+  aria-label="The measurement vector y, its orthogonal projection A x-hat onto the plane spanned by the columns of A, and the residual r = y minus A x-hat, which is perpendicular to the plane."
+>
+  <!-- the column space: a plane drawn in perspective -->
+  <path class="plane" d="M40 230 L330 270 L490 170 L200 140 Z" />
+  <text class="plane-label" x="300" y="248">
+    column space of A
+  </text>
+  <!-- columns a1, a2 -->
+  <line class="col" x1="150" y1="200" x2="300" y2="220" />
+  <line class="col" x1="150" y1="200" x2="230" y2="160" />
+  <text class="lbl" x="304" y="229">
+    a₁
+  </text>
+  <text class="lbl" x="232" y="154">
+    a₂
+  </text>
+  <!-- b, its projection, and the residual -->
+  <line class="b" x1="150" y1="200" x2="360" y2="40" />
+  <line class="proj-v" x1="150" y1="200" x2="360" y2="190" />
+  <line class="res" x1="360" y1="40" x2="360" y2="190" />
+  <path class="right" d="M360 176 L346 176.7 L346 190.7" />
+  <circle class="dot" cx="150" cy="200" r="3" />
+  <text class="lbl" x="368" y="40">
+    y (the measurements)
+  </text>
+  <text class="lbl" x="368" y="205">
+    A x̂ (the fit)
+  </text>
+  <text class="lbl" x="368" y="120">
+    r = y − A x̂
+  </text>
+  <text class="lbl small" x="368" y="137">
+    perpendicular to the plane
+  </text>
+</svg>
+
+<style>
+  .proj {
+    max-width: 100%;
+    height: auto;
+    font-family: var(--font-ui);
+  }
+  .plane {
+    fill: color-mix(in srgb, var(--c-prior) 10%, transparent);
+    stroke: var(--c-prior);
+    stroke-width: 1.25;
+  }
+  .plane-label {
+    fill: var(--c-prior-text);
+    font-size: 13px;
+  }
+  .col {
+    stroke: var(--c-axis);
+    stroke-width: 1.5;
+  }
+  .b {
+    stroke: var(--c-meas);
+    stroke-width: 2.5;
+  }
+  .proj-v {
+    stroke: var(--c-post);
+    stroke-width: 3;
+  }
+  .res {
+    stroke: var(--c-bad);
+    stroke-width: 2;
+    stroke-dasharray: 5 4;
+  }
+  .right {
+    fill: none;
+    stroke: var(--c-fg);
+    stroke-width: 1;
+  }
+  .dot {
+    fill: var(--c-fg);
+  }
+  .lbl {
+    fill: var(--c-fg);
+    font-size: 14px;
+  }
+  .small {
+    font-size: 12px;
+    fill: var(--c-muted);
+  }
+</style>

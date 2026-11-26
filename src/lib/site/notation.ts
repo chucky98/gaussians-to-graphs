@@ -53,6 +53,16 @@ export const notationGroups: readonly NotationGroup[] = [
     ],
   },
   {
+    title: 'Part 1: Estimation from data',
+    rows: [
+      { tex: 'm', meaning: 'number of measurements' },
+      { tex: 't_i,\\ y_i', meaning: 'data point i in a curve fit: input and measured value' },
+      { tex: '\\mathbf{y}', meaning: 'stacked measurements (or the output of a function, Part 0)' },
+      { tex: '\\mathbf{r} = \\mathbf{y} - \\mathbf{A}\\mathbf{x}', meaning: 'residual vector of a linear fit' },
+      { tex: '\\mathbf{W} = \\diag(w_1, \\ldots, w_m)', meaning: 'measurement weights, usually wᵢ = 1/σᵢ²' },
+    ],
+  },
+  {
     title: 'Parts 1–2: Estimation and filtering',
     rows: [
       { tex: '\\mathbf{x}_k', meaning: 'state at time k (in SLAM it may include poses and landmarks)' },

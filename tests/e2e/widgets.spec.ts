@@ -189,3 +189,29 @@ test.describe('post 04 widgets', () => {
     await expect(w).toContainText('linearized variance ≈ 0');
   });
 });
+
+test.describe('post 05 widgets', () => {
+  test('LineFit: defaults; the bounced fix dominates; down-weighting it fixes the line; dragging works', async ({
+    page,
+  }) => {
+    await page.goto('posts/least-squares/');
+    const w = page.locator('[data-widget="LineFit"]');
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="ls"]')).toHaveText('y = 19.49 + 0.155 t');
+    await expect(w.locator('[data-readout="cost"]')).toHaveText('81.9 m²');
+
+    await w.getByLabel('Data').selectOption('multipath');
+    await expect(w.locator('[data-readout="share"]')).toHaveText('73%');
+    await expect(w.locator('[data-readout="cost"]')).toHaveText('510.4 m²');
+    await w.getByRole('slider', { name: 'Reported accuracy of fix 7' }).fill('10');
+    await expect(w.locator('[data-readout="cost"]')).not.toHaveText('510.4 m²');
+
+    const before = await w.locator('[data-readout="ls"]').textContent();
+    const fix = w.getByRole('slider', { name: /GPS fix 2:/ });
+    for (let i = 0; i < 10; i++) await fix.press('ArrowUp');
+    await expect(w.locator('[data-readout="ls"]')).not.toHaveText(before!);
+    await w.locator('[data-action="reset"]').click();
+    await expect(w.locator('[data-readout="ls"]')).toHaveText('y = 19.49 + 0.155 t');
+  });
+});

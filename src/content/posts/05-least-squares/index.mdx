@@ -1,0 +1,159 @@
+---
+number: 5
+title: Least Squares, Seen as Squares
+description: Recover a straight road from noisy phone GPS fixes. Normal equations, the projection picture, weights from reported accuracy, and what one bad fix does.
+part: 1
+status: published
+date: 2026-11-26
+prerequisites: [gaussians-and-covariance]
+objectives:
+  - Set up a fitting problem as A x ≈ y and say what each piece means.
+  - Derive and solve the normal equations, and read them as an orthogonal projection.
+  - Use weighted least squares, with weights taken from each measurement's reported accuracy.
+  - Inspect residuals to judge a fit and to spot an outlier.
+references:
+  - key: kay1993
+    text: 'Kay. *Fundamentals of Statistical Signal Processing, Vol. I: Estimation Theory.* Prentice Hall, 1993. Ch. 8 (least squares).'
+  - key: simon2006
+    text: Simon. *Optimal State Estimation.* Wiley, 2006. Ch. 3 (least squares estimation, including weighted least squares).
+  - key: golub2013
+    text: 'Golub, Van Loan. *Matrix Computations*, 4th ed. Johns Hopkins University Press, 2013. §5.3 (the full-rank least squares problem: normal equations versus QR).'
+widgets: [LineFit]
+symbols:
+  - tex: '\mathbf{A},\ \mathbf{b}'
+    meaning: 'here: the design matrix A, one row per fix'
+    match: ['\mathbf{A}']
+  - tex: '\hat{\mathbf{x}}'
+    meaning: the estimate (offset and slope of the road)
+    match: ['\hat{\mathbf{x}}']
+  - tex: '\mathbf{W}'
+    meaning: diagonal weight matrix, wᵢ from reported accuracy
+  - tex: 'm'
+    meaning: number of measurements (GPS fixes)
+    match: ['m \times']
+---
+
+import LineFit from '../../../components/widgets/LineFit/LineFit.svelte';
+import ProjectionFigure from '../../../components/figures/ProjectionFigure.astro';
+
+You walk along a long, straight road with your phone in your pocket, and every 10 metres it logs a GPS fix. Plotted on a map, the fixes do not lie on a line. Each one is off by a few metres, in a direction that changes from fix to fix. Yet the road is straight, and you would like to know where it is: say, to snap the walk onto the road on a map. Below are ten such fixes. The solid line is the least-squares answer.
+
+<LineFit client:visible />
+
+Every fix is off by a few metres, the worst by almost 5 m, and none lies on the true road. The fitted line, however, stays within about half a metre (0.51 m) of the real road over the whole 100 m. Ten measurements, each a few metres wrong, combine into one answer that is several times better than any of them. This post explains how, and when that recipe goes badly wrong.
+
+## Intuition
+
+Any candidate line misses each fix by some vertical amount, its **residual**. A good line makes all the residuals small, but they cannot all be zero, so we need a single number that says how bad a line is. Least squares squares each residual and adds them up. In the widget, each square is drawn literally: a fix that misses by 4 m owns a 4 m by 4 m square of 16 m². The least-squares line is the one with the smallest total area.
+
+Why squares rather than plain distances? Three reasons, in increasing order of depth.
+
+- **Squares are smooth.** The total area is a bowl-shaped function of the line's parameters, so it has a single lowest point that we can find with a formula instead of a search.
+- **Squares hate big misses.** A fix 6 m off counts four times as much as one 3 m off. That is usually what we want, and occasionally a disaster, as we will see.
+- **Squares are what Gaussian noise asks for.** If the errors are Gaussian, the least-squares line is the most likely road. Post 6 makes this precise.
+
+## The math
+
+### Setting up the problem
+
+Put east on the horizontal axis and north on the vertical one. Fix $i$ is at east position $t_i$ and north position $y_i$, for $i = 1, \ldots, m$ (here $m = 10$). A straight road is the line $y = x_1 + x_2\,t$, with offset $x_1$ and slope $x_2$. These are the unknowns, collected in the vector $\mathbf{x} = (x_1, x_2)$. The residual of fix $i$ is
+
+$$
+r_i = y_i - (x_1 + x_2\,t_i) .
+$$
+
+Stack the measurements into $\mathbf{y} = (y_1, \ldots, y_m)$ and the rows $(1, t_i)$ into an $m \times 2$ **design matrix** $\mathbf{A}$. Then all residuals at once are
+
+$$
+\mathbf{r} = \mathbf{y} - \mathbf{A}\mathbf{x},
+\qquad
+\mathbf{A} = \begin{bmatrix} 1 & t_1 \\ \vdots & \vdots \\ 1 & t_m \end{bmatrix} .
+$$
+
+Least squares picks the $\mathbf{x}$ that minimizes the total area $\lVert \mathbf{r} \rVert^2 = \sum_i r_i^2$. Nothing in this setup is special to lines. Any model that is *linear in its unknowns* fits the same pattern, with a different $\mathbf{A}$: a parabola $y = x_1 + x_2 t + x_3 t^2$ adds a column $t_i^2$; a sensor calibration $y = x_1 + x_2 \cdot \text{temperature}$ uses temperatures as the second column.
+
+### The normal equations
+
+The total area is a quadratic bowl in $\mathbf{x}$. Its gradient is
+
+$$
+\frac{\partial}{\partial \mathbf{x}} \lVert \mathbf{y} - \mathbf{A}\mathbf{x} \rVert^2 = -2\,\mathbf{A}\T(\mathbf{y} - \mathbf{A}\mathbf{x}),
+$$
+
+and setting it to zero gives the **normal equations**
+
+$$
+\mathbf{A}\T\mathbf{A}\,\hat{\mathbf{x}} = \mathbf{A}\T\mathbf{y} . \tag{1}
+$$
+
+The matrix $\mathbf{A}\T\mathbf{A}$ is only $2 \times 2$ here, however many fixes we have. If the columns of $\mathbf{A}$ are independent (here: if not all fixes have the same east position), it is positive definite and (1) has exactly one solution, the bottom of the bowl. For a straight line, (1) reduces to the familiar textbook result: the slope is the covariance of $t$ and $y$ divided by the variance of $t$, and the line passes through the mean of the fixes.
+
+### The projection picture
+
+Equation (1) can be rewritten as $\mathbf{A}\T\mathbf{r} = \mathbf{0}$: at the solution, the residual vector is perpendicular to every column of $\mathbf{A}$. That has a clean geometric meaning.
+
+<Figure caption="Least squares as projection. Every possible fit A x lies in the plane spanned by the columns of A. The best fit is the point of that plane closest to the measurements y, which is the foot of the perpendicular from y. The residual r is that perpendicular.">
+  <ProjectionFigure />
+</Figure>
+
+Think of the ten measurements as a single point $\mathbf{y}$ in ten-dimensional space. As $\mathbf{x}$ varies, the fitted values $\mathbf{A}\mathbf{x}$ sweep out a flat two-dimensional plane, the **column space** of $\mathbf{A}$. Unless the fixes lie exactly on a line, $\mathbf{y}$ is not in that plane. The closest point of the plane to $\mathbf{y}$ is found by dropping a perpendicular, and the length of that perpendicular is the smallest possible $\lVert \mathbf{r} \rVert$. Least squares is orthogonal projection.
+
+### Weights from reported accuracy
+
+Phones do not only report a position; they also report how accurate they think it is, typically as a radius in metres. A fix reported as $\pm 10$ m should count for less than one reported as $\pm 3$ m. **Weighted least squares** gives fix $i$ a weight $w_i$ and minimizes $\sum_i w_i r_i^2$. With the diagonal matrix $\mathbf{W} = \diag(w_1, \ldots, w_m)$ the normal equations become
+
+$$
+\mathbf{A}\T\mathbf{W}\mathbf{A}\,\hat{\mathbf{x}} = \mathbf{A}\T\mathbf{W}\mathbf{y} .
+$$
+
+The natural choice is $w_i = 1/\sigma_i^2$, where $\sigma_i$ is the standard deviation of fix $i$'s error. Then $w_i r_i^2 = (r_i/\sigma_i)^2$ measures each miss in units of that fix's own uncertainty, the one-dimensional Mahalanobis distance of [Post 2](../gaussians-and-covariance/). In the widget the weights are scaled so that the default accuracy of 3 m has weight 1, $w_i = (3\text{ m}/\sigma_i)^2$; scaling all weights by the same number does not change the answer.
+
+### Reading the residuals
+
+A good fit leaves residuals that look like the noise itself: no trend along the road, and a typical size close to the stated accuracy. With the default fixes, the root-mean-square residual is 2.86 m, close to the 3 m the phone reports. A residual far beyond three standard deviations is a warning sign. It points to a measurement that does not belong to the same noise model as the rest.
+
+## Play with it
+
+The widget starts with ten fixes on a clear day. The least-squares line is $y = 19.49 + 0.155\,t$ (the real road, hidden by default, is $y = 20 + 0.15\,t$), and the total area is 81.9 m².
+
+<TryThis>
+1. Turn on the real road. The fixes are up to 4.99 m away from it, but the fitted line is never more than 0.51 m away over the whole 100 m.
+2. Switch the data to *One fix bounced off a building*. Fix 7 now reads 22 m too far north, as a GPS signal reflected off a wall can. Its residual is 19.3 m, more than six times the reported accuracy, and its square alone is 73% of the total area of 510 m². The line tilts towards it and ends up as much as 4.17 m from the road.
+3. Now set fix 7's reported accuracy to $\pm 10$ m, which gives it a weight of 0.09. The line swings back to within 0.49 m of the road. When a receiver does flag a suspicious fix with a worse accuracy, weighting by it is cheap insurance.
+4. Turn on *least absolute deviations*, which minimizes $\sum_i |r_i|$ instead of the squares. With the bounced fix it does not move at all: it gives exactly the same line, $y = 21.19 + 0.120\,t$, with or without the outlier. But switch back to the clear-day data and notice that it is now *worse* than least squares, up to 1.83 m from the road against 0.51 m.
+</TryThis>
+
+The last two prompts show the central trade-off of this whole series. Squared errors are optimal when the noise really is Gaussian, and fragile when it is not. Robust alternatives shrug off outliers but waste information on clean data. Post 29 returns to this with robust kernels, which try to get the best of both.
+
+Drag any fix and watch its square, and the line, respond. Arrow keys move the selected fix by half a metre.
+
+## Algorithm
+
+<AlgorithmBox title="Weighted linear least squares via the normal equations" source="src/lib/math/leastsquares.ts">
+1. Build the design matrix $\mathbf{A}$ ($m \times n$), the measurements $\mathbf{y}$ and the weights $w_i = 1/\sigma_i^2$.
+2. Form $\mathbf{N} = \mathbf{A}\T\mathbf{W}\mathbf{A}$ ($n \times n$) and $\mathbf{g} = \mathbf{A}\T\mathbf{W}\mathbf{y}$, one row of $\mathbf{A}$ at a time.
+3. Factor $\mathbf{N} = \mathbf{L}\mathbf{L}\T$ (Cholesky); refuse if a pivot is tiny, which means the columns of $\mathbf{A}$ are (nearly) dependent.
+4. Solve $\mathbf{L}\mathbf{u} = \mathbf{g}$, then $\mathbf{L}\T\hat{\mathbf{x}} = \mathbf{u}$. Return $\hat{\mathbf{x}}$ and the residuals $\mathbf{r} = \mathbf{y} - \mathbf{A}\hat{\mathbf{x}}$.
+</AlgorithmBox>
+
+The unit tests check the defining property directly: at the solution, $\mathbf{A}\T\mathbf{W}\mathbf{r}$ is zero to within $10^{-10}$.
+
+## When it breaks
+
+**Outliers.** Squaring hands enormous influence to a single wild measurement, as the bounced fix showed. Look at the residuals before trusting a fit, use reported accuracies as weights when you have them, and reach for robust methods when you cannot rule out gross errors.
+
+**Wrong weights.** Weights are claims about the noise. If a phone reports $\pm 3$ m for a fix that is really $\pm 30$ m off, weighted least squares trusts it more than it should, and the result is worse than ignoring the reported accuracies altogether.
+
+**The wrong kind of residual.** This post measures each miss vertically, as a north error. That suits a road running close to east–west: here it is $8.5^\circ$ off, and the vertical miss differs from the perpendicular distance to the line by about 1%. For a road running north–south, vertical residuals would be nonsense. Either rotate the coordinates first or fit the perpendicular distances (*total least squares*).
+
+**Numerical trouble.** Forming $\mathbf{A}\T\mathbf{A}$ squares the condition number of the problem, so nearly dependent columns lose twice as many digits as they need to. For large or badly scaled problems, solve with a QR factorization of $\mathbf{A}$ instead; for small, well-scaled ones like this, the normal equations are fine.
+
+**Models that are not linear in their unknowns.** If the model is, say, the distance from the phone to a radio beacon, the residuals depend nonlinearly on the unknown position and there is no closed form. Post 9 solves that by applying this post's method over and over.
+
+## Summary
+
+- Least squares chooses the parameters that minimize the sum of squared residuals, the total area of the squares in the widget.
+- For a model linear in its unknowns, $\mathbf{r} = \mathbf{y} - \mathbf{A}\mathbf{x}$ and the minimizer solves the normal equations $\mathbf{A}\T\mathbf{A}\hat{\mathbf{x}} = \mathbf{A}\T\mathbf{y}$.
+- Geometrically, the fit is the orthogonal projection of the measurements onto the column space of $\mathbf{A}$; the residual is perpendicular to it.
+- Weighted least squares with $w_i = 1/\sigma_i^2$ lets accurate measurements count for more. A sensor's own accuracy estimate is a natural source of weights.
+- Squares are optimal for Gaussian noise and fragile against outliers. Check the residuals.

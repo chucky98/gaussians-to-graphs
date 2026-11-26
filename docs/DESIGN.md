@@ -277,6 +277,11 @@ Typography: scalars are italic ($x$), vectors are bold lowercase ($\mathbf{x}$),
 | $\mathbf{A}, \mathbf{b}$ | matrix and offset of a generic linear map $\mathbf{y} = \mathbf{A}\mathbf{x} + \mathbf{b}$ (Part 0) |
 | $\mathbf{J}$ (Part 0–2) | Jacobian $\partial f/\partial\mathbf{x}$ of a single function at the linearization point (Part 4's stacked $\mathbf{J}$ is the same idea for all residuals) |
 | $r, \theta$ | range and bearing of a polar reading |
+| $m$ | number of measurements (Part 1) |
+| $t_i, y_i$ | data point $i$ in a curve fit: input and measured value (Part 1) |
+| $\mathbf{y}$ | stacked measurements in a fit (Part 1); output of a function (Part 0) |
+| $\mathbf{r} = \mathbf{y} - \mathbf{A}\mathbf{x}$ | residual vector of a linear fit (Part 1) |
+| $\mathbf{W} = \diag(w_1, \ldots, w_m)$ | measurement weights, usually $w_i = 1/\sigma_i^2$ (Part 1) |
 | $p(\cdot)$, $\mathrm{bel}(\mathbf{x}_k)$ | density; belief |
 | $n_x, n_z$ | state and measurement dimensions |
 | $\mathcal{X}^{[i]}$, $W^{[i]}_m, W^{[i]}_c$ | sigma points and their mean/covariance weights |
