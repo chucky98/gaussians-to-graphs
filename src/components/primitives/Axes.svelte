@@ -10,6 +10,11 @@
     grid?: boolean;
     showY?: boolean;
     format?: (v: number) => string;
+    /** Explicit tick positions (data coordinates), e.g. for log-scaled axes. */
+    xTickValues?: number[];
+    yTickValues?: number[];
+    /** Separate formatter for the y axis (defaults to `format`). */
+    yFormat?: (v: number) => string;
   }
   let {
     ctx,
@@ -20,9 +25,13 @@
     grid = true,
     showY = true,
     format = (v) => String(+v.toFixed(2)),
+    xTickValues,
+    yTickValues,
+    yFormat,
   }: Props = $props();
-  const xt = $derived(ctx.x.ticks(xTicks));
-  const yt = $derived(ctx.y.ticks(yTicks));
+  const xt = $derived(xTickValues ?? ctx.x.ticks(xTicks));
+  const yt = $derived(yTickValues ?? ctx.y.ticks(yTicks));
+  const fy = $derived(yFormat ?? format);
 </script>
 
 <g class="axes" aria-hidden="true">
@@ -43,7 +52,7 @@
   {#if showY}
     <line class="axis" x1={ctx.inner.left} x2={ctx.inner.left} y1={ctx.inner.top} y2={ctx.inner.bottom} />
     {#each yt as t (t)}
-      <text class="tick" x={ctx.inner.left - 6} y={ctx.y(t) + 3.5} text-anchor="end">{format(t)}</text>
+      <text class="tick" x={ctx.inner.left - 6} y={ctx.y(t) + 3.5} text-anchor="end">{fy(t)}</text>
     {/each}
   {/if}
   {#if xLabel}

@@ -1,8 +1,8 @@
 # Progress
 
-## Current phase: 1 — Parts 0 and 1 (Part 0 complete; Part 1 in progress: posts 05–06 published)
+## Current phase: 1 — Parts 0 and 1 (Part 0 complete; Part 1 in progress: posts 05–07 published)
 
-## Next task: post 07 `estimator-quality` (EstimatorShootout: stationary GPS receiver, mean vs median vs shrinkage)
+## Next task: post 08 `recursive-least-squares` (RLSStream: online motor calibration with a battery-sag jump)
 
 ## Posts
 
@@ -14,7 +14,8 @@
 | 04    | propagating-uncertainty          | published | NonlinearPropagation          | ~1,600 words. Polar banana, x², sin, linear; claims pinned in `tests/unit/posts/04-…`.                                      |
 | 05    | least-squares                    | published | LineFit                       | ~2,300 words. Road from phone GPS fixes; multipath outlier; weights from reported accuracy. Projection figure.              |
 | 06    | mle-and-map                      | published | BayesGrid1D                   | ~2,100 words. Distance to a wall: odometry prior + ultrasonic readings; two-doorway bimodal prior.                          |
-| 07–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                             |                                                                                                                             |
+| 07    | estimator-quality                | published | EstimatorShootout             | ~2,200 words. GPS receiver on a benchmark; open sky vs reflections (10% at ±30 m); CRLB by numerical Fisher information.    |
+| 08–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                             |                                                                                                                             |
 
 ## Infrastructure checklist
 
@@ -77,6 +78,8 @@
 - 2026-11-26 — **Notation additions (post 05):** m, tᵢ/yᵢ, bold y, r = y − Ax, W; new "Part 1" group on /notation.
 - 2026-11-26 — **`math/bayes1d.ts`** (grid posterior in log space, prior weight κ, closed-form Gaussian posterior). BayesGrid1D reports no MAP for a flat posterior and lists both candidates for tied peaks, rather than an arbitrary argmax.
 - 2026-11-26 — **BayesGrid1D "prior strength" is a prior exponent κ** (posterior ∝ prior^κ × likelihood). For a Gaussian prior this equals shrinking σ₀ by √κ; κ = 0 gives MLE. Notation: 𝓛, μ₀, σ₀, κ.
+- 2026-11-26 — **`math/estimators.ts`** (mean, median, shrinkage; Gaussian and contaminated noise densities; numerical Fisher information by Simpson's rule; CRLB). EstimatorShootout precomputes means/medians once per (noise, seed) (~120 ms on a noise/seed change, a discrete click); the n and κ sliders then cost ~2 ms.
+- 2026-11-26 — **Post 07 uses m (not n) for the sample size and κ for the shrinkage weight**, so it matches posts 05–06: shrinkage towards a guess is the MAP estimate of post 06 with a prior worth κ measurements. Axes gained `xTickValues`/`yTickValues`/`yFormat` for log–log plots.
 
 ## Follow-ups / known issues
 

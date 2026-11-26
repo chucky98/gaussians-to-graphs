@@ -1,0 +1,165 @@
+---
+number: 7
+title: What Makes a Good Estimator?
+description: Average, median or shrink? A GPS receiver on a surveyed benchmark shows bias, variance and the Cramér–Rao bound, and why reflections change the winner.
+part: 1
+status: published
+date: 2026-11-26
+prerequisites: [mle-and-map]
+objectives:
+  - Measure an estimator by its bias, its variance and its mean squared error, and use MSE = bias² + variance.
+  - Explain consistency and efficiency, and compute the Fisher information of a noise model.
+  - Use the Cramér–Rao bound to tell when an unbiased estimator cannot be improved.
+  - Explain why a biased estimator can beat the bound, and why heavy-tailed noise favours the median.
+references:
+  - key: kay1993
+    text: 'Kay. *Fundamentals of Statistical Signal Processing, Vol. I: Estimation Theory.* Prentice Hall, 1993. Ch. 2 (minimum variance unbiased estimation) and Ch. 3 (the Cramér–Rao lower bound).'
+  - key: barshalom2001
+    text: Bar-Shalom, Li, Kirubarajan. *Estimation with Applications to Tracking and Navigation.* Wiley, 2001. Ch. 2 (properties of estimators and the Cramér–Rao bound).
+  - key: huber1964
+    text: Huber. "Robust estimation of a location parameter." *The Annals of Mathematical Statistics*, 35(1), 1964.
+widgets: [EstimatorShootout]
+symbols:
+  - tex: 'm'
+    meaning: fixes per experiment
+    match: ['\sigma^2/m', 'm\,\mathcal{I}']
+  - tex: '\bar{z}'
+    meaning: the average of the fixes
+  - tex: '\mathcal{I}'
+    meaning: Fisher information of one fix
+  - tex: '\mu_0,\ \sigma_0'
+    meaning: "here: μ₀ = 2 m, yesterday's estimate"
+    match: ['\mu_0']
+  - tex: '\kappa'
+    meaning: how many fixes yesterday's estimate is worth
+---
+
+import EstimatorShootout from '../../../components/widgets/EstimatorShootout/EstimatorShootout.svelte';
+
+Surveyors have a simple trick for getting an accurate position out of an ordinary GPS receiver: leave it on a fixed point and average many fixes. Suppose you do that on a survey benchmark whose coordinates are known exactly, so you can check the answer. Ten fixes, each off by a few metres. How should you combine them? Average them? Take the median, which ignores wild values? Lean on yesterday's result? Each choice is an **estimator**, and this post is about how to tell good ones from bad.
+
+<EstimatorShootout client:visible />
+
+The widget runs the same ten-fix experiment 2000 times, each time with fresh errors, and shows where each estimator's answers land. Under open sky the plain average is best and, as we will see, cannot be beaten by any unbiased method. The second copy of the widget, further down, moves the receiver next to a building. There the ranking changes completely.
+
+## Intuition
+
+An estimator is a recipe that turns data into a guess. Because the data are random, so is the guess: repeat the experiment and you get a different answer. To judge a recipe, we look at the *whole distribution* of its answers over many repetitions, which is exactly what the histograms show.
+
+Two things can go wrong. The answers can be **off-centre**: on average they miss the truth, which is called **bias**. Or they can be **spread out**: each answer is far from the next, which is called **variance**. A good estimator keeps both small. The surprise of this post is that the two trade off against each other, and that a little bias can be a good bargain.
+
+## The math
+
+### Bias, variance and mean squared error
+
+Let $x$ be the true east offset of the receiver from the benchmark's listed position (here $x = 0$), and let $\hat{x}$ be an estimate computed from $m$ fixes. Over many repetitions,
+
+$$
+\operatorname{bias}(\hat{x}) = \E[\hat{x}] - x, \qquad \operatorname{Var}(\hat{x}) = \E\!\left[ (\hat{x} - \E[\hat{x}])^2 \right] .
+$$
+
+The overall quality measure is the **mean squared error**, the average squared distance from the truth. Adding and subtracting $\E[\hat{x}]$ inside the square, the cross term averages to zero, and
+
+$$
+\operatorname{MSE}(\hat{x}) = \E\!\left[ (\hat{x} - x)^2 \right] = \operatorname{bias}(\hat{x})^2 + \operatorname{Var}(\hat{x}) . \tag{1}
+$$
+
+Its square root, the **root-mean-square error** (RMSE), is in metres and is what the widget reports.
+
+### Three estimators
+
+Let $z_1, \ldots, z_m$ be the fixes' east coordinates.
+
+- The **average** $\bar{z} = \tfrac{1}{m}\sum_i z_i$ is the maximum-likelihood estimate for Gaussian noise ([Post 6](../mle-and-map/)). It is unbiased, and its variance is $\sigma^2/m$ for noise of variance $\sigma^2$.
+- The **median** sorts the fixes and takes the middle one. It is unbiased for symmetric noise and is not moved by a few wild values.
+- The **shrinkage** estimator pulls the average towards a prior guess $\mu_0$, here yesterday's estimate, which happens to be 2 m off:
+
+$$
+\hat{x}_{\text{shrink}} = \frac{m\,\bar{z} + \kappa\,\mu_0}{m + \kappa} .
+$$
+
+This is the MAP estimate of [Post 6](../mle-and-map/) with a Gaussian prior worth $\kappa$ fixes. Its bias is $\kappa(\mu_0 - x)/(m + \kappa)$, nonzero whenever the guess is wrong. Its variance is the average's variance times $\big(m/(m+\kappa)\big)^2$, always smaller.
+
+### Consistency and efficiency
+
+An estimator is **consistent** if its answers converge to the truth as $m$ grows. All three are: the average's and the median's spread shrink like $1/\sqrt{m}$, and the shrinkage bias $\kappa(\mu_0 - x)/(m+\kappa)$ fades as the data outweigh the prior. On a log–log plot, a $1/\sqrt{m}$ law is a straight line with slope $-1/2$, which is what the lower chart shows.
+
+**Efficiency** asks how much of the information in the data an estimator uses. That needs a yardstick, which is the next idea.
+
+### Fisher information and the Cramér–Rao bound
+
+For one fix $z = x + v$ with noise density $f$, the **Fisher information** about $x$ is
+
+$$
+\mathcal{I} = \E\!\left[ \left( \frac{\partial}{\partial x} \log f(z - x) \right)^2 \right] = \int \frac{f'(v)^2}{f(v)}\, \mathrm{d}v .
+$$
+
+It measures how sharply the likelihood peaks: the more the log-likelihood changes as $x$ moves, the more each fix tells you. For Gaussian noise $\mathcal{I} = 1/\sigma^2$. Independent fixes add their information, so $m$ fixes carry $m\mathcal{I}$.
+
+The **Cramér–Rao lower bound** (CRLB) says that *no unbiased estimator* can have a variance below the inverse of the information:
+
+$$
+\operatorname{Var}(\hat{x}) \;\ge\; \frac{1}{m\,\mathcal{I}} . \tag{2}
+$$
+
+An unbiased estimator that reaches the bound is **efficient**: nothing unbiased can do better. For Gaussian noise the bound is $\sigma^2/m$, exactly the average's variance, so the average is efficient. The median is not. For large $m$ its variance approaches $\tfrac{\pi}{2}\,\sigma^2/m$, so it uses only $2/\pi \approx 64\%$ of the information.
+
+<Callout type="key">
+The Cramér–Rao bound is a floor for *unbiased* estimators only. A biased estimator such as shrinkage can sit below it, by trading bias for variance. Whether that is a good trade depends on how wrong the prior guess is and how much data there is.
+</Callout>
+
+### When fixes bounce off buildings
+
+Near tall buildings, some GPS signals reach the antenna only by reflection, and those fixes are far off. A simple model: 9 fixes in 10 have the usual $\pm 3$ m error, and 1 in 10 is reflected, with $\pm 30$ m. The noise variance is then $0.9 \times 9 + 0.1 \times 900 = 98.1\ \text{m}^2$, so the average of 10 fixes has an RMSE of about $\sqrt{9.8} \approx 3.1$ m. The occasional wild fix dominates.
+
+The Fisher information of this mixture is much larger than $1/98.1$. Most fixes are still precise, and a good estimator can tell the wild ones apart. So the Cramér–Rao bound sits far below the average's variance: the average is badly **inefficient** here. The median, which ignores the size of extreme values, comes close to the bound. This is the core idea of **robust estimation**, which Huber formalized in 1964.
+
+## Play with it
+
+The first widget is under open sky with $m = 10$ fixes. The average is unbiased with RMSE 0.95 m, exactly the Cramér–Rao bound $3/\sqrt{10} = 0.95$ m. The median's RMSE is 1.11 m. Shrinkage, with yesterday's estimate worth $\kappa = 5$ fixes, is biased by 0.68 m, but its spread is only 0.63 m, and its RMSE of 0.93 m is slightly *better* than the average's.
+
+<TryThis>
+1. Move the slider from 1 fix to 100. The average's RMSE falls from 2.98 m to 0.30 m: a hundred times more data buys ten times more accuracy, the $1/\sqrt{m}$ law. In the lower chart its line lies on the Cramér–Rao bound the whole way.
+2. Watch the shrinkage line. At small $m$ it is the best of the three, but its advantage shrinks as fixes accumulate, and from about $m = 20$ on its line merges with the average's. Using equation (1), the break-even point for $\kappa = 5$ and a 2 m error in the prior guess is $m = 22.5$. Beyond it, yesterday's error costs more than the variance it saves, though by then the difference is tiny.
+3. At $m = 10$, set the prior weight $\kappa$ to 2: the shrinkage RMSE drops to 0.86 m. Push it to 30 and it rises to 1.52 m, worse than either other estimator. A little trust in the prior helps; too much hurts.
+4. At $m = 100$ fixes the median's RMSE is 0.37 m against the average's 0.30 m. The ratio of their variances, $(0.30/0.37)^2 \approx 0.65$, is close to the theoretical efficiency $2/\pi \approx 0.64$.
+</TryThis>
+
+Now the receiver moves next to a building, where 1 fix in 10 is a reflection.
+
+<EstimatorShootout client:visible noise="urban" />
+
+<TryThis>
+1. With 10 fixes, the average's RMSE is 3.16 m, three times worse than under open sky, close to the $\sqrt{98.1/10} \approx 3.1$ m predicted above. The median's is 1.27 m, not far from the Cramér–Rao bound of 1.04 m.
+2. Move to 100 fixes. The average needs all 100 to get to 1.00 m, while the median is at 0.41 m, and the bound at 0.33 m. Throwing away the size of extreme values is worth more than a hundred extra fixes.
+3. With a single fix, the average and the median are the same number, and both are poor. Robustness needs some data to work with.
+</TryThis>
+
+## Algorithm
+
+<AlgorithmBox title="Judging an estimator by simulation" source="src/lib/demos/estimator-shootout.ts">
+1. Fix the truth $x$ and a noise model (a Gaussian, or a mixture with occasional large errors).
+2. For $t = 1, \ldots, M$: draw $m$ fixes $z_i = x + v_i$ and compute each estimator's answer $\hat{x}^{(t)}$.
+3. Estimate bias as the average of $\hat{x}^{(t)} - x$, variance as the spread of the $\hat{x}^{(t)}$, and RMSE as $\sqrt{\text{average of } (\hat{x}^{(t)} - x)^2}$.
+4. Compare with the Cramér–Rao bound $1/\sqrt{m\mathcal{I}}$, with $\mathcal{I} = \int f'^2/f$ computed numerically for the noise density $f$.
+</AlgorithmBox>
+
+The same random draws are reused for every $m$ and every estimator ("common random numbers"), so the comparisons are not blurred by luck. The unit tests check that the numerical Fisher information of a Gaussian is $1/\sigma^2$, and that the median's variance approaches $\pi\sigma^2/2m$.
+
+## When it breaks
+
+**Real errors are correlated in time.** Everything here assumes independent fixes. Real GPS errors drift slowly, over minutes, because they come from the atmosphere and the satellite geometry. A hundred fixes taken one second apart are nowhere near a hundred independent measurements, and averaging them does not give the $1/\sqrt{100}$ improvement. Surveyors average over long sessions for exactly this reason.
+
+**The bound depends on the model.** The Cramér–Rao bound for Gaussian noise says nothing about reflections. An estimator that is "efficient" under the wrong model can be far from optimal under the right one, as the average was near the building.
+
+**Bias is invisible from inside.** The shrinkage estimator's bias came from a prior guess that was 2 m off. With real data there is no benchmark to compare against, and a biased answer looks just as confident as an unbiased one. Use prior information, but know where it came from.
+
+**Small samples break asymptotic rules.** Statements like "the median uses 64% of the information" hold for large $m$. With very few fixes, everything is noisy and no estimator rescues you.
+
+## Summary
+
+- An estimator's answer is random. Judge it by its bias, its variance, and their combination, $\text{MSE} = \text{bias}^2 + \text{variance}$.
+- A consistent estimator converges to the truth as data grow. With independent errors, the spread typically shrinks like $1/\sqrt{m}$.
+- The Fisher information $\mathcal{I}$ measures how much one measurement tells you. No unbiased estimator beats the variance $1/(m\mathcal{I})$, the Cramér–Rao bound.
+- For Gaussian noise the average is efficient. For noise with occasional wild values, the average wastes information and the median does much better.
+- Biased estimators such as shrinkage can beat the bound, but only while the prior guess is good and the data are scarce.
