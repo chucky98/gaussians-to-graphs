@@ -215,3 +215,30 @@ test.describe('post 05 widgets', () => {
     await expect(w.locator('[data-readout="ls"]')).toHaveText('y = 19.49 + 0.155 t');
   });
 });
+
+test.describe('post 06 widgets', () => {
+  test('BayesGrid1D: defaults; κ = 0 makes MAP = MLE; taking readings; doorways tie and resolution', async ({
+    page,
+  }) => {
+    await page.goto('posts/mle-and-map/');
+    const w = page.locator('[data-widget="BayesGrid1D"]').first();
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="mle"]')).toHaveText('2.67 m');
+    await expect(w.locator('[data-readout="map"]')).toHaveText('2.55 m');
+    await w.getByRole('slider', { name: 'prior weight kappa' }).fill('0');
+    await expect(w.locator('[data-readout="map"]')).toHaveText('2.67 m');
+    await w.locator('[data-action="reset"]').click();
+    for (let i = 0; i < 8; i++) await w.locator('[data-action="reading"]').click();
+    await expect(w.locator('[data-readout="n"]')).toHaveText('10');
+    await expect(w.locator('[data-readout="map"]')).toHaveText('2.69 m');
+
+    const d = page.locator('[data-widget="BayesGrid1D"]').nth(1);
+    await d.scrollIntoViewIfNeeded();
+    await expect(d.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(d.locator('[data-readout="map"]')).toHaveText('tie: 1.20 or 3.00 m');
+    await expect(d.locator('[data-readout="far"]')).toHaveText('50.0%');
+    await d.locator('[data-action="reading"]').click();
+    await expect(d.locator('[data-readout="far"]')).toHaveText('100.0%');
+  });
+});

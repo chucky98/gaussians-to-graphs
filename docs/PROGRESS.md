@@ -1,8 +1,8 @@
 # Progress
 
-## Current phase: 1 — Parts 0 and 1 (Part 0 complete; Part 1 in progress: post 05 published)
+## Current phase: 1 — Parts 0 and 1 (Part 0 complete; Part 1 in progress: posts 05–06 published)
 
-## Next task: post 06 `mle-and-map` (BayesGrid1D: map prior + ultrasonic range readings)
+## Next task: post 07 `estimator-quality` (EstimatorShootout: stationary GPS receiver, mean vs median vs shrinkage)
 
 ## Posts
 
@@ -13,7 +13,8 @@
 | 03    | conditioning-and-marginalizing   | published | SliceVsProject                | ~1,600 words. Covariance/information duality; claims pinned in `tests/unit/posts/03-…`.                                     |
 | 04    | propagating-uncertainty          | published | NonlinearPropagation          | ~1,600 words. Polar banana, x², sin, linear; claims pinned in `tests/unit/posts/04-…`.                                      |
 | 05    | least-squares                    | published | LineFit                       | ~2,300 words. Road from phone GPS fixes; multipath outlier; weights from reported accuracy. Projection figure.              |
-| 06–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                             |                                                                                                                             |
+| 06    | mle-and-map                      | published | BayesGrid1D                   | ~2,100 words. Distance to a wall: odometry prior + ultrasonic readings; two-doorway bimodal prior.                          |
+| 07–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                             |                                                                                                                             |
 
 ## Infrastructure checklist
 
@@ -74,6 +75,8 @@
 - 2026-11-26 — **Seeds for demo data are chosen to be typical, not lucky or unlucky.** LineFit's seed 11 gives a clean fit 0.17 standard errors from the true slope (seed 5 was 2.4 SE off). Outlier effects come from explicit presets, never from an unusual seed.
 - 2026-11-26 — **Validator reports invalid YAML** instead of crashing (reference titles with ": " must be quoted).
 - 2026-11-26 — **Notation additions (post 05):** m, tᵢ/yᵢ, bold y, r = y − Ax, W; new "Part 1" group on /notation.
+- 2026-11-26 — **`math/bayes1d.ts`** (grid posterior in log space, prior weight κ, closed-form Gaussian posterior). BayesGrid1D reports no MAP for a flat posterior and lists both candidates for tied peaks, rather than an arbitrary argmax.
+- 2026-11-26 — **BayesGrid1D "prior strength" is a prior exponent κ** (posterior ∝ prior^κ × likelihood). For a Gaussian prior this equals shrinking σ₀ by √κ; κ = 0 gives MLE. Notation: 𝓛, μ₀, σ₀, κ.
 
 ## Follow-ups / known issues
 
