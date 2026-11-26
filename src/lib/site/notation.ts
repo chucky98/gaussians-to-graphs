@@ -80,6 +80,12 @@ export const notationGroups: readonly NotationGroup[] = [
         tex: '\\hat{\\mathbf{x}}_{k\\mid k},\\ \\mathbf{P}_{k\\mid k}',
         meaning: 'updated (posterior) mean and covariance',
       },
+      {
+        tex: '\\hat{\\mathbf{x}}_{k\\mid N},\\ \\mathbf{P}_{k\\mid N}',
+        meaning: 'smoothed mean and covariance: the estimate of time k from all N steps of data (Post 18)',
+      },
+      { tex: '\\mathbf{C}_k', meaning: 'RTS smoother gain (Post 18; from Part 3 on, bold C is a rotation matrix)' },
+      { tex: 'L', meaning: 'lag of a fixed-lag smoother, in steps (Post 18)' },
       { tex: '\\mathbf{u}_k', meaning: 'control input / odometry' },
       { tex: 'x_k,\\ y_k,\\ \\theta_k', meaning: 'components of a planar pose: position (m) and heading (rad)' },
       { tex: 'd_k,\\ \\Delta\\theta_k', meaning: 'odometry reading: distance driven, then turn' },
@@ -219,6 +225,14 @@ export const notationConflicts: readonly { tex: string; note: string }[] = [
   {
     tex: 'x_k\\ \\text{vs.}\\ \\mathbf{x}_k',
     note: 'An italic x_k is the x-coordinate of a planar pose; a bold x_k is the whole state vector.',
+  },
+  {
+    tex: '\\mathbf{C}_k\\ \\text{vs.}\\ \\mathbf{C} \\in SO(n)',
+    note: 'With a time index, C_k is the RTS smoother gain (Post 18); without one, from Part 3 on, C is a rotation matrix.',
+  },
+  {
+    tex: 'L\\ \\text{vs.}\\ \\mathbf{L}',
+    note: 'An italic L is the lag of a fixed-lag smoother (Post 18); the bold L is a Cholesky factor.',
   },
   {
     tex: '\\theta\\ \\text{(heading)}\\ \\text{vs.}\\ \\theta\\ \\text{(bearing, Post 4)}',

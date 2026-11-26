@@ -544,3 +544,22 @@ test.describe('post 17 widgets', () => {
     await expect(k.locator('[data-readout="near"]')).not.toHaveText('0%');
   });
 });
+
+test.describe('post 18 widgets', () => {
+  test('FilterVsSmoother: errors, smoother = batch, data arriving after the gap', async ({ page }) => {
+    await page.goto('posts/smoothing/');
+    const w = page.locator('[data-widget="FilterVsSmoother"]');
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="rms-f"]')).toHaveText('0.250 m');
+    await expect(w.locator('[data-readout="rms-s"]')).toHaveText('0.111 m');
+    await expect(w.locator('[data-readout="diff"]')).toHaveText('identical (< 10⁻⁹ m)');
+    await w.getByRole('slider', { name: 'Lag L (steps)' }).fill('10');
+    await expect(w.locator('[data-readout="rms-l"]')).toHaveText('0.121 m');
+    const t = w.getByRole('slider', { name: 'Data available up to step' });
+    await t.fill('25');
+    await expect(w.locator('[data-readout="t"]')).toHaveText('25');
+    await w.locator('[data-action="step"]').click();
+    await expect(w.locator('[data-readout="t"]')).toHaveText('26');
+  });
+});
