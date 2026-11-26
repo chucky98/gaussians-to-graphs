@@ -1,0 +1,45 @@
+---
+import { repoUrl, siteConfig } from '../../lib/site/config';
+import { url } from '../../lib/site/url';
+---
+
+<footer class="site-footer ui">
+  <div class="inner">
+    <p>
+      {siteConfig.title}. Text and figures under{' '}
+      <a href="https://creativecommons.org/licenses/by/4.0/" rel="license">
+        CC BY 4.0
+      </a>
+      ; code under the <a href={`${repoUrl}/blob/main/LICENSE`}>MIT license</a>.
+    </p>
+    <p>
+      <a href={repoUrl}>Source on GitHub</a>
+      {' · '}
+      <a href={url('rss.xml')}>RSS</a>
+      {' · '}
+      <a href={url('notation/')}>Notation</a>
+      {' · '}
+      <a href={url('about/')}>About</a>
+    </p>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    border-top: 1px solid var(--c-border);
+    margin-top: var(--space-7);
+    color: var(--c-muted);
+    font-size: var(--fs-small);
+  }
+  .inner {
+    max-width: var(--w-page);
+    margin: 0 auto;
+    padding: var(--space-5) var(--gutter);
+  }
+  p {
+    margin: 0 0 0.5em;
+  }
+  a {
+    color: var(--c-muted);
+  }
+</style>

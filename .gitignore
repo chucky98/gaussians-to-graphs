@@ -1,0 +1,20 @@
+# build output
+dist/
+.astro/
+
+# dependencies (a Docker volume in the dev container)
+node_modules/
+
+# test output
+test-results/
+playwright-report/
+blob-report/
+coverage/
+
+# local files
+*.tmp.*
+.env
+.env.*
+.DS_Store
+.vscode/*
+!.vscode/extensions.json

@@ -1,0 +1,83 @@
+---
+/**
+ * Tufte-style margin note: floats into the right margin from 1200px; on narrower
+ * screens the numbered marker toggles the note inline. Content must be phrasing content.
+ */
+let counter = (globalThis as { __sidenoteCounter?: number }).__sidenoteCounter ?? 0;
+counter += 1;
+(globalThis as { __sidenoteCounter?: number }).__sidenoteCounter = counter;
+const id = `sn-${counter}`;
+---
+
+<span class="sn-wrap">
+  <label for={id} class="sn-ref ui" aria-label="Show side note"></label>
+  <input type="checkbox" id={id} class="sn-toggle" />
+  <span class="sidenote">
+    <slot />
+  </span>
+</span>
+
+<style>
+  .sn-wrap {
+    counter-increment: sidenote;
+  }
+  .sn-ref {
+    cursor: pointer;
+  }
+  .sn-ref::after {
+    content: counter(sidenote);
+    font-size: 0.7em;
+    vertical-align: super;
+    line-height: 0;
+    color: var(--c-link);
+    font-weight: 600;
+    padding: 0 0.1em;
+  }
+  .sn-toggle {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+  }
+  .sn-toggle:focus-visible + .sidenote,
+  .sn-toggle:focus-visible {
+    outline: none;
+  }
+  .sn-wrap:has(.sn-toggle:focus-visible) .sn-ref {
+    outline: 2px solid var(--c-focus);
+    outline-offset: 1px;
+  }
+  .sidenote {
+    display: none;
+    font-family: var(--font-ui);
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: var(--c-muted);
+  }
+  .sidenote::before {
+    content: counter(sidenote) '. ';
+    font-weight: 600;
+  }
+  .sn-toggle:checked + .sidenote {
+    display: block;
+    margin: 0.5rem 0;
+    padding: 0.5rem 0.75rem;
+    border-left: 2px solid var(--c-border);
+  }
+  @media (min-width: 1200px) {
+    .sn-ref {
+      cursor: default;
+      pointer-events: none;
+    }
+    .sidenote,
+    .sn-toggle:checked + .sidenote {
+      display: block;
+      float: right;
+      clear: right;
+      width: 220px;
+      margin: 0.2rem calc(-220px - 2.5rem) 1rem 0;
+      padding: 0;
+      border: none;
+    }
+  }
+</style>

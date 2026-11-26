@@ -1,0 +1,57 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { repoUrl, siteConfig } from '../lib/site/config';
+import { url } from '../lib/site/url';
+---
+
+<BaseLayout title="About" description="What this site is, who it is for, and how it is built.">
+  <div class="prose page" data-pagefind-body>
+    <h1>About</h1>
+    <h2>What this is</h2>
+    <p>
+      {siteConfig.title} is a free series of posts on state estimation. It starts with a single Gaussian and works up to
+      the sparse optimization problems at the heart of modern SLAM (simultaneous localization and mapping). Along the
+      way it covers least squares, the Kalman filter and its nonlinear relatives, particle filters, rotations and Lie
+      groups, factor graphs and pose-graph optimization.
+    </p>
+    <p>
+      Each post pairs a written explanation with interactive figures that run in your browser. You can drag a covariance
+      ellipse, tune a filter’s noise model or break an optimizer and see what happens. Nothing is a pre-recorded video.
+    </p>
+    <h2>Who it is for</h2>
+    <p>
+      Engineering students, robotics and autonomy engineers, and anyone learning on their own. The series assumes
+      undergraduate calculus, basic linear algebra (matrix multiplication, inverses, eigenvalues) and basic probability.
+      Everything else is introduced as it is needed. The <a href={`${url('')}#syllabus`}>syllabus</a> lists the posts in
+      order.
+    </p>
+    <h2>How it is built</h2>
+    <p>
+      The site is static, built with Astro and hosted on GitHub Pages. The interactive figures are Svelte components;
+      the mathematics behind them lives in a small, unit-tested TypeScript library, so the numbers you see in a figure
+      come from the same code that the tests check. Equations are typeset with KaTeX.
+    </p>
+    <p>
+      The code and the text are written with Claude Code, Anthropic’s AI coding assistant, under the direction and
+      review of the site’s owner. Every post goes through automated checks before it is published: unit tests for the
+      mathematics, including identities such as “the Kalman filter equals batch least squares”, a script that checks
+      each claim the text makes about a figure against that figure’s default settings, and browser tests on phone and
+      desktop widths. If you find an error, please <a href={`${repoUrl}/issues/new`}>open an issue</a>.
+    </p>
+    <h2>Licenses</h2>
+    <p>
+      Text and figures are licensed under <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. The code
+      is under the <a href={`${repoUrl}/blob/main/LICENSE`}>MIT license</a>. The source is on
+      <a href={repoUrl}>GitHub</a>.
+    </p>
+    <h2>Privacy</h2>
+    <p>The site sets no cookies and uses no analytics. Your theme choice is stored only in your own browser.</p>
+  </div>
+</BaseLayout>
+
+<style>
+  .page {
+    padding: var(--space-5) var(--gutter);
+    max-width: calc(var(--w-text) + 2 * var(--gutter));
+  }
+</style>

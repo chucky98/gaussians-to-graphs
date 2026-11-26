@@ -1,0 +1,64 @@
+{
+  "name": "gaussians-to-graphs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "From Gaussians to Graphs: estimation, Kalman filtering and SLAM with interactive animations",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build && pagefind --site dist",
+    "preview": "astro preview",
+    "check": "astro check && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "validate": "tsx scripts/validate-content.ts",
+    "verify": "npm run lint && npm run check && npm test && npm run build && npm run validate && npm run test:e2e"
+  },
+  "dependencies": {
+    "@astrojs/check": "^0.9.12",
+    "@astrojs/markdown-remark": "^7.3.10",
+    "@astrojs/mdx": "^8.1.6",
+    "@astrojs/rss": "^4.0.19",
+    "@astrojs/sitemap": "^3.7.6",
+    "@astrojs/svelte": "^9.1.6",
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@fontsource/source-serif-4": "^5.3.1",
+    "astro": "^7.4.13",
+    "d3-scale": "^4.0.3",
+    "katex": "^0.19.1",
+    "rehype-katex": "^7.0.1",
+    "remark-math": "^6.0.0",
+    "svelte": "^5.59.2",
+    "typescript": "^6.0.3"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.1",
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.65.1",
+    "@types/d3-scale": "^4.0.9",
+    "@types/node": "^26.6.11",
+    "eslint": "^10.15.0",
+    "eslint-plugin-astro": "^3.2.2",
+    "eslint-plugin-svelte": "^3.24.1",
+    "globals": "^17.14.0",
+    "pagefind": "^1.6.0",
+    "prettier": "^3.10.1",
+    "prettier-plugin-astro": "^1.1.2",
+    "prettier-plugin-svelte": "^4.2.0",
+    "svelte-check": "^4.7.8",
+    "tsx": "^4.23.15",
+    "typescript-eslint": "^8.74.0",
+    "vitest": "^5.1.2",
+    "yaml": "^2.9.1"
+  },
+  "overrides": {
+    "katex": "$katex"
+  }
+}

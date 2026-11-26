@@ -1,0 +1,32 @@
+---
+---
+
+<aside class="try" aria-label="Try this">
+  <p class="label ui">Try this</p>
+  <slot />
+</aside>
+
+<style>
+  .try {
+    margin: var(--space-4) 0 var(--space-5);
+    padding: var(--space-3) var(--space-4);
+    border: 1px dashed var(--c-axis);
+    border-radius: var(--radius);
+  }
+  .label {
+    margin: 0 0 0.4rem;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--c-muted);
+  }
+  .try :global(ol),
+  .try :global(ul) {
+    margin-bottom: 0;
+    padding-left: 1.3em;
+  }
+  .try :global(li) {
+    margin: 0.35em 0;
+  }
+</style>

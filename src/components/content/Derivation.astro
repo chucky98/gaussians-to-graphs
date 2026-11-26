@@ -1,0 +1,45 @@
+---
+interface Props {
+  title?: string;
+}
+const { title = 'Derivation' } = Astro.props;
+---
+
+<details class="derivation">
+  <summary class="ui">
+    <span class="kind">Derivation</span> {title !== 'Derivation' && <span>{title}</span>}
+  </summary>
+  <div class="body">
+    <slot />
+  </div>
+</details>
+
+<style>
+  .derivation {
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    margin: var(--space-5) 0;
+    padding: 0 var(--space-4);
+  }
+  summary {
+    cursor: pointer;
+    padding: var(--space-3) 0;
+    font-size: 0.92rem;
+    font-weight: 500;
+  }
+  .kind {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.75rem;
+    color: var(--c-muted);
+    margin-right: 0.4em;
+    font-weight: 600;
+  }
+  .body {
+    padding-bottom: var(--space-3);
+  }
+  .derivation[open] summary {
+    border-bottom: 1px solid var(--c-border);
+    margin-bottom: var(--space-3);
+  }
+</style>

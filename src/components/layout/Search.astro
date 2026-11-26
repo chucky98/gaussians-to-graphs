@@ -1,0 +1,150 @@
+---
+import { url } from '../../lib/site/url';
+const bundle = url('pagefind/');
+const base = url('');
+---
+
+<button type="button" class="search-btn ui" data-search-open aria-haspopup="dialog">
+  <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16">
+    <circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"></circle>
+    <path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+  </svg>
+  <span>Search</span>
+</button>
+
+<dialog class="search-dialog ui" data-search-dialog aria-label="Search the site" data-bundle={bundle} data-base={base}>
+  <div class="search-head">
+    <h2>Search</h2>
+    <button type="button" class="close" data-search-close>
+      Close
+    </button>
+  </div>
+  <div id="pagefind-search"></div>
+  <p class="search-note" data-search-note hidden>
+    Search is available on the built site (run <code>npm run build</code>).
+  </p>
+</dialog>
+
+<script>
+  declare global {
+    interface Window {
+      PagefindUI?: new (opts: Record<string, unknown>) => unknown;
+    }
+  }
+  const dialog = document.querySelector<HTMLDialogElement>('[data-search-dialog]');
+  const openBtn = document.querySelector<HTMLButtonElement>('[data-search-open]');
+  const closeBtn = document.querySelector<HTMLButtonElement>('[data-search-close]');
+  let loaded = false;
+
+  async function load(): Promise<void> {
+    if (loaded || !dialog) return;
+    loaded = true;
+    const bundle = dialog.dataset.bundle!;
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = `${bundle}pagefind-ui.css`;
+    document.head.append(css);
+    await new Promise<void>((resolve) => {
+      const s = document.createElement('script');
+      s.src = `${bundle}pagefind-ui.js`;
+      s.onload = () => resolve();
+      s.onerror = () => resolve();
+      document.head.append(s);
+    });
+    if (!window.PagefindUI) {
+      dialog.querySelector<HTMLElement>('[data-search-note]')!.hidden = false;
+      return;
+    }
+    new window.PagefindUI({
+      element: '#pagefind-search',
+      baseUrl: dialog.dataset.base,
+      bundlePath: bundle,
+      showSubResults: true,
+      showImages: false,
+      resetStyles: false,
+    });
+    dialog.querySelector<HTMLInputElement>('input')?.focus();
+  }
+
+  openBtn?.addEventListener('click', () => {
+    dialog?.showModal();
+    void load().then(() => dialog?.querySelector<HTMLInputElement>('input')?.focus());
+  });
+  closeBtn?.addEventListener('click', () => dialog?.close());
+  dialog?.addEventListener('click', (e) => {
+    if (e.target === dialog) dialog.close();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (
+      e.key === '/' &&
+      !dialog?.open &&
+      !(e.target instanceof HTMLInputElement) &&
+      !(e.target instanceof HTMLTextAreaElement)
+    ) {
+      e.preventDefault();
+      openBtn?.click();
+    }
+  });
+</script>
+
+<style>
+  .search-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: none;
+    border: 1px solid var(--c-border);
+    color: var(--c-fg);
+    border-radius: var(--radius);
+    padding: 0.3rem 0.55rem;
+    font-size: var(--fs-ui);
+    cursor: pointer;
+    min-height: 36px;
+  }
+  .search-btn:hover {
+    background: var(--c-surface);
+  }
+  .search-dialog {
+    width: min(640px, calc(100vw - 2rem));
+    max-height: min(80vh, 720px);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    background: var(--c-bg);
+    color: var(--c-fg);
+    padding: var(--space-4);
+    --pagefind-ui-primary: var(--c-link);
+    --pagefind-ui-text: var(--c-fg);
+    --pagefind-ui-background: var(--c-bg);
+    --pagefind-ui-border: var(--c-border);
+    --pagefind-ui-tag: var(--c-surface);
+    --pagefind-ui-font: var(--font-ui);
+    --pagefind-ui-scale: 0.85;
+  }
+  .search-dialog::backdrop {
+    background: rgb(0 0 0 / 0.4);
+  }
+  .search-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-3);
+  }
+  .search-head h2 {
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: 1.1rem;
+  }
+  .close {
+    background: none;
+    border: 1px solid var(--c-border);
+    color: var(--c-fg);
+    border-radius: var(--radius);
+    padding: 0.25rem 0.6rem;
+    cursor: pointer;
+    font: inherit;
+  }
+  .search-note {
+    color: var(--c-muted);
+    font-size: var(--fs-small);
+  }
+</style>
