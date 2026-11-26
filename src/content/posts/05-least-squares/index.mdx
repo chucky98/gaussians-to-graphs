@@ -50,7 +50,7 @@ Why squares rather than plain distances? Three reasons, in increasing order of d
 
 - **Squares are smooth.** The total area is a bowl-shaped function of the line's parameters, so it has a single lowest point that we can find with a formula instead of a search.
 - **Squares hate big misses.** A fix 6 m off counts four times as much as one 3 m off. That is usually what we want, and occasionally a disaster, as we will see.
-- **Squares are what Gaussian noise asks for.** If the errors are Gaussian, the least-squares line is the most likely road. Post 6 makes this precise.
+- **Squares are what Gaussian noise asks for.** If the errors are Gaussian, the least-squares line is the most likely road. [Post 6](../mle-and-map/) makes this precise.
 
 ## The math
 
@@ -148,7 +148,7 @@ The unit tests check the defining property directly: at the solution, $\mathbf{A
 
 **Numerical trouble.** Forming $\mathbf{A}\T\mathbf{A}$ squares the condition number of the problem, so nearly dependent columns lose twice as many digits as they need to. For large or badly scaled problems, solve with a QR factorization of $\mathbf{A}$ instead; for small, well-scaled ones like this, the normal equations are fine.
 
-**Models that are not linear in their unknowns.** If the model is, say, the distance from the phone to a radio beacon, the residuals depend nonlinearly on the unknown position and there is no closed form. Post 9 solves that by applying this post's method over and over.
+**Models that are not linear in their unknowns.** If the model is, say, the distance from the phone to a radio beacon, the residuals depend nonlinearly on the unknown position and there is no closed form. [Post 9](../nonlinear-least-squares/) solves that by applying this post's method over and over.
 
 ## Summary
 

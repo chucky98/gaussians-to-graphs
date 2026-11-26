@@ -84,7 +84,7 @@ r_j(\mathbf{x} + \boldsymbol{\delta}) \approx r_j(\mathbf{x}) + \mathbf{J}_j\,\b
 \mathbf{J}_j = \frac{(\mathbf{x} - \mathbf{m}_j)\T}{\lVert \mathbf{x} - \mathbf{m}_j \rVert} .
 $$
 
-The Jacobian row $\mathbf{J}_j$ of a range is just the unit vector pointing from the anchor to the tag. Moving the tag along that direction changes the range one-for-one; moving across it does not change the range at all. Stack the rows into $\mathbf{J}$ and the residuals into $\mathbf{r}$. With the linearized residuals the cost becomes a quadratic bowl in $\boldsymbol{\delta}$, exactly the weighted least-squares problem of Post 5. Its normal equations are
+The Jacobian row $\mathbf{J}_j$ of a range is just the unit vector pointing from the anchor to the tag. Moving the tag along that direction changes the range one-for-one; moving across it does not change the range at all. Stack the rows into $\mathbf{J}$ and the residuals into $\mathbf{r}$. With the linearized residuals the cost becomes a quadratic bowl in $\boldsymbol{\delta}$, exactly the weighted least-squares problem of [Post 5](../least-squares/). Its normal equations are
 
 $$
 \boldsymbol{\Lambda}\,\boldsymbol{\delta} = \boldsymbol{\eta},
