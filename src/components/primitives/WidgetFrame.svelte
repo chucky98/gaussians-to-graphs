@@ -58,7 +58,8 @@
 
 <style>
   .widget {
-    margin: var(--space-6) 0;
+    /* Block margins only: the side margins come from the global .wide rule, which centres the frame. */
+    margin-block: var(--space-6);
     border: 1px solid var(--c-border);
     border-radius: var(--radius);
     background: var(--c-bg);

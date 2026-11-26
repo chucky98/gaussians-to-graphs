@@ -15,7 +15,8 @@ const { caption, wide = false } = Astro.props;
 
 <style>
   .figure {
-    margin: var(--space-5) 0;
+    /* Block margins only, so a wide figure keeps the centring side margins of the global .wide rule. */
+    margin-block: var(--space-5);
   }
   .art {
     display: flex;
