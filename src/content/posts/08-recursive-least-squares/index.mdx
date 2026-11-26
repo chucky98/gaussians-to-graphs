@@ -104,7 +104,7 @@ Recursive least squares is exact: after every step it equals the batch solution 
 
 A batch fit treats a measurement from an hour ago exactly like one from a second ago. That is right if the motor never changes, and wrong if the battery is sagging. A **forgetting factor** $\beta$, slightly below 1, discounts each measurement by $\beta$ for every newer one that arrives, so a measurement $j$ steps old has weight $\beta^{j}$. The recursion changes only slightly: $\sigma^2$ becomes $\beta\sigma^2$ in the gain, and the covariance is divided by $\beta$ after the update, which slowly inflates the uncertainty again. The effective memory is about $1/(1-\beta)$ measurements: $\beta = 0.95$ remembers roughly the last 20.
 
-Inflating $\mathbf{P}$ between measurements is the same idea as the *prediction step* of the Kalman filter ([Post 11](../kalman-filter-1d/) and Post 12): admitting that the quantity may have changed since you last looked.
+Inflating $\mathbf{P}$ between measurements is the same idea as the *prediction step* of the Kalman filter ([Posts 11](../kalman-filter-1d/) and [12](../kalman-filter/)): admitting that the quantity may have changed since you last looked.
 
 ## Play with it
 

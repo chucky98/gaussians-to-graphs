@@ -1,0 +1,200 @@
+---
+number: 12
+title: The Kalman Filter
+description: The multivariate Kalman filter. Track a forklift from position fixes alone, and estimate the velocity nobody measures.
+part: 2
+status: published
+date: 2026-11-26
+prerequisites: [kalman-filter-1d]
+objectives:
+  - Write a linear state-space model, with the dimension of every vector and matrix.
+  - Apply the multivariate prediction and update equations, and recognize them as the one-dimensional filter in matrix form.
+  - Build the constant-velocity model and explain how the process noise q sets how quickly the filter adapts.
+  - Explain how a state that is never measured, such as velocity, is estimated through its correlation with one that is.
+references:
+  - key: kalman1960
+    text: 'Kalman. "A New Approach to Linear Filtering and Prediction Problems." *Journal of Basic Engineering* 82(1), 1960.'
+  - key: barshalom2001
+    text: Bar-Shalom, Li, Kirubarajan. *Estimation with Applications to Tracking and Navigation.* Wiley, 2001. Ch. 5 (the linear Kalman filter) and Ch. 6 (kinematic models, including the white-noise acceleration model).
+  - key: simon2006
+    text: Simon. *Optimal State Estimation.* Wiley, 2006. Ch. 5 (the discrete-time Kalman filter, including the Joseph form).
+  - key: thrun2005
+    text: Thrun, Burgard, Fox. *Probabilistic Robotics.* MIT Press, 2005. §3.2 (the Kalman filter algorithm and its derivation).
+widgets: [CVTracker2D]
+symbols:
+  - tex: '\mathbf{F}_k,\ f(\cdot)'
+    meaning: 'state transition matrix F'
+    match: ['\mathbf{F}']
+  - tex: '\mathbf{H}_k,\ h(\cdot)'
+    meaning: 'measurement matrix H'
+    match: ['\mathbf{H}']
+  - tex: '\mathbf{w}_k \sim \N(\mathbf{0},\mathbf{Q}_k)'
+    meaning: process noise and its covariance Q
+    match: ['\mathbf{Q}']
+  - tex: '\mathbf{v}_k \sim \N(\mathbf{0},\mathbf{R}_k)'
+    meaning: measurement noise and its covariance R
+    match: ['\mathbf{R}']
+  - tex: '\mathbf{K}_k'
+    meaning: Kalman gain, n_x × n_z
+  - tex: '\boldsymbol{\nu}_k,\ \mathbf{S}_k'
+    meaning: innovation and its covariance
+    match: ['\mathbf{S}_k']
+  - tex: 'n_x,\ n_z'
+    meaning: 'state and measurement dimensions (here 4 and 2)'
+    match: ['n_x']
+  - tex: 'q'
+    meaning: process noise density (how fast velocity changes)
+    match: ['q\,']
+---
+
+import CVTracker2D from '../../../components/widgets/CVTracker2D/CVTracker2D.svelte';
+
+A warehouse's ceiling cameras report where each forklift is, once per second, to within about half a metre. The delivery robot of the last two posts shares the aisles with them, and to stay out of the way it needs to know more than where a forklift *is*: it needs to know where it is *going*. Nobody measures that. The cameras see positions only.
+
+<CVTracker2D client:visible />
+
+The green path is a Kalman filter's estimate, and the green line at its tip is its estimate of the velocity, which the charts below the map show over time. The filter starts out knowing nothing useful about the velocity, 0 ± 2 m/s in each direction. Within a few seconds it knows it to about ± 0.3 m/s. This post shows how a filter that only ever sees positions can learn a velocity, using the same two steps as [Post 11](../kalman-filter-1d/), written with vectors and matrices.
+
+## Intuition
+
+Put everything the filter needs to track into one **state vector**: here the forklift's position and its velocity, four numbers. The belief is a Gaussian over this four-dimensional state, with a mean and a 4 × 4 covariance.
+
+**Prediction couples position and velocity.** If the forklift might be driving a little faster than estimated, then in one second it will be a little further along. Prediction moves the position by the velocity and, in doing so, makes the position's error depend on the velocity's error: the two become **correlated**. The predicted ellipse (dashed) stretches, most of all along the direction of travel.
+
+**A position fix then corrects the velocity too.** If the fix lands ahead of the predicted position, the position estimate moves forward. Because errors in position and velocity are correlated, the velocity estimate is pushed up as well. This is the conditioning of [Post 3](../conditioning-and-marginalizing/): observing one block of a correlated Gaussian moves the other block through their cross-covariance.
+
+So the velocity is never measured, but every fix says a little about it, and the correlation built by prediction is what carries that information.
+
+## The math
+
+### Linear state-space models
+
+A **state-space model** describes how the state $\mathbf{x}_k \in \R^{n_x}$ evolves and what the sensor $\mathbf{z}_k \in \R^{n_z}$ reports:
+
+$$
+\begin{aligned}
+\mathbf{x}_k &= \mathbf{F}_k\,\mathbf{x}_{k-1} + \mathbf{B}_k\,\mathbf{u}_k + \mathbf{w}_k, &\quad \mathbf{w}_k &\sim \N(\mathbf{0}, \mathbf{Q}_k), \\
+\mathbf{z}_k &= \mathbf{H}_k\,\mathbf{x}_k + \mathbf{v}_k, &\quad \mathbf{v}_k &\sim \N(\mathbf{0}, \mathbf{R}_k).
+\end{aligned}
+$$
+
+The **state transition matrix** $\mathbf{F}_k \in \R^{n_x \times n_x}$ says how the state would evolve on its own; $\mathbf{B}_k$ maps a known control input $\mathbf{u}_k$ into the state; the **process noise** $\mathbf{w}_k$, with covariance $\mathbf{Q}_k \in \R^{n_x \times n_x}$, covers everything the model leaves out. The **measurement matrix** $\mathbf{H}_k \in \R^{n_z \times n_x}$ says what the sensor sees, and $\mathbf{R}_k \in \R^{n_z \times n_z}$ is the covariance of its noise. Post 11 was the case $n_x = n_z = 1$ with $\mathbf{F}_k = \mathbf{B}_k = \mathbf{H}_k = 1$.
+
+### The constant-velocity model
+
+The forklift's state is $\mathbf{x}_k = (p_x, p_y, v_x, v_y)$, so $n_x = 4$. Over a time step $\Delta t$, position grows by velocity times $\Delta t$, and the velocity stays the same apart from random changes:
+
+$$
+\mathbf{F} = \begin{bmatrix} \mathbf{I} & \Delta t\,\mathbf{I} \\ \mathbf{0} & \mathbf{I} \end{bmatrix}, \qquad
+\mathbf{Q} = q\, \begin{bmatrix} \tfrac{1}{3}\Delta t^3\,\mathbf{I} & \tfrac{1}{2}\Delta t^2\,\mathbf{I} \\ \tfrac{1}{2}\Delta t^2\,\mathbf{I} & \Delta t\,\mathbf{I} \end{bmatrix},
+$$
+
+with 2 × 2 blocks. The process noise models the forklift's acceleration as random, with density $q\,$ in m²/s³: in one step its velocity changes by a random amount with variance $q\,\Delta t$ in each direction, and its position picks up the integrated effect, which is where the $\Delta t^3/3$ and $\Delta t^2/2$ terms come from. Here $\Delta t = 1$ s and $q = 0.01$ m²/s³, so the velocity drifts by about 0.1 m/s per second. The cameras measure position only, so $n_z = 2$:
+
+$$
+\mathbf{H} = \begin{bmatrix} \mathbf{I} & \mathbf{0} \end{bmatrix}, \qquad \mathbf{R} = \sigma^2\,\mathbf{I}, \quad \sigma = 0.5 \text{ m}.
+$$
+
+### Predict and update
+
+The two steps of Post 11 carry over with vectors and matrices:
+
+$$
+\begin{aligned}
+\hat{\mathbf{x}}_{k\mid k-1} &= \mathbf{F}_k\,\hat{\mathbf{x}}_{k-1\mid k-1} + \mathbf{B}_k\,\mathbf{u}_k, \\
+\mathbf{P}_{k\mid k-1} &= \mathbf{F}_k\,\mathbf{P}_{k-1\mid k-1}\,\mathbf{F}_k\T + \mathbf{Q}_k.
+\end{aligned}
+\tag{1}
+$$
+
+The mean follows the model. The covariance is pushed through the linear map, $\mathbf{F}\mathbf{P}\mathbf{F}\T$ as in [Post 4](../propagating-uncertainty/), and then grows by $\mathbf{Q}_k$. Then, when $\mathbf{z}_k$ arrives:
+
+$$
+\begin{aligned}
+\boldsymbol{\nu}_k &= \mathbf{z}_k - \mathbf{H}_k\,\hat{\mathbf{x}}_{k\mid k-1} && \in \R^{n_z} \\
+\mathbf{S}_k &= \mathbf{H}_k\,\mathbf{P}_{k\mid k-1}\,\mathbf{H}_k\T + \mathbf{R}_k && \in \R^{n_z \times n_z} \\
+\mathbf{K}_k &= \mathbf{P}_{k\mid k-1}\,\mathbf{H}_k\T\,\mathbf{S}_k^{-1} && \in \R^{n_x \times n_z} \\
+\hat{\mathbf{x}}_{k\mid k} &= \hat{\mathbf{x}}_{k\mid k-1} + \mathbf{K}_k\,\boldsymbol{\nu}_k \\
+\mathbf{P}_{k\mid k} &= (\mathbf{I} - \mathbf{K}_k\mathbf{H}_k)\,\mathbf{P}_{k\mid k-1}
+\end{aligned}
+\tag{2}
+$$
+
+The **innovation** $\boldsymbol{\nu}_k$ is the surprise, and $\mathbf{S}_k$ is how large the surprise is expected to be: the predicted uncertainty seen through the sensor plus the sensor's own noise. The **Kalman gain** $\mathbf{K}_k$ turns a surprise in measurement space into a correction of the whole state. Compare $K_k = P_{k\mid k-1}/(P_{k\mid k-1} + R)$ from Post 11: $\mathbf{P}\mathbf{H}\T\mathbf{S}^{-1}$ is the same ratio, in matrix form.
+
+<Derivation title="Equation (2) is conditioning on the measurement">
+Before $\mathbf{z}_k$ arrives, the state and the measurement are jointly Gaussian. With $\mathbf{z}_k = \mathbf{H}_k\mathbf{x}_k + \mathbf{v}_k$ and the noise independent of the state,
+
+$$
+\begin{bmatrix} \mathbf{x}_k \\ \mathbf{z}_k \end{bmatrix} \sim \N\!\left( \begin{bmatrix} \hat{\mathbf{x}}_{k\mid k-1} \\ \mathbf{H}_k\hat{\mathbf{x}}_{k\mid k-1} \end{bmatrix},\ \begin{bmatrix} \mathbf{P}_{k\mid k-1} & \mathbf{P}_{k\mid k-1}\mathbf{H}_k\T \\ \mathbf{H}_k\mathbf{P}_{k\mid k-1} & \mathbf{S}_k \end{bmatrix} \right).
+$$
+
+The conditioning formula of Post 3, with $\boldsymbol{\Sigma}_{12} = \mathbf{P}_{k\mid k-1}\mathbf{H}_k\T$ and $\boldsymbol{\Sigma}_{22} = \mathbf{S}_k$, gives the mean $\hat{\mathbf{x}}_{k\mid k-1} + \mathbf{P}_{k\mid k-1}\mathbf{H}_k\T\mathbf{S}_k^{-1}\boldsymbol{\nu}_k$ and the covariance $\mathbf{P}_{k\mid k-1} - \mathbf{P}_{k\mid k-1}\mathbf{H}_k\T\mathbf{S}_k^{-1}\mathbf{H}_k\mathbf{P}_{k\mid k-1}$. With $\mathbf{K}_k = \mathbf{P}_{k\mid k-1}\mathbf{H}_k\T\mathbf{S}_k^{-1}$ these are the last two lines of (2).
+</Derivation>
+
+### How the velocity is learned
+
+With $\mathbf{H} = [\mathbf{I}\ \mathbf{0}]$, the gain is $\mathbf{K}_k = \begin{bmatrix} \mathbf{P}_{pp} \\ \mathbf{P}_{vp} \end{bmatrix}\mathbf{S}_k^{-1}$, where $\mathbf{P}_{pp}$ is the position block of $\mathbf{P}_{k\mid k-1}$ and $\mathbf{P}_{vp}$ the velocity–position block. The velocity rows of the gain are proportional to $\mathbf{P}_{vp}$, the cross-covariance that prediction creates through $\mathbf{F}$. If position and velocity were uncorrelated, a position fix could not move the velocity at all. In the widget's steady state the gain settles to
+
+$$
+\mathbf{K} = \begin{bmatrix} 0.469\,\mathbf{I} \\ 0.146\,\mathbf{I}\ \text{s}^{-1} \end{bmatrix}:
+$$
+
+each fix moves the position estimate 47% of the way to the fix, and changes the velocity estimate by 0.146 m/s for every metre of surprise.
+
+<Callout type="key">
+The multivariate Kalman filter is the one-dimensional filter with matrices: $\mathbf{P} \to \mathbf{F}\mathbf{P}\mathbf{F}\T + \mathbf{Q}$ to predict, $\mathbf{K} = \mathbf{P}\mathbf{H}\T\mathbf{S}^{-1}$ to update. Unmeasured states are corrected through their covariance with measured ones, a covariance that the motion model builds up.
+</Callout>
+
+## Play with it
+
+Drag the time slider back to 0 and use **Step** to go through predict and update one at a time.
+
+<TryThis>
+1. Watch the velocity readout. After the first fix the x-velocity is still 0.33 ± 2.82 m/s: one position cannot separate where the forklift started from how fast it is driving. After the second it is 1.85 ± 1.18, after the third 1.54 ± 0.67 (the truth is 1.46), and from step 10 on its band stays at ± 0.32 m/s.
+2. Compare the dashed and solid ellipses at any later step. In steady state the position's standard deviation is 0.47 m after a prediction and 0.34 m after an update, both smaller than the camera's 0.5 m.
+3. Over the whole run the filter's position is off by 0.51 m (root mean square), against 0.72 m for the raw fixes. Raise the camera noise to 1.5 m: the fixes are now off by 2.15 m, the filter by 1.18 m. The velocity gain drops from 0.146 to 0.056 per second, and the velocity band takes until step 9, instead of step 4, to get below ± 0.5 m/s.
+4. Hide the truth and step through: the filter's ellipses are its own statement of how wrong it might be. Show the truth again: the true x-velocity lies inside its 95% band at 38 of the 40 steps.
+</TryThis>
+
+## Algorithm
+
+<AlgorithmBox title="Kalman filter (one step)" source="src/lib/filters/kf.ts">
+1. **Predict:** $\hat{\mathbf{x}} \leftarrow \mathbf{F}\hat{\mathbf{x}} + \mathbf{B}\mathbf{u}$, $\ \mathbf{P} \leftarrow \mathbf{F}\mathbf{P}\mathbf{F}\T + \mathbf{Q}$; symmetrize $\mathbf{P}$.
+2. If a measurement arrived: $\boldsymbol{\nu} = \mathbf{z} - \mathbf{H}\hat{\mathbf{x}}$, $\ \mathbf{S} = \mathbf{H}\mathbf{P}\mathbf{H}\T + \mathbf{R}$, and factor $\mathbf{S} = \mathbf{L}\mathbf{L}\T$ (Cholesky).
+3. **Gain** by solving, not inverting: $\mathbf{K}\T = \mathbf{S}^{-1}(\mathbf{H}\mathbf{P})$ with the Cholesky factor.
+4. **Update:** $\hat{\mathbf{x}} \leftarrow \hat{\mathbf{x}} + \mathbf{K}\boldsymbol{\nu}$, $\ \mathbf{P} \leftarrow (\mathbf{I} - \mathbf{K}\mathbf{H})\mathbf{P}(\mathbf{I} - \mathbf{K}\mathbf{H})\T + \mathbf{K}\mathbf{R}\mathbf{K}\T$ (Joseph form); symmetrize.
+</AlgorithmBox>
+
+Each step costs $O(n_x^3)$ for the covariance products, plus a factorization of the $n_z \times n_z$ matrix $\mathbf{S}$. The unit tests check the defining property of the filter: after every step its estimate and covariance of the latest state equal the **batch** maximum a posteriori solution, found by solving one big weighted least-squares problem over the whole trajectory at once (with some measurements missing, too). They also check that $\mathbf{P}$ stays symmetric and positive semidefinite, that the Joseph and short forms agree, that the update equals Post 3's conditioning formula, and that with $n_x = n_z = 1$ the filter is exactly Post 11's.
+
+## When it breaks
+
+### A turn the model does not expect
+
+The constant-velocity model says velocity changes only by small random amounts. Below, the forklift drives east at 1.4 m/s and then, at $t = 20$ s, turns sharply left within two seconds.
+
+<CVTracker2D client:visible preset="turn" />
+
+<TryThis>
+1. With the default $q = 0.01$, the estimate overshoots the corner and lags behind on the new heading. It falls outside its own 95% ellipse at four of the five steps from 22 to 26: it is wrong and confident about it. At $t = 25$ s it still estimates the northward speed at 1.11 m/s, against the true 1.40.
+2. Raise $q$ to 0.1. The filter now expects the velocity to change, follows the turn, and stays inside its ellipses through it. The price: on the straight stretch from step 10 to 19 the position error rises from 0.37 m to 0.50 m, because each noisy fix now moves the estimate more.
+</TryThis>
+
+Choosing $q$ is a trade-off between following manoeuvres and smoothing out noise, and no single value is right for both. Post 13 shows how to tell from the innovations alone whether $q$ and $\mathbf{R}$ are set well; multiple-model filters run several values at once and weigh them by how well each explains the data.
+
+### Numerical trouble
+
+The short form $(\mathbf{I} - \mathbf{K}\mathbf{H})\mathbf{P}$ in (2) is exact only with the exact optimal gain. Rounding errors make it slightly non-symmetric, and after many steps it can even lose positive definiteness, after which the filter misbehaves badly. The Joseph form costs a few more multiplications and stays symmetric and positive semidefinite for any gain; symmetrizing after each step and computing $\mathbf{K}$ with a Cholesky solve instead of $\mathbf{S}^{-1}$ add further safety.
+
+### States that cannot be estimated
+
+If the cameras saw only the x-coordinate, nothing would ever correct $p_y$ and $v_y$: their variances would grow without limit. Whether every part of the state is eventually pinned down by the measurements is the question of **observability**. Here it is satisfied because the model links velocity to position and the sensor sees position.
+
+## Summary
+
+- A linear state-space model has a transition $\mathbf{F}$, a control input $\mathbf{B}$, process noise $\mathbf{Q}$ ($n_x \times n_x$), a measurement matrix $\mathbf{H}$ ($n_z \times n_x$) and measurement noise $\mathbf{R}$ ($n_z \times n_z$).
+- Prediction: $\hat{\mathbf{x}} \leftarrow \mathbf{F}\hat{\mathbf{x}} + \mathbf{B}\mathbf{u}$, $\mathbf{P} \leftarrow \mathbf{F}\mathbf{P}\mathbf{F}\T + \mathbf{Q}$. Update: $\mathbf{K} = \mathbf{P}\mathbf{H}\T\mathbf{S}^{-1}$, which is Post 3's conditioning on the measurement.
+- The constant-velocity model treats acceleration as noise of density $q$; prediction correlates position with velocity.
+- Unmeasured states are corrected through that correlation: the forklift's velocity goes from ± 4 m/s to ± 0.3 m/s from position fixes alone.
+- A small $q$ smooths noise but lags manoeuvres; a large $q$ follows them but passes more noise through. Use the Joseph form and Cholesky solves for numerical safety.

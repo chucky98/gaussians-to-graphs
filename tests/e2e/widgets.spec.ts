@@ -397,3 +397,29 @@ test.describe('post 11 widgets', () => {
     await expect(o.locator('[data-readout="gain"]')).toHaveText('no fix');
   });
 });
+
+test.describe('post 12 widgets', () => {
+  test('CVTracker2D: velocity learned from positions; the turn preset', async ({ page }) => {
+    await page.goto('posts/kalman-filter/');
+    const w = page.locator('[data-widget="CVTracker2D"]').first();
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="vel"]')).toContainText('± 0.32 m/s');
+    const time = w.getByRole('slider', { name: /Time/ });
+    await time.fill('2');
+    await expect(w.locator('[data-readout="time"]')).toHaveText('t = 1 s, updated');
+    await expect(w.locator('[data-readout="vel"]')).toContainText('(0.33,');
+    await expect(w.locator('[data-readout="vel"]')).toContainText('± 2.82 m/s');
+    await w.locator('[data-action="step"]').click();
+    await w.locator('[data-action="step"]').click();
+    await expect(w.locator('[data-readout="vel"]')).toContainText('(1.85,');
+
+    const t = page.locator('[data-widget="CVTracker2D"]').nth(1);
+    await t.scrollIntoViewIfNeeded();
+    await expect(t.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await t.getByRole('slider', { name: /Time/ }).fill('50');
+    await expect(t.locator('[data-readout="vel"]')).toContainText(', 1.11)');
+    await t.getByRole('slider', { name: /Process noise/ }).fill('-1');
+    await expect(t.getByRole('slider', { name: /Process noise/ })).toHaveAttribute('aria-valuetext', /0\.1 m²/);
+  });
+});

@@ -198,7 +198,7 @@ The same `schurComplement` function in `src/lib/math/matrix.ts` serves both step
 
 **Conditioning on something you have not observed.** The reverse mistake is worse. Treating a guessed value of $x$ as if it had been measured shrinks the variance of $y$ for no reason, and the estimate becomes overconfident.
 
-**Forgetting that real measurements are noisy.** Equation (1) conditions on $\mathbf{x}_2$ known *exactly*. A real sensor reports $\mathbf{x}_2$ plus noise. The fix is to condition on the noisy reading instead, which adds the noise covariance to $\boldsymbol{\Sigma}_{22}$. That one change turns equation (1) into the Kalman filter's update step, the subject of [Post 11](../kalman-filter-1d/) and Post 12.
+**Forgetting that real measurements are noisy.** Equation (1) conditions on $\mathbf{x}_2$ known *exactly*. A real sensor reports $\mathbf{x}_2$ plus noise. The fix is to condition on the noisy reading instead, which adds the noise covariance to $\boldsymbol{\Sigma}_{22}$. That one change turns equation (1) into the Kalman filter's update step, the subject of [Posts 11](../kalman-filter-1d/) and [12](../kalman-filter/).
 
 **Inverting nearly singular blocks.** If $\boldsymbol{\Sigma}_{22}$ is close to singular, for example because two measured quantities are almost perfectly correlated, computing $\boldsymbol{\Sigma}_{22}^{-1}$ explicitly amplifies rounding errors. Solve with a Cholesky factor instead, and symmetrize the result, as the code in this series does throughout.
 

@@ -262,6 +262,8 @@ Typography: scalars are italic ($x$), vectors are bold lowercase ($\mathbf{x}$),
 | $\varepsilon$ | kidnapping probability per move in a histogram filter (post 10; not the NEES $\epsilon_k$) |
 | $\mathbf{F}_k$, $f(\cdot)$ | linear state transition / nonlinear motion model |
 | $\mathbf{B}_k$ | control-input matrix |
+| $\Delta t$ | time step between filter updates |
+| $q$ | white-noise acceleration density of a constant-velocity model (m²/s³) (post 12) |
 | $\mathbf{H}_k$, $h(\cdot)$ | linear measurement matrix / nonlinear measurement model |
 | $\mathbf{w}_k \sim \mathcal{N}(\mathbf{0},\mathbf{Q}_k)$ | process noise and its covariance |
 | $\mathbf{v}_k \sim \mathcal{N}(\mathbf{0},\mathbf{R}_k)$ | measurement noise and its covariance |
