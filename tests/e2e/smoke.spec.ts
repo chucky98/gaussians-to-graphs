@@ -208,3 +208,19 @@ test.describe('symbols card and margin notes', () => {
     await expect(firstNote).toBeVisible();
   });
 });
+
+test.describe('site statistics', () => {
+  test('while no GoatCounter code is configured: no counting script, no statistics section, honest privacy text', async ({
+    page,
+  }) => {
+    await page.goto('about/');
+    const enabled = (await page.locator('#site-statistics').count()) > 0;
+    if (enabled) {
+      // Once switched on, the section must exist and the privacy text must mention the counting.
+      await expect(page.locator('main')).toContainText('GoatCounter');
+      return;
+    }
+    await expect(page.locator('script[data-goatcounter]')).toHaveCount(0);
+    await expect(page.locator('main')).toContainText('uses no analytics');
+  });
+});

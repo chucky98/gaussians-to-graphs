@@ -18,6 +18,14 @@ export const siteConfig = {
     category: 'Announcements',
     categoryId: 'DIC_kwDOV8056M4DMBGc',
   },
+  /**
+   * Public page-view counters (owner request): GoatCounter site code, e.g. 'gaussians-to-graphs' for
+   * https://gaussians-to-graphs.goatcounter.com. Empty = counting off and no statistics section.
+   * In GoatCounter's settings, "Allow adding visitor counts on your website" must be enabled.
+   */
+  stats: {
+    goatcounterCode: '' as string,
+  },
 } as const;
 
 export const repoUrl = `https://github.com/${siteConfig.owner}/${siteConfig.repo}`;
@@ -39,4 +47,8 @@ export function issueUrl(pageTitle: string, pageUrl: string): string {
 export function giscusEnabled(): boolean {
   const g = siteConfig.giscus;
   return g.enabled && Boolean(g.repoId && g.categoryId);
+}
+
+export function statsEnabled(): boolean {
+  return siteConfig.stats.goatcounterCode.length > 0;
 }
