@@ -1,0 +1,163 @@
+---
+number: 23
+title: The SLAM Problem
+description: Mapping needs a known pose and localization needs a map. Estimating both at once couples every landmark to the robot and to each other.
+part: 4
+status: published
+date: 2026-11-27
+prerequisites: [extended-kalman-filter, uncertainty-on-poses]
+objectives:
+  - State the full and the online SLAM problem as probability distributions, and draw the Bayes network behind them.
+  - Explain why the errors of the robot and of every landmark become correlated, and why those correlations must be kept.
+  - Predict how re-observing one landmark changes the uncertainty of the robot and of all the others.
+  - Explain gauge freedom, and how fixing the first pose removes it.
+references:
+  - key: durrantwhyte2006
+    text: 'Durrant-Whyte, Bailey. "Simultaneous localization and mapping: part I." *IEEE Robotics & Automation Magazine* 13(2), 2006.'
+  - key: dissanayake2001
+    text: 'Dissanayake, Newman, Clark, Durrant-Whyte, Csorba. "A solution to the simultaneous localization and map building (SLAM) problem." *IEEE Transactions on Robotics and Automation* 17(3), 2001.'
+  - key: smith1990
+    text: 'Smith, Self, Cheeseman. "Estimating uncertain spatial relationships in robotics." In *Autonomous Robot Vehicles*, Springer, 1990.'
+  - key: thrun2005
+    text: Thrun, Burgard, Fox. *Probabilistic Robotics.* MIT Press, 2005. §10.1 (online and full SLAM, the graphical model) and §10.2 (EKF-SLAM).
+widgets: [CorrelationsEmerge]
+symbols:
+  - tex: '\mathbf{x}_k'
+    meaning: robot pose at step k
+  - tex: '\mathbf{m}_j'
+    meaning: landmark j; the map is m = (m₁, …, mₙ)
+    match: ['\mathbf{m}_{j_i}']
+  - tex: '\mathbf{P}_{rr},\ \mathbf{P}_{rm},\ \mathbf{P}_{mm}'
+    meaning: robot, robot–map and map blocks of P
+    match: ['\mathbf{P}_{rm}']
+  - tex: 'g(\cdot),\ \mathbf{G}_r,\ \mathbf{G}_z'
+    meaning: landmark from its first reading; Jacobians
+    match: ['\mathbf{G}_r']
+  - tex: '\rho_{ab}'
+    meaning: strength of the correlation between two estimates
+---
+
+import CorrelationsEmerge from '../../../components/widgets/CorrelationsEmerge/CorrelationsEmerge.svelte';
+import SlamBayesNet from '../../../components/figures/SlamBayesNet.astro';
+
+Put a robot in a building it has never seen. To know where it is, it needs a map: [Post 15](../extended-kalman-filter/) localized a robot against markers whose positions were known. To make a map, it needs to know where it is when it sees things. With neither, it is stuck in a loop of chicken and egg. **Simultaneous localization and mapping**, SLAM, breaks the loop by estimating both at once, in one probability distribution. The price, and the whole story of this post, is that the robot and every landmark become tied together.
+
+<CorrelationsEmerge client:visible />
+
+The robot drives around the dashed circle and maps six landmarks it has never seen before. The green ellipses are its 95% estimates. The grey lines are the new ingredient: they join estimates whose errors are correlated, so that knowing the error of one tells you a lot about the error of the other. Press Play, or jump to just before the robot sees landmark 0 again, and step once.
+
+## Intuition
+
+When the robot first sees a landmark, the only way to place it is "where I am, plus what I measured". So the landmark's estimate inherits the robot's error. If the robot believes it is 30 cm further left than it really is, it puts the landmark 30 cm too far left as well. The two errors are not independent: they are the same error, shared. That is what the grey lines show. Every new landmark is born strongly correlated with the robot.
+
+The robot then drives on. Its own uncertainty grows, and the landmarks it meets next inherit that larger error. Landmarks seen from nearby places share most of their error, so they become correlated with each other, even though no single measurement ever related them directly.
+
+The payoff comes when the robot recognizes something it mapped long ago, a **loop closure**. That old landmark was placed while the robot still knew where it was, so seeing it again tells the robot precisely where it is now. Its error shrinks. And because every landmark mapped along the way shares part of the robot's error, learning that error corrects all of them at once. One reading improves the whole map.
+
+## The math
+
+### Full and online SLAM
+
+Write the robot's pose at step $k$ as $\mathbf{x}_k$, the landmarks as $\mathbf{m}_1, \ldots, \mathbf{m}_n$ (together, the map $\mathbf{m}$), the controls as $\mathbf{u}_{1:k}$ and the measurements as $\mathbf{z}_{1:k}$. The **full SLAM** problem asks for the whole trajectory and the map,
+
+$$
+p(\mathbf{x}_{0:k}, \mathbf{m} \mid \mathbf{z}_{1:k}, \mathbf{u}_{1:k}),
+$$
+
+while the **online SLAM** problem asks only for the current pose and the map,
+
+$$
+p(\mathbf{x}_k, \mathbf{m} \mid \mathbf{z}_{1:k}, \mathbf{u}_{1:k}) = \int p(\mathbf{x}_{0:k}, \mathbf{m} \mid \mathbf{z}_{1:k}, \mathbf{u}_{1:k})\, d\mathbf{x}_{0:k-1}.
+$$
+
+Online SLAM is full SLAM with the past poses integrated out. [Post 19](../information-filter/) showed what that does to a Gaussian: marginalizing a chain makes its information matrix dense. Both problems share one structure, shown in the figure below.
+
+<Figure caption="The SLAM problem as a Bayes network. Each pose depends on the previous pose and the control; each measurement depends on the pose it was taken from and on the landmark it saw. Landmarks do not move, so they have no arrows between them. Nothing links two landmarks directly, yet both are linked to the poses that saw them.">
+  <SlamBayesNet />
+</Figure>
+
+Reading off the arrows, the joint density factors into small pieces:
+
+$$
+p(\mathbf{x}_{0:k}, \mathbf{m}, \mathbf{z}_{1:k} \mid \mathbf{u}_{1:k}) = p(\mathbf{x}_0)\prod_{t=1}^{k} p(\mathbf{x}_t \mid \mathbf{x}_{t-1}, \mathbf{u}_t)\prod_{i} p(\mathbf{z}_i \mid \mathbf{x}_{t_i}, \mathbf{m}_{j_i}),
+$$
+
+where measurement $i$ was taken at step $t_i$ of landmark $j_i$. Each factor involves only two or three unknowns. Post 26 builds an optimizer directly on this factorization; this post and the next stay with a filter.
+
+### One Gaussian over robot and map
+
+The filtering approach keeps online SLAM as one Gaussian over the pose and every landmark seen so far, with mean $(\hat{\mathbf{x}}_k, \hat{\mathbf{m}})$ and covariance
+
+$$
+\mathbf{P} = \begin{bmatrix} \mathbf{P}_{rr} & \mathbf{P}_{rm} \\ \mathbf{P}_{rm}\T & \mathbf{P}_{mm} \end{bmatrix},
+$$
+
+with $\mathbf{P}_{rr}$ (3 × 3) the robot's own uncertainty, $\mathbf{P}_{mm}$ ($2n \times 2n$) the map's, and $\mathbf{P}_{rm}$ how robot and map errors go together. The off-diagonal blocks are the grey lines.
+
+A new landmark is placed with the inverse of the range–bearing model of [Post 14](../robot-models-2d/), $\mathbf{m} = g(\mathbf{x}, \mathbf{z}) = (x + r\cos(\theta + \phi),\ y + r\sin(\theta + \phi))$. Linearizing with $\mathbf{G}_r = \partial g/\partial\mathbf{x}$ and $\mathbf{G}_z = \partial g/\partial\mathbf{z}$, as in [Post 4](../propagating-uncertainty/), the joint Gaussian grows by
+
+$$
+\mathbf{P}_{\text{new},\,\text{new}} = \mathbf{G}_r\mathbf{P}_{rr}\mathbf{G}_r\T + \mathbf{G}_z\mathbf{R}\mathbf{G}_z\T,\qquad
+\mathbf{P}_{\text{new},\,\cdot} = \mathbf{G}_r\mathbf{P}_{r\,\cdot}. \tag{1}
+$$
+
+The first term is the robot's uncertainty carried into the landmark, the second the sensor's own. The cross term says the new landmark is correlated with exactly what the robot was correlated with, through $\mathbf{G}_r$. When the robot's uncertainty dominates, the new landmark's error is almost a copy of the robot's.
+
+### How strong is a correlation?
+
+For two scalar estimates the correlation coefficient $\rho$ of [Post 2](../gaussians-and-covariance/) says how much one error predicts the other. For two 2D positions $a$ and $b$, with covariance blocks $\mathbf{P}_{aa}$, $\mathbf{P}_{bb}$ and $\mathbf{P}_{ab}$, the natural generalization is the largest **canonical correlation**
+
+$$
+\rho_{ab} = \sqrt{\lambda_{\max}\!\left(\mathbf{P}_{aa}^{-1}\mathbf{P}_{ab}\mathbf{P}_{bb}^{-1}\mathbf{P}_{ab}\T\right)},
+$$
+
+the strongest correlation between any direction of one error and any direction of the other. It runs from 0 (independent) to 1 (one error determines part of the other exactly). The widget draws a line when $\rho_{ab} \ge 0.2$, thicker for larger values.
+
+### Why one reading moves everything
+
+A reading of landmark $j$ has a measurement Jacobian $\mathbf{H}$ that is zero except in the pose columns and landmark $j$'s columns. But the Kalman gain is $\mathbf{K} = \mathbf{P}\mathbf{H}\T\mathbf{S}^{-1}$, and $\mathbf{P}\mathbf{H}\T$ picks up every row of $\mathbf{P}$ that is correlated with the robot or with landmark $j$. So the correction $\mathbf{K}\boldsymbol{\nu}$ moves every correlated landmark, and the covariance update $\mathbf{P} \leftarrow \mathbf{P} - \mathbf{K}\mathbf{S}\mathbf{K}\T$ shrinks all of their ellipses. Dissanayake and coauthors proved three properties of this filter for a linearized model. Observations never increase the uncertainty of any group of landmarks: the determinant of every block of $\mathbf{P}_{mm}$ only decreases. In the limit the landmarks become fully correlated. And no landmark ever becomes more certain than the robot was when the map began.
+
+### Gauge freedom
+
+Nothing in the measurements says where the map is in the world. Shift and rotate the robot's whole trajectory and every landmark together, and every reading stays exactly the same. This freedom is called the **gauge**. A filter must fix it somehow; here, the robot's starting pose is declared known exactly, which makes it the origin of the map. Everything is then estimated relative to where the robot started, and landmark 0, mapped from the start, stays the best-known point of the map. Without such an anchor, the information matrix of the problem is singular (Post 19), and optimizers in Post 27 need a prior on one pose for the same reason.
+
+## Play with it
+
+<TryThis>
+- At the default step 60, four landmarks are mapped and the robot's position is uncertain by 0.72 m. The links show how its error is shared: correlations of 0.99 and 1.00 with landmarks 2 and 3, which it mapped recently, but only 0.42 with landmark 0, mapped at the start.
+- Press **Go to just before the loop closure** (step 98). The robot is uncertain by 0.82 m, landmark 4 by 0.89 m and landmark 5 by 0.70 m. Now step once: the robot reads landmark 0 again, and its uncertainty falls to 0.18 m. Landmark 4, far behind the robot and not observed at this step, drops from 0.89 to 0.57 m.
+- Look at landmarks 2 and 3 just before the closure. They were mapped from neighbouring poses and are correlated at 0.99: if one is off to the left, so is the other. Their relative position is better known than either alone, 0.46 m against 0.61 and 0.58 m, because part of their shared error cancels.
+- Watch landmark 0 throughout. It was mapped while the robot still knew almost exactly where it was: its ellipse shrinks to 0.08 m within the first ten steps and never grows again. It is the anchor that the loop closure uses.
+</TryThis>
+
+## Algorithm
+
+<AlgorithmBox title="Online SLAM with one Gaussian (EKF-SLAM, outline)" source="src/lib/filters/ekf-slam.ts">
+1. **Start** with the robot's pose known (this fixes the gauge) and an empty map.
+2. **Predict** with the motion model. Only the pose moves: update $\mathbf{P}_{rr}$ and multiply the cross blocks $\mathbf{P}_{rm}$ by the motion Jacobian; the map block is unchanged.
+3. For each reading: if the landmark is **new**, append it with (1); otherwise **update** with the EKF update of Post 15, whose gain reaches every correlated landmark.
+</AlgorithmBox>
+
+The next post looks at this filter in detail: its cost, how its covariance fills in, and where it goes wrong. The tests in `tests/unit/filters/ekf-slam.test.ts` check the augmentation (1) against a generic linear transform of the joint Gaussian, and that a prediction leaves the map block untouched. They also check that the determinant of every landmark's covariance block never increases during this widget's run, the first property above.
+
+## When it breaks
+
+### Dropping the correlations
+
+It is tempting to keep only one ellipse per landmark and forget the off-diagonal blocks: the storage drops from quadratic to linear. The result is a filter that counts the same information again and again. The robot's error, already inside every landmark's estimate, is treated as fresh evidence each time a landmark is used to correct the robot. The map becomes overconfident and then wrong. The early stochastic-map work of Smith, Self and Cheeseman, and later convergence proofs, rest on keeping the full covariance; the tutorial by Durrant-Whyte and Bailey explains why it cannot be dropped.
+
+### Correlations cost memory and time
+
+With $n$ landmarks, $\mathbf{P}$ has $(3 + 2n)^2$ entries, and every update touches all of them. That is fine for six landmarks and painful for six thousand. Post 24 measures the cost; Posts 26 to 28 escape it by keeping the full trajectory, where the information matrix stays sparse.
+
+### Knowing which landmark is which
+
+This post assumes every reading comes labelled with the landmark it belongs to. Real sensors do not label anything. Matching readings to landmarks, data association, is the subject of Post 25, and a wrong match does more damage than any amount of noise.
+
+## Summary
+
+- SLAM estimates the robot's poses and the map together. Full SLAM wants the whole trajectory; online SLAM only the current pose, with the past integrated out.
+- The SLAM Bayes network has only small, local factors: motion between consecutive poses, and each measurement between one pose and one landmark.
+- A landmark is born with the robot's error, so robot and map errors are correlated, and landmarks seen from nearby places become correlated with each other.
+- Through those correlations, one reading of a well-known landmark (a loop closure) shrinks the uncertainty of the robot and of every landmark.
+- The map's position in the world is a free gauge; fixing the first pose removes it.

@@ -1,0 +1,117 @@
+---
+/**
+ * Static diagram for post 23: the SLAM problem as a Bayes network. Poses form a chain driven by the
+ * controls; each measurement depends on the pose it was taken from and on the landmark it saw.
+ */
+const xs = [70, 190, 310, 430];
+const poseY = 120;
+const ctrlY = 40;
+const measY = 200;
+const lmY = 270;
+const meas = [
+  { from: 1, lm: 0, x: 150 },
+  { from: 2, lm: 0, x: 250 },
+  { from: 2, lm: 1, x: 340 },
+  { from: 3, lm: 1, x: 460 },
+];
+const lms = [200, 400];
+---
+
+<svg
+  class="bn"
+  viewBox="0 0 520 310"
+  width="520"
+  height="310"
+  role="img"
+  aria-label="A Bayes network for SLAM. Four robot poses x0 to x3 form a chain, each depending on the previous pose and on a control u. Four measurements z each depend on one pose and on one of two landmarks m1 and m2, which do not move."
+>
+  <defs>
+    <marker id="bn-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" class="head" />
+    </marker>
+  </defs>
+  {xs.slice(1).map((x, i) => (
+    <line class="edge" x1={xs[i]! + 22} y1={poseY} x2={x - 24} y2={poseY} marker-end="url(#bn-arrow)" />
+  ))}
+  {xs.slice(1).map((x) => (
+    <line class="edge" x1={x} y1={ctrlY + 18} x2={x} y2={poseY - 24} marker-end="url(#bn-arrow)" />
+  ))}
+  {meas.map((m) => (
+    <>
+      <line class="edge" x1={xs[m.from]!} y1={poseY + 22} x2={m.x} y2={measY - 20} marker-end="url(#bn-arrow)" />
+      <line class="edge" x1={lms[m.lm]!} y1={lmY - 20} x2={m.x} y2={measY + 20} marker-end="url(#bn-arrow)" />
+    </>
+  ))}
+  {xs.map((x, i) => (
+    <>
+      <circle class="pose" cx={x} cy={poseY} r="22" />
+      <text class="lbl" x={x} y={poseY}>
+        x{['₀', '₁', '₂', '₃'][i]}
+      </text>
+    </>
+  ))}
+  {xs.slice(1).map((x, i) => (
+    <>
+      <rect class="obs" x={x - 18} y={ctrlY - 18} width="36" height="36" rx="4" />
+      <text class="lbl" x={x} y={ctrlY}>
+        u{['₁', '₂', '₃'][i]}
+      </text>
+    </>
+  ))}
+  {meas.map((m, i) => (
+    <>
+      <rect class="obs" x={m.x - 18} y={measY - 18} width="36" height="36" rx="4" />
+      <text class="lbl" x={m.x} y={measY}>
+        z{['₁', '₂', '₃', '₄'][i]}
+      </text>
+    </>
+  ))}
+  {lms.map((x, i) => (
+    <>
+      <circle class="lm" cx={x} cy={lmY} r="20" />
+      <text class="lbl" x={x} y={lmY}>
+        m{['₁', '₂'][i]}
+      </text>
+    </>
+  ))}
+  <text class="note" x="8" y="305">
+    circles: unknowns · squares: measured
+  </text>
+</svg>
+
+<style>
+  .bn {
+    max-width: 100%;
+    height: auto;
+    font-family: var(--font-ui);
+  }
+  .edge {
+    stroke: var(--c-axis);
+    stroke-width: 1.4;
+  }
+  .head {
+    fill: var(--c-axis);
+  }
+  .pose,
+  .lm {
+    fill: var(--c-bg);
+    stroke: var(--c-post);
+    stroke-width: 2;
+  }
+  .obs {
+    fill: color-mix(in srgb, var(--c-meas) 18%, var(--c-bg));
+    stroke: var(--c-meas);
+    stroke-width: 1.4;
+  }
+  .lbl {
+    fill: var(--c-fg);
+    font-size: 15px;
+    font-style: italic;
+    text-anchor: middle;
+    dominant-baseline: central;
+  }
+  .note {
+    fill: var(--c-muted);
+    font-size: 12px;
+  }
+</style>

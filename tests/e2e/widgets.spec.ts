@@ -677,3 +677,24 @@ test.describe('post 22 widgets', () => {
     await expect(w.locator('[data-readout="tan"]')).toHaveText('96%');
   });
 });
+
+test.describe('post 23 widgets', () => {
+  test('CorrelationsEmerge: step 60, the loop closure, links', async ({ page }) => {
+    await page.goto('posts/the-slam-problem/');
+    const w = page.locator('[data-widget="CorrelationsEmerge"]');
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="k"]')).toHaveText('60');
+    await expect(w.locator('[data-readout="robot"]')).toHaveText('0.72 m');
+    await expect(w.locator('[data-readout="count"]')).toHaveText('4');
+    await w.locator('[data-action="closure"]').click();
+    await expect(w.locator('[data-readout="robot"]')).toHaveText('0.82 m');
+    await w.locator('[data-action="step"]').click();
+    await expect(w.locator('[data-readout="k"]')).toHaveText('99');
+    await expect(w.locator('[data-readout="robot"]')).toHaveText('0.18 m');
+    await expect(w.locator('line.link').first()).toBeVisible();
+    await w.getByRole('switch', { name: 'Show landmark–landmark links' }).uncheck();
+    await w.getByRole('switch', { name: 'Show robot–landmark links' }).uncheck();
+    await expect(w.locator('line.link')).toHaveCount(0);
+  });
+});
