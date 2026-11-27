@@ -2,7 +2,7 @@
 
 ## Current phase: 4 — Part 4 (SLAM) in progress
 
-## Next task: Phase 4 — post 30 `incremental-smoothing` (IncrementalVsBatch)
+## Next task: Phase 4 — post 31 `toward-3d-and-vision` (PinholeProjection, BundleAdjustmentMini; Threlte)
 
 ## Posts
 
@@ -37,7 +37,8 @@
 | 27    | pose-graph-optimization          | published | PoseGraph2D (worker)                  | ~2,400 words. 1,000-pose Manhattan city, LM/GN iterations streamed from a worker, sparsity and fill, local minima.              |
 | 28    | sparsity-and-solvers             | published | SparsityExplorer, MarginalizationFill | ~2,300 words. Elimination = Cholesky, fill-in, natural/random/RCM/min-degree orderings, marginalization fill, sliding windows.  |
 | 29    | robust-optimization              | published | OutlierLoopClosures (worker)          | ~2,300 words. Influence, Huber/Cauchy/Geman–McClure, IRLS, GNC, switchable constraints; false closures fold the map.            |
-| 30–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                                     |                                                                                                                                 |
+| 30    | incremental-smoothing            | published | IncrementalVsBatch                    | ~2,100 words. Elimination tree → affected set; iSAM/iSAM2 ideas; work per step, batch vs incremental (simplified, stated).      |
+| 31–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                                     |                                                                                                                                 |
 
 ## Infrastructure checklist
 
@@ -174,6 +175,7 @@
 - 2026-11-27 — **Post 28:** `sparse.ts` gained `factorPattern` (symbolic factor pattern) and `reverseCuthillMcKee` (tested: a randomly numbered path factors with zero fill after RCM). SparsityExplorer works at pose-block level (120 poses, seed 18) and shows Λ and L as crisp heat maps; fill: natural 476, random 240, RCM 149, minimum degree 117. MarginalizationFill is a 12-pose loop with three loop closures; the remaining information is computed with `graph/marginalize` (dense, 36 × 36) and "linked" means a block above 1e-9. No solve times in the text: they depend on the machine.
 - 2026-11-27 — **`graph/robust.ts` (post 29):** kernels on the squared Mahalanobis error s (ρ(s), w = ρ′(s)): L2, Huber, Cauchy, Geman–McClure; solver hooks that apply a kernel to chosen factors (loop closures only: odometry stays quadratic); GNC with Geman–McClure (μ from 10⁴, ÷1.4 per stage, 3 GN/IRLS iterations each). Tests: ρ against the definitions and w against a numerical derivative; GNC recovers the clean solution with 30 false closures (all rejected).
 - 2026-11-27 — **OutlierLoopClosures:** 500-pose city (seed 18, 104 true closures) plus k false closures between distant poses (fixed draws per candidate, so the first m outliers are the same for every count). "Rejected" means final weight below 0.1; with 0.5, Geman–McClure counted ordinary inliers as rejected. Results: L2 6.75 m (dead reckoning 2.32, clean 0.24); Huber 1.02; Cauchy 0.23 (60 false: 0.24); GM at scale 1 rejects 100 of 104 true closures (1.85 m) while GNC at scale 1 reaches 0.29. The kernel scale is written k_ρ (k is the time index).
+- 2026-11-27 — **IncrementalVsBatch (post 30), simplified as DESIGN allows:** poses in creation order, no reordering and no relinearization; per step the affected set is the touched variables plus their elimination-tree ancestors, and work is Σ c_j² over refactored columns (block level), not time. The post says so in a callout. Tested on the real numerical factor: at steps before, at and after a loop closure, every column outside the affected set is identical to the previous step's factor. 300 poses (seed 18): plain steps affect exactly 2 poses, the 52 closure steps up to 219; total work 7.4× less than refactoring every step.
 
 ## Follow-ups / known issues
 

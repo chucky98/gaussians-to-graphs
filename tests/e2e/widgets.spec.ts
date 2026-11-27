@@ -817,3 +817,18 @@ test.describe('post 29 widgets', () => {
     await expect(w.locator('[data-readout="rms"]')).toHaveText('0.23 m');
   });
 });
+
+test.describe('post 30 widgets', () => {
+  test('IncrementalVsBatch: last step, first loop closure, plain steps', async ({ page }) => {
+    await page.goto('posts/incremental-smoothing/');
+    const w = page.locator('[data-widget="IncrementalVsBatch"]');
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="affected"]')).toHaveText('23');
+    await expect(w.locator('[data-readout="ratio"]')).toHaveText('7.4×');
+    await w.locator('[data-action="closure"]').click();
+    await expect(w.locator('[data-readout="affected"]')).toHaveText('33');
+    await w.locator('[data-action="step"]').click();
+    await expect(w.locator('[data-readout="affected"]')).toHaveText('2');
+  });
+});
