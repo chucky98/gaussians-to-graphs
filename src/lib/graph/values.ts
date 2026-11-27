@@ -21,7 +21,7 @@ export type Values = ReadonlyMap<Key, Variable>;
 export const dimOf = (v: Variable): number =>
   v.kind === 'se2' ? 3 : v.kind === 'se3' ? 6 : v.kind === 'point2' ? 2 : 3;
 
-export function values(entries: readonly [Key, Variable][]): Values {
+export function values(entries: readonly (readonly [Key, Variable])[]): Values {
   return new Map(entries);
 }
 

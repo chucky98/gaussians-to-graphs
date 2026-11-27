@@ -747,3 +747,21 @@ test.describe('post 25 widgets', () => {
     await expect(w.locator('[data-readout="err"]')).toHaveText('4.12 m');
   });
 });
+
+test.describe('post 26 widgets', () => {
+  test('FactorGraphBuilder: structure, solve, gauge', async ({ page }) => {
+    await page.goto('posts/factor-graphs/');
+    const w = page.locator('[data-widget="FactorGraphBuilder"]');
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="nnzJ"]')).toHaveText('135 of 651');
+    await w.locator('[data-action="solve"]').click();
+    await expect(w.locator('[data-readout="cost"]')).toHaveText('5.64');
+    await expect(w.locator('[data-readout="err"]')).toHaveText('0.09 m');
+    await w.locator('[data-factor="prior"]').click();
+    await expect(w.locator('[data-readout="free"]')).toHaveText('3');
+    await expect(w.locator('[data-action="solve"]')).toBeDisabled();
+    await w.locator('[data-action="reset"]').click();
+    await expect(w.locator('[data-readout="free"]')).toHaveText('0');
+  });
+});

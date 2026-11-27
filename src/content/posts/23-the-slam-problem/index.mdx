@@ -82,7 +82,7 @@ $$
 p(\mathbf{x}_{0:k}, \mathbf{m}, \mathbf{z}_{1:k} \mid \mathbf{u}_{1:k}) = p(\mathbf{x}_0)\prod_{t=1}^{k} p(\mathbf{x}_t \mid \mathbf{x}_{t-1}, \mathbf{u}_t)\prod_{i} p(\mathbf{z}_i \mid \mathbf{x}_{t_i}, \mathbf{m}_{j_i}),
 $$
 
-where measurement $i$ was taken at step $t_i$ of landmark $j_i$. Each factor involves only two or three unknowns. Post 26 builds an optimizer directly on this factorization; this post and the next stay with a filter.
+where measurement $i$ was taken at step $t_i$ of landmark $j_i$. Each factor involves only two or three unknowns. [Post 26](../factor-graphs/) builds an optimizer directly on this factorization; this post and the next stay with a filter.
 
 ### One Gaussian over robot and map
 
