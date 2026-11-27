@@ -140,7 +140,7 @@ $$
 
 The points on the axis stay put; everything else circles around it. Going back is easy too: the trace (sum of the diagonal) of (2) is $1 + 2\cos\theta$, so $\cos\theta = (\tr\mathbf{C} - 1)/2$, and the axis can be read off the skew-symmetric part $\mathbf{C} - \mathbf{C}\T = 2\sin\theta\,[\mathbf{u}]_\times$.
 
-Packing the two into one vector gives the **rotation vector** $\boldsymbol{\theta} = \theta\mathbf{u}$: three numbers, its direction the axis and its length the angle. It is excellent for small rotations, where it is nearly the three small angles about x, y and z, and it is the language of the next post, where (2) turns out to be the exponential map. Its trouble spot is a half turn: $\pi\mathbf{u}$ and $-\pi\mathbf{u}$ are the same rotation.
+Packing the two into one vector gives the **rotation vector** $\boldsymbol{\theta} = \theta\mathbf{u}$: three numbers, its direction the axis and its length the angle. It is excellent for small rotations, where it is nearly the three small angles about x, y and z, and it is the language of the [next post](../lie-groups-for-robotics/), where (2) turns out to be the exponential map. Its trouble spot is a half turn: $\pi\mathbf{u}$ and $-\pi\mathbf{u}$ are the same rotation.
 
 ### Unit quaternions
 
@@ -212,7 +212,7 @@ Yaw–pitch–roll is one of twelve possible sequences (z–y–x, z–x–z, x�
 
 ### Euler angles inside an estimator
 
-A filter whose state contains yaw, pitch and roll inherits the singularity: near ±90° pitch its motion-model Jacobian involves $\mathbf{E}^{-1}$, whose entries grow like $1/\cos\theta$, and the linearization of [Post 15](../extended-kalman-filter/) falls apart. Attitude estimators therefore keep the orientation as a quaternion or a rotation matrix, and estimate a small rotation vector as the error. That is exactly the tangent-space approach of the next post.
+A filter whose state contains yaw, pitch and roll inherits the singularity: near ±90° pitch its motion-model Jacobian involves $\mathbf{E}^{-1}$, whose entries grow like $1/\cos\theta$, and the linearization of [Post 15](../extended-kalman-filter/) falls apart. Attitude estimators therefore keep the orientation as a quaternion or a rotation matrix, and estimate a small rotation vector as the error. That is exactly the tangent-space approach of [Post 21](../lie-groups-for-robotics/).
 
 ### The sign of a quaternion
 

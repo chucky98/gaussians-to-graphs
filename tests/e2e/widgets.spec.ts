@@ -619,3 +619,38 @@ test.describe('post 20 widgets', () => {
     await expect(w.locator('[data-readout="sofar"]')).toHaveText('36° / 36°');
   });
 });
+
+test.describe('post 21 widgets', () => {
+  test('TangentSpace: defaults, small τ, wrapping past π', async ({ page }) => {
+    await page.goto('posts/lie-groups-for-robotics/');
+    const w = page.locator('[data-widget="TangentSpace"]');
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="exact"]')).toHaveText('98.8°');
+    await expect(w.locator('[data-readout="proj"]')).toHaveText('50.2°');
+    await expect(w.locator('[data-readout="off"]')).toHaveText('0.56');
+    const tau = w.getByRole('slider', { name: 'Tangent vector τ (rad)' });
+    await tau.fill('0.2');
+    await expect(w.locator('[data-readout="proj"]')).toHaveText('11.3°');
+    await expect(w.locator('[data-readout="tau"]')).toHaveText('0.20 rad (11.5°)');
+    await tau.fill('4');
+    await expect(w.locator('[data-readout="exact"]')).toHaveText('−100.8°');
+    await expect(w.locator('[data-readout="back"]')).toHaveText('−2.28 rad (wrapped)');
+  });
+  test('SE2Exp: the arc, N steps, the start heading', async ({ page }) => {
+    await page.goto('posts/lie-groups-for-robotics/');
+    const w = page.locator('[data-widget="SE2Exp"]');
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="exp"]')).toHaveText('(1.33, 1.24, 86°)');
+    await expect(w.locator('[data-readout="gap"]')).toHaveText('1.41 m');
+    await expect(w.locator('[data-readout="steps"]')).toHaveText('0.34 m');
+    await w.getByLabel('Straight-then-turn steps N').selectOption('64');
+    await expect(w.locator('[data-readout="steps"]')).toHaveText('0.02 m');
+    await w.getByRole('slider', { name: 'Start heading' }).fill('90');
+    await expect(w.locator('[data-readout="exp"]')).toHaveText('(−1.24, 1.33, 176°)');
+    await expect(w.locator('[data-readout="gap"]')).toHaveText('3.50 m');
+    await w.locator('[data-action="reset"]').click();
+    await expect(w.locator('[data-readout="gap"]')).toHaveText('1.41 m');
+  });
+});

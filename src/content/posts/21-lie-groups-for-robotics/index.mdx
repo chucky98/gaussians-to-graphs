@@ -1,0 +1,235 @@
+---
+number: 21
+title: A Gentle Lie Theory for Robotics
+description: Rotations and poses are not vectors. Tangent spaces, Exp and Log, ⊕ and ⊖, the adjoint and Jacobians give us calculus on them anyway.
+part: 3
+status: published
+date: 2026-11-27
+prerequisites: [rotations, propagating-uncertainty]
+objectives:
+  - Say what a Lie group is, and name the groups used for rotations and poses in 2D and 3D, with their degrees of freedom.
+  - Move between a group and its tangent space with Exp and Log, and use ⊕ and ⊖ in place of + and −.
+  - Use the adjoint to carry a tangent vector from a pose's own frame to the world frame.
+  - Write and use the Jacobians of inversion, composition, Exp, ⊕ and ⊖, with SE(2) worked out in full and SE(3) in summary.
+references:
+  - key: sola2018
+    text: 'Solà, Deray, Atchuthan. "A micro Lie theory for state estimation in robotics." arXiv:1812.01537, 2018. Sections II–III (groups, tangent spaces, Exp/Log, ⊕/⊖, adjoint, Jacobians) and the appendices on SO(2), SO(3), SE(2) and SE(3). This post follows its conventions.'
+  - key: barfoot2024
+    text: Barfoot. *State Estimation for Robotics*, 2nd ed. Cambridge University Press, 2024. The chapter "Matrix Lie Groups" (SO(3) and SE(3), Jacobians and the block Q; perturbations on the left).
+  - key: lynch2017
+    text: 'Lynch, Park. *Modern Robotics: Mechanics, Planning, and Control.* Cambridge University Press, 2017. Ch. 3 (rigid-body motions, twists and exponential coordinates).'
+  - key: murray1994
+    text: Murray, Li, Sastry. *A Mathematical Introduction to Robotic Manipulation.* CRC Press, 1994. Ch. 2 (rigid-body motion, the exponential map and twists).
+widgets: [TangentSpace, SE2Exp]
+symbols:
+  - tex: '\mathbf{X},\ \mathbf{Y}'
+    meaning: elements of a Lie group
+    match: ['\mathbf{X}']
+  - tex: '\boldsymbol{\tau}'
+    meaning: tangent vector
+  - tex: '\Exp,\ \Log'
+    meaning: tangent space ↔ group
+    match: ['\Exp']
+  - tex: '\oplus,\ \ominus'
+    meaning: right-plus and right-minus
+    match: ['\oplus']
+  - tex: '\mathbf{Ad}_{\mathbf{T}},\ \mathbf{J}_r,\ \mathbf{J}_l'
+    meaning: adjoint; right and left Jacobians
+    match: ['\mathbf{Ad}', '\mathbf{J}_r']
+  - tex: '\boldsymbol{\rho}'
+    meaning: translation part of a tangent vector
+---
+
+import TangentSpace from '../../../components/widgets/TangentSpace/TangentSpace.svelte';
+import SE2Exp from '../../../components/widgets/SE2Exp/SE2Exp.svelte';
+
+The extended Kalman filter of [Post 15](../extended-kalman-filter/) needed a special helper to subtract headings: from −179° to 179° is a turn of 2°, not 358°. The quaternions of [Post 20](../rotations/) had to be renormalized now and then. These are two symptoms of one fact: rotations and poses are not vectors. You cannot add them, average them or differentiate them the way you do with $\R^n$, because they live on curved spaces. Yet a filter needs all three operations. This post builds the small toolkit that makes them work, with one idea at its centre: near any point, a curved space looks flat.
+
+<TangentSpace client:visible />
+
+The circle is the simplest curved space in robotics: every point on it is a heading, a planar rotation. The dashed line touches the circle at the point $\mathbf{X}$; it is the **tangent space** at $\mathbf{X}$, the flat space of small changes. The orange vector is a change of heading. The green arc lays that vector onto the circle without stretching it, and that is the **exponential map**.
+
+## Intuition
+
+Think of the circle as a racetrack seen from above, and of a heading change as a distance to walk along it. To turn by 1.2 radians from $\mathbf{X}$, walk 1.2 units along the track. You could instead walk 1.2 units straight along the tangent line and then step back onto the track; you would end up short, because the track curves away. For a tiny turn the two agree, which is why calculus works on curved spaces at all: locally, the track is straight.
+
+This gives a recipe that the rest of the series uses again and again. Keep the estimate itself on the curved space: a rotation matrix, a pose. Do everything that needs vectors (corrections, errors, Gaussians, derivatives) in the tangent space, where they are ordinary vectors of $\R^n$. Move between the two with two maps, **Exp** from the tangent space to the curved space and **Log** back. Post 15's angle wrapping was this recipe for the circle, done by hand.
+
+The curved spaces we need are **groups**: rotations can be composed, every rotation has an inverse, and "no rotation" is an identity. Poses are a group too. Composition is not addition, and in 3D it does not even commute, but it is enough structure to define the tangent space once, at the identity, and carry it to every other point.
+
+## The math
+
+### Lie groups
+
+A **Lie group** is a set with a composition $\mathbf{X}\circ\mathbf{Y}$, an identity $\mathbf{I}$ and an inverse $\mathbf{X}^{-1}$, obeying the usual rules (composition is associative, $\mathbf{X}\circ\mathbf{I} = \mathbf{X}$, $\mathbf{X}\circ\mathbf{X}^{-1} = \mathbf{I}$), which is also a smooth surface, a **manifold**. The groups of this series are matrix groups, so composition is a matrix product and the inverse a matrix inverse:
+
+| Group | Elements | Degrees of freedom | Meaning |
+|---|---|---|---|
+| SO(2) | 2 × 2 rotation matrices; the unit circle | 1 | heading in the plane |
+| SE(2) | 3 × 3 matrices $\begin{bmatrix}\mathbf{C} & \mathbf{t} \\ \mathbf{0}\T & 1\end{bmatrix}$ | 3 | planar pose |
+| SO(3) | 3 × 3 rotation matrices; or unit quaternions | 3 | orientation in 3D |
+| SE(3) | 4 × 4 matrices of the same form | 6 | pose in 3D |
+
+For a pose $\mathbf{T}$ with rotation $\mathbf{C}$ and translation $\mathbf{t}$, the product rule $\mathbf{T}_1\mathbf{T}_2 = \begin{bmatrix}\mathbf{C}_1\mathbf{C}_2 & \mathbf{C}_1\mathbf{t}_2 + \mathbf{t}_1 \\ \mathbf{0}\T & 1\end{bmatrix}$ is exactly the composition of poses used since [Post 1](../where-am-i/): first $\mathbf{T}_1$, then $\mathbf{T}_2$ expressed in $\mathbf{T}_1$'s frame.
+
+### The tangent space and the Lie algebra
+
+The tangent space at the identity holds the velocities: how fast, and in which direction, an element can move away from $\mathbf{I}$. For rotations, differentiating $\mathbf{C}\T\mathbf{C} = \mathbf{I}$ at $\mathbf{C} = \mathbf{I}$ gives $\dot{\mathbf{C}} + \dot{\mathbf{C}}\T = \mathbf{0}$: the velocities are skew-symmetric matrices. For SO(2) they have one number, $\theta^\wedge = \begin{bmatrix} 0 & -\theta \\ \theta & 0\end{bmatrix}$; for SO(3) three, $[\boldsymbol{\theta}]_\times$ of Post 20. This space of matrices is the **Lie algebra**, written $\so(2)$, $\so(3)$, $\se(2)$ and so on.
+
+We almost always work with the numbers instead of the matrices. A **tangent vector** $\boldsymbol{\tau} \in \R^n$, with $n$ the degrees of freedom, is turned into its matrix by the **hat** operator $(\cdot)^\wedge$, and back by **vee** $(\cdot)^\vee$. For SE(2),
+
+$$
+\boldsymbol{\tau} = \begin{bmatrix} \boldsymbol{\rho} \\ \theta \end{bmatrix} = \begin{bmatrix} \rho_1 \\ \rho_2 \\ \theta \end{bmatrix},\qquad
+\boldsymbol{\tau}^\wedge = \begin{bmatrix} 0 & -\theta & \rho_1 \\ \theta & 0 & \rho_2 \\ 0 & 0 & 0 \end{bmatrix}.
+$$
+
+Read $\boldsymbol{\tau}$ as a **twist**: the velocity of a robot in its own frame, $\rho_1$ forward and $\rho_2$ to the left, and its turn rate $\theta$, all per unit time. We order the translation part $\boldsymbol{\rho}$ first and the rotation last, following Solà et al.
+
+### Exp and Log
+
+The exponential map turns a velocity into the motion it produces in one unit of time:
+
+$$
+\Exp(\boldsymbol{\tau}) = \exp(\boldsymbol{\tau}^\wedge) = \sum_{k=0}^{\infty} \frac{(\boldsymbol{\tau}^\wedge)^k}{k!} = \lim_{N\to\infty}\left(\mathbf{I} + \frac{\boldsymbol{\tau}^\wedge}{N}\right)^{N}. \tag{1}
+$$
+
+The last form says it best: split the unit of time into $N$ short pieces, take a small straight step $\boldsymbol{\tau}^\wedge/N$ in each, compose them, and let $N$ grow. For SO(2), (1) is the rotation by $\theta$, $\Exp(\theta) = \mathbf{C}(\theta)$. For SO(3) it is Rodrigues' formula from Post 20. For SE(2) it is the robot driving with constant velocity and turn rate along a circular arc:
+
+$$
+\Exp\begin{bmatrix} \boldsymbol{\rho} \\ \theta \end{bmatrix} = \begin{bmatrix} \mathbf{C}(\theta) & \mathbf{V}(\theta)\boldsymbol{\rho} \\ \mathbf{0}\T & 1 \end{bmatrix},\qquad
+\mathbf{V}(\theta) = \frac{1}{\theta}\begin{bmatrix} \sin\theta & -(1 - \cos\theta) \\ 1 - \cos\theta & \sin\theta \end{bmatrix}. \tag{2}
+$$
+
+The matrix $\mathbf{V}(\theta)$ bends the straight-line displacement $\boldsymbol{\rho}$ into the chord of the arc; it tends to $\mathbf{I}$ as $\theta \to 0$. This is the same arc as the velocity motion model of [Post 14](../robot-models-2d/), written for any sideways velocity too. The arc has radius $\lVert\boldsymbol{\rho}\rVert / |\theta|$.
+
+The logarithm goes back: $\Log(\mathbf{X}) = \boldsymbol{\tau}$ with $\Exp(\boldsymbol{\tau}) = \mathbf{X}$. For SE(2), read $\theta$ off the rotation and solve $\mathbf{V}(\theta)\boldsymbol{\rho} = \mathbf{t}$. Exp wraps around: rotating by $\theta$ and by $\theta + 2\pi$ give the same element. So Log is unique only if we ask for the angle in $(-\pi, \pi]$; it always returns the shortest way.
+
+### Plus and minus
+
+With Exp and Log, addition and subtraction come back in a form that respects the curvature:
+
+$$
+\mathbf{X}\oplus\boldsymbol{\tau} = \mathbf{X}\circ\Exp(\boldsymbol{\tau}),\qquad \mathbf{Y}\ominus\mathbf{X} = \Log(\mathbf{X}^{-1}\circ\mathbf{Y}). \tag{3}
+$$
+
+$\mathbf{X}\oplus\boldsymbol{\tau}$ starts at $\mathbf{X}$ and moves by $\boldsymbol{\tau}$, expressed in $\mathbf{X}$'s own frame: for a pose, "drive forward 1 m" means forward for that robot. $\mathbf{Y}\ominus\mathbf{X}$ is the tangent vector at $\mathbf{X}$ that reaches $\mathbf{Y}$, so $\mathbf{X}\oplus(\mathbf{Y}\ominus\mathbf{X}) = \mathbf{Y}$. For vectors, $\oplus$ and $\ominus$ are just $+$ and $-$. On SO(2), $\ominus$ is subtraction of angles followed by wrapping: Post 15's helper.
+
+Everything a filter does with vectors now has a group version. An EKF on a group stores the mean on the group and the covariance in the tangent space, corrects with $\hat{\mathbf{X}} \leftarrow \hat{\mathbf{X}}\oplus\mathbf{K}\boldsymbol{\nu}$, and forms residuals as $\mathbf{z}\ominus h(\hat{\mathbf{X}})$. The next post does exactly this with uncertain poses.
+
+### The adjoint
+
+A tangent vector at $\mathbf{X}$ is written in $\mathbf{X}$'s frame. The **adjoint** $\mathbf{Ad}_{\mathbf{X}}$ rewrites it in the frame of the identity, the world frame:
+
+$$
+\mathbf{X}\oplus\boldsymbol{\tau} = \Exp(\mathbf{Ad}_{\mathbf{X}}\boldsymbol{\tau})\circ\mathbf{X},\qquad
+\mathbf{Ad}_{\mathbf{X}}\boldsymbol{\tau} = (\mathbf{X}\boldsymbol{\tau}^\wedge\mathbf{X}^{-1})^\vee. \tag{4}
+$$
+
+Moving by $\boldsymbol{\tau}$ in the body frame is the same as moving by $\mathbf{Ad}_{\mathbf{X}}\boldsymbol{\tau}$ in the world frame. For SE(2) with pose $(x, y, \theta)$,
+
+$$
+\mathbf{Ad}_{\mathbf{T}} = \begin{bmatrix} \cos\theta & -\sin\theta & y \\ \sin\theta & \cos\theta & -x \\ 0 & 0 & 1 \end{bmatrix}.
+$$
+
+The rotation block turns the velocity into world axes. The last column says that a turn on the spot, rewritten as a twist about the world origin, also needs a translation part $(y, -x)$, because the robot is not at the origin. For SO(3) the adjoint is $\mathbf{C}$ itself, and for SO(2) it is 1: in the plane, rotations commute and body and world agree.
+
+### Jacobians on groups
+
+The derivative of a function between groups is defined as for vectors, with $\oplus$ and $\ominus$ in place of $+$ and $-$:
+
+$$
+\frac{\partial f(\mathbf{X})}{\partial\mathbf{X}} = \lim_{\boldsymbol{\tau}\to\mathbf{0}} \frac{f(\mathbf{X}\oplus\boldsymbol{\tau})\ominus f(\mathbf{X})}{\boldsymbol{\tau}}. \tag{5}
+$$
+
+A small change $\boldsymbol{\tau}$ of the input, in the input's own frame, changes the output by this matrix times $\boldsymbol{\tau}$, in the output's own frame. The chain rule holds as usual. The building blocks are few:
+
+| Function | Jacobian with respect to the first argument | with respect to the second |
+|---|---|---|
+| $\mathbf{X}^{-1}$ | $-\mathbf{Ad}_{\mathbf{X}}$ | |
+| $\mathbf{X}\circ\mathbf{Y}$ | $\mathbf{Ad}_{\mathbf{Y}^{-1}}$ | $\mathbf{I}$ |
+| $\Exp(\boldsymbol{\tau})$ | $\mathbf{J}_r(\boldsymbol{\tau})$ | |
+| $\mathbf{X}\oplus\boldsymbol{\tau}$ | $\mathbf{Ad}_{\Exp(\boldsymbol{\tau})^{-1}}$ | $\mathbf{J}_r(\boldsymbol{\tau})$ |
+| $\mathbf{Y}\ominus\mathbf{X}$ | $\mathbf{J}_r^{-1}(\boldsymbol{\tau})$ (for $\mathbf{Y}$) | $-\mathbf{J}_l^{-1}(\boldsymbol{\tau})$ (for $\mathbf{X}$) |
+
+Here $\mathbf{J}_r$ is the **right Jacobian** of the group: $\Exp(\boldsymbol{\tau} + \boldsymbol{\delta}) \approx \Exp(\boldsymbol{\tau})\Exp(\mathbf{J}_r(\boldsymbol{\tau})\boldsymbol{\delta})$ for small $\boldsymbol{\delta}$. The **left Jacobian** does the same on the other side and equals $\mathbf{J}_l(\boldsymbol{\tau}) = \mathbf{J}_r(-\boldsymbol{\tau}) = \mathbf{Ad}_{\Exp(\boldsymbol{\tau})}\mathbf{J}_r(\boldsymbol{\tau})$. Both tend to $\mathbf{I}$ for small $\boldsymbol{\tau}$, which is why many first-order derivations can ignore them. For SO(3),
+
+$$
+\mathbf{J}_r(\boldsymbol{\theta}) = \mathbf{I} - \frac{1 - \cos\theta}{\theta^2}[\boldsymbol{\theta}]_\times + \frac{\theta - \sin\theta}{\theta^3}[\boldsymbol{\theta}]_\times^2,\qquad \theta = \lVert\boldsymbol{\theta}\rVert.
+$$
+
+<Derivation title="The SE(2) Jacobians in full">
+With $\boldsymbol{\tau} = (\rho_1, \rho_2, \theta)$, $a = \sin\theta/\theta$ and $b = (1 - \cos\theta)/\theta$,
+
+$$
+\mathbf{J}_r(\boldsymbol{\tau}) = \begin{bmatrix} a & b & \dfrac{\theta\rho_1 - \rho_2 + \rho_2\cos\theta - \rho_1\sin\theta}{\theta^2} \\ -b & a & \dfrac{\rho_1 + \theta\rho_2 - \rho_1\cos\theta - \rho_2\sin\theta}{\theta^2} \\ 0 & 0 & 1 \end{bmatrix},
+$$
+
+and $\mathbf{J}_l(\boldsymbol{\tau}) = \mathbf{J}_r(-\boldsymbol{\tau})$. Moving a body-frame point $\mathbf{p}$ into the world, $\mathbf{T}\cdot\mathbf{p} = \mathbf{C}\mathbf{p} + \mathbf{t}$, has Jacobians $\begin{bmatrix}\mathbf{C} & \mathbf{C}\begin{bmatrix} -p_2 \\ p_1\end{bmatrix}\end{bmatrix}$ with respect to the pose and $\mathbf{C}$ with respect to the point. Each column of the first says what happens to the world point when the robot moves forward, sideways, or turns. All of these, and the SO(3) and SE(3) versions, are checked against finite differences in the unit tests.
+</Derivation>
+
+### SE(3) in brief
+
+A 3D pose is $\mathbf{T} = \begin{bmatrix}\mathbf{C} & \mathbf{t} \\ \mathbf{0}\T & 1\end{bmatrix}$ with six degrees of freedom and tangent vectors $\boldsymbol{\tau} = (\boldsymbol{\rho}, \boldsymbol{\theta}) \in \R^6$. Everything above carries over:
+
+$$
+\Exp\begin{bmatrix} \boldsymbol{\rho} \\ \boldsymbol{\theta} \end{bmatrix} = \begin{bmatrix} \Exp(\boldsymbol{\theta}) & \mathbf{J}_l(\boldsymbol{\theta})\boldsymbol{\rho} \\ \mathbf{0}\T & 1 \end{bmatrix},\qquad
+\mathbf{Ad}_{\mathbf{T}} = \begin{bmatrix} \mathbf{C} & [\mathbf{t}]_\times\mathbf{C} \\ \mathbf{0} & \mathbf{C} \end{bmatrix},
+$$
+
+where $\mathbf{J}_l(\boldsymbol{\theta})$ is the left Jacobian of SO(3), the 3D counterpart of $\mathbf{V}(\theta)$. The SE(3) Jacobians have the same block structure as the adjoint, with an extra 3 × 3 block whose long closed form is in Barfoot's book and in `src/lib/geometry/se3.ts`. We return to SE(3) in Post 31, with cameras.
+
+## Play with it
+
+<TryThis>
+- At the default $\boldsymbol{\tau} = 1.2$ rad, $\mathbf{X}\oplus\boldsymbol{\tau}$ lies 68.8° past $\mathbf{X}$ (at 30°), at 98.8°. The tangent tip pulled back onto the circle has turned only 50.2°, and it was 0.56 off the circle.
+- Set $\boldsymbol{\tau}$ to 0.2. Arc and tangent line now agree: the pulled-back tip turns 11.3° instead of 11.5°, and the tip is only 0.02 off the circle. This is why small corrections can be treated as vectors.
+- Set $\boldsymbol{\tau}$ to 4, more than π. The arc wraps past the far side to −100.8°, and $(\mathbf{X}\oplus\boldsymbol{\tau})\ominus\mathbf{X}$ returns −2.28 rad, which is 4 − 2π: Log takes the shorter way back.
+- Drag $\mathbf{X}$ around the circle. Only the angle where $\mathbf{X}\oplus\boldsymbol{\tau}$ lands changes; every other number stays the same, because a group looks the same from every one of its points.
+</TryThis>
+
+The second widget does the same for planar poses. A robot at $\mathbf{X}$ drives for one unit of time with a constant twist.
+
+<SE2Exp client:visible />
+
+<TryThis>
+- At the default twist (2 m forward, a turn of 1.5 rad), $\mathbf{X}\oplus\boldsymbol{\tau}$ ends at $(1.33, 1.24)$ facing 86°, at the end of an arc of radius 1.33 m. Adding the numbers to the pose instead puts it at $(2, 0)$, 1.41 m away.
+- Change the number of straight-then-turn steps $N$. One step is the naive answer, 1.41 m off; 2, 4 and 8 steps are 0.69, 0.34 and 0.17 m off; 64 steps are 0.02 m off. This is (1): Exp is the limit of many small steps.
+- Set the start heading to 90°. The arc turns with the robot and ends at $(-1.24, 1.33)$, but the naive sum still moves east to $(2, 0)$, now 3.50 m away. ⊕ works in the robot's frame; adding numbers works in nobody's.
+- Drag the green end point. The sliders follow: this is Log, the twist that reaches a given pose, with the turn held fixed.
+</TryThis>
+
+## Algorithm
+
+<AlgorithmBox title="Exp and Log on SE(2)" source="src/lib/geometry/se2.ts">
+1. **Exp:** given $(\rho_1, \rho_2, \theta)$, compute $a = \sin\theta/\theta$ and $b = (1 - \cos\theta)/\theta$, using their Taylor series when $|\theta|$ is small. Return $x = a\rho_1 - b\rho_2$, $y = b\rho_1 + a\rho_2$ and heading $\theta$.
+2. **Log:** given $(x, y, \theta)$, wrap $\theta$ to $(-\pi, \pi]$, compute $a$ and $b$ as above, and return $\rho_1 = (a x + b y)/(a^2 + b^2)$, $\rho_2 = (-b x + a y)/(a^2 + b^2)$ and $\theta$.
+3. **⊕ and ⊖:** $\mathbf{X}\oplus\boldsymbol{\tau} = \mathbf{X}\circ\Exp(\boldsymbol{\tau})$ and $\mathbf{Y}\ominus\mathbf{X} = \Log(\mathbf{X}^{-1}\circ\mathbf{Y})$.
+</AlgorithmBox>
+
+The generic operations, written once for every group, are in `src/lib/geometry/lie.ts`; the groups themselves are in `so2.ts`, `se2.ts`, `so3.ts` and `se3.ts` next to it. The unit tests check DESIGN's invariants for all four groups: $\Exp(\Log(\mathbf{X})) = \mathbf{X}$, $\Log(\Exp(\boldsymbol{\tau})) = \boldsymbol{\tau}$ for angles below π, associativity, inverses, the adjoint identity (4), and every Jacobian in the table against finite differences, from angles of $10^{-9}$ to 3 rad.
+
+## When it breaks
+
+### The cut at π
+
+Log returns the angle in $(-\pi, \pi]$. For differences between nearby elements, the usual case in a filter, this is exactly right. For large differences it silently picks the other way round, as the first widget showed at $\boldsymbol{\tau} = 4$. A controller that should turn 200° left will turn 160° right. Anything that integrates large rotations must keep track of the turns itself.
+
+### Small angles
+
+The formulas divide by $\theta$, $\theta^2$ or $\theta^3$, and their numerators, like $1 - \cos\theta$ and $\theta - \sin\theta$, lose all their digits to cancellation as $\theta \to 0$. Exactly where the filter spends most of its time, the closed forms are worst. Use their Taylor series below a small threshold; the code switches at $|\theta| = 0.2$, where both versions agree to about $10^{-10}$.
+
+### Conventions
+
+There are two consistent choices for every operation, and books differ. Solà and this series perturb on the right, $\mathbf{X}\oplus\boldsymbol{\tau} = \mathbf{X}\Exp(\boldsymbol{\tau})$, in the body frame; Barfoot perturbs on the left, $\Exp(\boldsymbol{\tau})\mathbf{X}$, in the world frame. Jacobians from one convention differ from the other's by an adjoint. Some libraries also put the rotation part of $\boldsymbol{\tau}$ first. Mixing conventions gives Jacobians that are almost right, the hardest kind of bug to find; checking every Jacobian against finite differences, as the tests here do, catches it.
+
+### Poses are not vectors
+
+Treating $(x, y, \theta)$ as a vector works for small motions and fails for large ones, as the naive sum showed. The same goes for uncertainty: a Gaussian written directly over $(x, y, \theta)$ is the wrong shape for a pose that has turned while uncertain. Post 22 puts the Gaussian in the tangent space instead, and the banana of Posts 4 and 14 turns back into an ellipse.
+
+## Summary
+
+- Rotations and poses form Lie groups: SO(2), SE(2), SO(3) and SE(3) have 1, 3, 3 and 6 degrees of freedom. They can be composed and inverted, but not added.
+- The tangent space holds velocities and small changes, as ordinary vectors $\boldsymbol{\tau}$. Exp turns a velocity into the motion it produces; Log goes back, uniquely for rotation angles in $(-\pi, \pi]$.
+- $\mathbf{X}\oplus\boldsymbol{\tau} = \mathbf{X}\Exp(\boldsymbol{\tau})$ and $\mathbf{Y}\ominus\mathbf{X} = \Log(\mathbf{X}^{-1}\mathbf{Y})$ replace $+$ and $-$, with $\boldsymbol{\tau}$ in the body frame. The adjoint converts body-frame tangent vectors to the world frame.
+- Jacobians on groups are defined with $\oplus$ and $\ominus$; inverse, composition, Exp, ⊕ and ⊖ have simple Jacobians built from $\mathbf{Ad}$, $\mathbf{J}_r$ and $\mathbf{J}_l$.
+- On SE(2), Exp is the constant-twist arc, the limit of many small straight-then-turn steps.
