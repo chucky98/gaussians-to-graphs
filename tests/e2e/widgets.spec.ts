@@ -698,3 +698,22 @@ test.describe('post 23 widgets', () => {
     await expect(w.locator('line.link')).toHaveCount(0);
   });
 });
+
+test.describe('post 24 widgets', () => {
+  test('EKFSLAM: growing covariance, the loop closure, more heading noise', async ({ page }) => {
+    await page.goto('posts/ekf-slam/');
+    const w = page.locator('[data-widget="EKFSLAM"]');
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="entries"]')).toHaveText('27 × 27 = 729');
+    await expect(w.locator('[data-readout="strong"]')).toHaveText('73%');
+    await w.locator('[data-action="closure"]').click();
+    await expect(w.locator('[data-readout="robot"]')).toHaveText('0.53 m');
+    await w.locator('[data-action="step"]').click();
+    await expect(w.locator('[data-readout="robot"]')).toHaveText('0.25 m');
+    await expect(w.locator('[data-readout="strong"]')).toHaveText('74%');
+    await w.getByLabel('Heading noise of the odometry').selectOption('high');
+    await w.getByRole('slider', { name: 'Step' }).fill('240');
+    await expect(w.locator('[data-readout="robot"]')).toHaveText('0.50 m');
+  });
+});
