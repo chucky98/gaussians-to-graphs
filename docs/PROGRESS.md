@@ -27,9 +27,9 @@
 | 17    | particle-filter                  | published | MCL                              | ~2,900 words. Global localization with identical markers; ESS and resampling schemes; kidnapping and augmented MCL; worker.     |
 | 18    | smoothing                        | published | FilterVsSmoother                 | ~2,500 words. Post 11's outage run: filter vs RTS smoother vs batch vs fixed lag; data arriving after the gap.                  |
 | 19    | information-filter               | published | InfoVsCov                        | ~2,300 words. Information filter; trajectory Ω block-tridiagonal vs dense P; conditional independence; marginalization.         |
-| 20    | rotations                        | published | EulerGimbal, QuaternionSlerp     | ~2,800 words. Threlte (3D). Gimbal rings coloured by their axis; Euler-change table for 5° body turns; slerp vs Euler paths.    |
-| 21    | lie-groups-for-robotics          | published | TangentSpace, SE2Exp             | ~3,300 words. SO(2) circle and tangent line; SE(2) constant-twist arc vs N steps vs naive sum; Jacobian table; SE(3) brief.     |
-| 22    | uncertainty-on-poses             | published | PoseCompounding                  | ~2,700 words. Gaussian on SE(2); compounding with the adjoint; (x, y, θ) ellipse 69% vs tangent region 97%; first-order limits. |
+| 20    | rotations                        | published | EulerGimbal, QuaternionSlerp     | ~2,900 words. Threlte (3D). Gimbal rings coloured by their axis; Euler-change table for 5° body turns; slerp vs Euler paths.    |
+| 21    | lie-groups-for-robotics          | published | TangentSpace, SE2Exp             | ~2,700 words. SO(2) circle and tangent line; SE(2) constant-twist arc vs N steps vs naive sum; Jacobian table; SE(3) brief.     |
+| 22    | uncertainty-on-poses             | published | PoseCompounding                  | ~1,800 words. Gaussian on SE(2); compounding with the adjoint; (x, y, θ) ellipse 69% vs tangent region 97%; first-order limits. |
 | 23–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                                |                                                                                                                                 |
 
 ## Infrastructure checklist
