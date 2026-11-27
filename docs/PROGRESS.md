@@ -1,8 +1,8 @@
 # Progress
 
-## Current phase: 4 — Part 4 (SLAM) in progress
+## Current phase: 4 — Part 4 complete (all 32 posts published)
 
-## Next task: Phase 4 — post 32 `capstone-mini-slam` (DriveYourOwnSLAM) and the post 01 follow-up
+## Next task: Phase 5 — polish (consistency pass, performance, accessibility, OG images); only when the owner asks
 
 ## Posts
 
@@ -39,7 +39,7 @@
 | 29  | robust-optimization            | published | OutlierLoopClosures (worker)            | ~2,300 words. Influence, Huber/Cauchy/Geman–McClure, IRLS, GNC, switchable constraints; false closures fold the map.            |
 | 30  | incremental-smoothing          | published | IncrementalVsBatch                      | ~2,100 words. Elimination tree → affected set; iSAM/iSAM2 ideas; work per step, batch vs incremental (simplified, stated).      |
 | 31  | toward-3d-and-vision           | published | PinholeProjection, BundleAdjustmentMini | ~2,700 words. SE(3) pose graphs, pinhole, reprojection error, BA and the Schur trick, monocular gauge, visual SLAM map.         |
-| 32  | capstone-mini-slam             | todo      | —                                       |                                                                                                                                 |
+| 32  | capstone-mini-slam             | published | DriveYourOwnSLAM (worker)               | ~2,500 words. Front end (gate, candidates, loop detection) + robust factor-graph back end; switches break each piece.           |
 
 ## Infrastructure checklist
 
@@ -178,17 +178,19 @@
 - 2026-11-27 — **OutlierLoopClosures:** 500-pose city (seed 18, 104 true closures) plus k false closures between distant poses (fixed draws per candidate, so the first m outliers are the same for every count). "Rejected" means final weight below 0.1; with 0.5, Geman–McClure counted ordinary inliers as rejected. Results: L2 6.75 m (dead reckoning 2.32, clean 0.24); Huber 1.02; Cauchy 0.23 (60 false: 0.24); GM at scale 1 rejects 100 of 104 true closures (1.85 m) while GNC at scale 1 reaches 0.29. The kernel scale is written k_ρ (k is the time index).
 - 2026-11-27 — **IncrementalVsBatch (post 30), simplified as DESIGN allows:** poses in creation order, no reordering and no relinearization; per step the affected set is the touched variables plus their elimination-tree ancestors, and work is Σ c_j² over refactored columns (block level), not time. The post says so in a callout. Tested on the real numerical factor: at steps before, at and after a loop closure, every column outside the affected set is identical to the previous step's factor. 300 poses (seed 18): plain steps affect exactly 2 poses, the 52 closure steps up to 219; total work 7.4× less than refactoring every step.
 - 2026-11-27 — **Post 31:** `models/pinhole.ts` (camera-to-world pose, z forward / x right / y down; projection and Jacobians, ∂p_c/∂δ = [−I, [p_c]×]) and `reprojectionFactor` (tested against finite differences). BundleAdjustmentMini (Threlte, so post 31 is `needs3d`): 4 cameras on a 5 m circle around a 10-point house, 1-pixel noise, perturbed start; gauge fixed by a prior on camera 0's pose and camera 1's position (stated). LM: 52 → 1.06 px RMS in 3 iterations. A test caught an overstatement: minimum degree eliminates nine of the ten points first, then (tie) the cameras, then the last point; the text now says so. PinholeProjection is 2D SVG (top view + image).
+- 2026-11-27 — **DriveYourOwnSLAM (post 32), decided by experiment.** The first version (noisier odometry, 4 m range, random clutter, one pairing per landmark per step) failed on many seeds: drift exceeded the landmark spacing, so readings were paired with neighbours and errors snowballed. Final design: odometry 0.03 m/s and 0.03 rad/s, range 5 m, 36 landmarks ≥ 2.5 m apart, Euclidean gate 1.2 m, new landmarks only after a second sighting within 3 steps, any number of pairings per landmark, 10 LM iterations on loop-closure steps (3 otherwise), Cauchy kernel (scale 2) on readings. Clutter became "ghost" reflections 0.4–0.9 m from a real landmark, so they pass the gate and are true outliers for the back end. Over seeds 31–50: median RMS 0.22 m; without loop closure 0.68 m (worse on 18 of 20); without the kernel 0.50 m (worse on 15 of 20); dead reckoning 1.72 m. Seed 34 is the most typical. The pipeline is a pure function of seed and commands, so the widget replays the reader's drive when a switch changes; it runs in a worker (~15 ms per step). The map is a keyboard control surface (role="application", arrow keys), with two Svelte a11y warnings suppressed for it.
+- 2026-11-27 — **Post 01 follow-up done:** DriftFan has a "Close the loop" switch: each run is re-estimated as a pose graph (odometry factors with the true noise level, two loop closures at the lap ends, 5 GN iterations) in a worker. RMS error at the lap ends 1.19 / 1.98 m → ~0; worst point 2.35 → 0.55 m. Post 01 gained a Try-this item.
+- 2026-11-27 — **Phase 4 complete:** posts 23–32 published. Acceptance: 32 posts; the pose-graph solver optimizes the 1,000-pose city in a handful of animated iterations (~40 ms each in Chromium); all §8.1 invariants (sparse, solver, robust, marginalize, io, geometry) pass.
 
 ## Follow-ups / known issues
 
 - **Owner action (statistics):** GoatCounter site `chucky98` is configured and counting. In GoatCounter → Settings, enable "Allow adding visitor counts on your website"; until then the public counters return 403 and the About section shows "could not be loaded".
 
 - **Owner action:** install the giscus GitHub App on `chucky98/gaussians-to-graphs` (https://github.com/apps/giscus). Then set `giscus.enabled = true` in `src/lib/site/config.ts`.
-- When posts 23–32 are published (several are already mentioned by number, e.g. 23, 24, 25, 26, 27, 28, 29, 31): link the plain-text references to them from earlier posts. (References to 20–22 are now linked.)
+- Post-number references between posts are linked at their first mention in each post; a Phase 5 consistency pass could link later mentions too.
 - Client-side KaTeX (77 KB gz) still loads for widgets with TeX labels or MatrixView. Consider rendering static TeX at build time and showing live numbers as plain text.
 - `Plot2D` pan/zoom is not implemented yet (no Phase 0 widget needs it). Primitives still to build when first needed: Landmark, Heatmap, Spy.
 - Lighthouse has not been run (optional per §8.4).
-- Post 01's DriftFan "close the loop" follow-up remains scheduled for Phase 4.
 
 ## Performance report
 

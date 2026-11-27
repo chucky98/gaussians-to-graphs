@@ -150,6 +150,7 @@ The widget starts at the end of the drive, so you see the full fan at once. Pres
 2. Set the odometry noise to 0. Every run lies exactly on the true path and the error is zero. Now set it to 6%, double the default. The error roughly doubles too, to 2.38 m after one lap and 3.91 m after two.
 3. The RMS heading error after two laps should be close to $\alpha\sqrt{\ell} = 0.03 \times \sqrt{69.7} \approx 14.4^\circ$. With 30 runs the widget shows $13.8^\circ$. Raise the number of runs to 100 and it shows $14.2^\circ$. The runs are a sample, and more of them give a better picture of the spread.
 4. Hide the true path. Nothing in the picture now tells you which run is right, and that is the robot's actual situation. The most it can honestly say is how far apart the runs are.
+5. Switch on **Close the loop**, a preview of Part 4. Now each run recognizes its starting point at the end of each lap, and its whole path is re-estimated with that knowledge. The error at the two lap ends drops from 1.19 m and 1.98 m to almost zero, and even the worst point, on the far side of the loop, is only 0.55 m off instead of 2.35 m.
 </TryThis>
 
 ## Algorithm
@@ -171,7 +172,7 @@ Repeating a random experiment many times to see the spread of the outcomes is ca
 
 **Non-Gaussian surprises.** A wheel spinning on a wet patch is not a small Gaussian error. It is a rare, large one. Estimators built on Gaussian assumptions can be badly misled by such outliers. [Post 29](../robust-optimization/) deals with them in the setting where they hurt most.
 
-**Coming home does not help on its own.** The robot in the widget passes its starting point after one lap, but nothing in odometry tells it so. Only when it *recognizes* a place it has seen before, a loop closure, can it use that fact to pull the whole estimate back into shape. [Post 27](../pose-graph-optimization/) shows how.
+**Coming home does not help on its own.** The robot in the widget passes its starting point after one lap, but nothing in odometry tells it so. Only when it *recognizes* a place it has seen before, a loop closure, can it use that fact to pull the whole estimate back into shape: that is what the widget's **Close the loop** switch does. [Post 27](../pose-graph-optimization/) shows how.
 
 ## Where this series goes
 

@@ -1,0 +1,121 @@
+---
+number: 32
+title: 'Capstone: Build-Your-Own 2D SLAM'
+description: Put the pieces together. A front end that associates readings and detects loops, a robust factor-graph back end, and what each piece contributes.
+part: 4
+status: published
+date: 2026-11-27
+prerequisites: [data-association, pose-graph-optimization, robust-optimization]
+objectives:
+  - Describe a complete SLAM system as a front end (association, landmark management, loop detection) and a back end (a robust factor graph).
+  - Trace one step of the pipeline from a raw reading to an updated map.
+  - Predict what happens when loop closure or the robust kernel is switched off, and recognize the symptoms in a map.
+  - Name the simplifications of this system and what real systems do instead.
+references:
+  - key: cadena2016
+    text: 'Cadena, Carlone, Carrillo, Latif, Scaramuzza, Neira, Reid, Leonard. "Past, present, and future of simultaneous localization and mapping: toward the robust-perception age." *IEEE Transactions on Robotics* 32(6), 2016.'
+  - key: grisetti2010
+    text: 'Grisetti, Kümmerle, Stachniss, Burgard. "A tutorial on graph-based SLAM." *IEEE Intelligent Transportation Systems Magazine* 2(4), 2010.'
+  - key: hess2016
+    text: 'Hess, Kohler, Rapp, Andor. "Real-time loop closure in 2D LIDAR SLAM." *IEEE International Conference on Robotics and Automation (ICRA)*, 2016.'
+  - key: dellaert2017
+    text: 'Dellaert, Kaess. "Factor Graphs for Robot Perception." *Foundations and Trends in Robotics* 6(1–2), 2017.'
+widgets: [DriveYourOwnSLAM]
+symbols:
+  - tex: '\mathbf{x}_k'
+    meaning: robot pose at step k
+  - tex: '\mathbf{m}_j'
+    meaning: landmark j
+  - tex: '\rho(\cdot)'
+    meaning: robust kernel on readings
+    match: ['\rho(']
+  - tex: 'c(\mathbf{x}) = \tfrac12\sum_i \lVert \mathbf{r}_i \rVert^2_{\boldsymbol{\Omega}_i}'
+    meaning: cost of the factor graph
+    match: ['c(\mathbf{x})']
+---
+
+import DriveYourOwnSLAM from '../../../components/widgets/DriveYourOwnSLAM/DriveYourOwnSLAM.svelte';
+
+[Post 1](../where-am-i/) began with a robot that tried to find its way by counting wheel turns, and watched its belief fan out into uselessness. Thirty-one posts later, every piece needed to fix that is on the table. This post assembles them into one working system that you can drive yourself, and then takes it apart again, switch by switch, to see what each piece contributes.
+
+<DriveYourOwnSLAM client:visible />
+
+Click the map and drive with the arrow keys or the buttons, or press **Drive the whole route now** to let the robot run two laps of a block. The grey squares are the true landmarks; the green dots are the map the robot builds; the green line is where it believes it has been.
+
+## Intuition
+
+Every SLAM system has two halves. The **front end** deals with the sensor. What did I see, which landmark was it, have I been here before? Its output is a set of constraints: "this pose saw that landmark at this range and bearing". The **back end** takes those constraints and finds the trajectory and map that fit them best. It knows nothing about lasers or cameras, only about factors.
+
+The halves fail differently. A back end with good constraints is remarkably forgiving: it can absorb noise, drift and even some bad constraints if it knows to distrust them. A front end that hands it a wrong constraint with full confidence, a wrong loop closure above all, can wreck everything. Most of the engineering in real systems goes into making the front end careful and the back end robust.
+
+## The system
+
+### Sensing
+
+The robot follows the velocity model of [Post 14](../robot-models-2d/): each step it is commanded a speed and a turn rate for half a second. Its wheel odometry reports the motion with noise of 0.03 m/s and 0.03 rad/s. Its sensor reports the range and bearing of every landmark within 5 m, with 8 cm and 2° of noise. The 36 landmarks are scattered at random, at least 2.5 m apart. On most steps the sensor also produces a **ghost reading**: a reflection that appears 0.4 to 0.9 m away from a real landmark.
+
+### The front end
+
+For each reading $\mathbf{z}$ taken at pose $\mathbf{x}_k$, the front end computes where it puts a landmark, with the inverse sensor model of [Post 23](../the-slam-problem/), using the current estimate of $\mathbf{x}_k$. Then:
+
+- **Association.** It pairs the reading with the nearest mapped landmark $\mathbf{m}_j$ within a gate of 1.2 m. This is the Euclidean version of [Post 25](../data-association/)'s gating. It is cheap because it needs no covariances, and it works here because landmarks are at least 2.5 m apart and loop closures keep the drift well below the gate.
+- **New landmarks.** A reading near no landmark becomes a *candidate*. Only if it is seen again within 1.2 m in the next three steps does the candidate become a landmark. Ghost readings rarely repeat in the same place, so most never enter the map.
+- **Loop closure.** A pairing with a landmark that was last seen more than 30 steps ago is a loop closure: the robot recognizes a place it left long before. Switching off loop closure restricts pairing to landmarks seen in the last 30 steps, so on the second lap every old landmark is mapped again.
+
+### The back end
+
+The back end keeps the factor graph of [Post 26](../factor-graphs/): a prior on the first pose (the gauge), one odometry factor between consecutive poses, and one range–bearing factor per paired reading. After every step it runs Levenberg–Marquardt ([Post 27](../pose-graph-optimization/)) on the whole graph, starting from the previous solution. Three iterations are enough on an ordinary step; on a step with a loop closure it runs ten, so that the large correction settles before the next pairing is decided. Starting each solve from the last one is a poor man's version of the incremental smoother of [Post 30](../incremental-smoothing/).
+
+Ghost readings that do get paired are outliers: a constraint that pulls a landmark 0.4 to 0.9 m out of place. So the back end applies the Cauchy kernel $\rho(\cdot)$ of [Post 29](../robust-optimization/) to every range–bearing factor (with scale 2), and minimizes the robust cost instead of $c(\mathbf{x})$. Odometry stays quadratic. The whole pipeline runs in a Web Worker; each step takes a few tens of milliseconds.
+
+## Play with it
+
+<TryThis>
+- Press **Drive the whole route now** (two laps, 232 steps). The estimate stays within 0.22 m of the true path on average and ends 0.03 m from the true pose. All 36 landmarks are mapped, each exactly once. The 41 loop closures counted are the readings that recognized a landmark the robot had left more than 30 steps earlier. With odometry alone, the same drive would be 1.45 m off on average.
+- Switch off **Recognize old landmarks**. The drive is replayed: on the second lap nothing is recognized, every landmark is mapped a second time beside its first copy (77 landmarks, 41 duplicates in red), and the average error grows to 0.74 m, with the final pose 1.69 m off.
+- Switch loop closure back on and switch off the **Robust kernel**. Of the 1,440 pairings, 176 are ghosts paired with the landmark they appeared near. Without the kernel each of them pulls with full weight, and the average error more than doubles, to 0.49 m. Set the ghosts to 0 and the error drops to 0.16 m with the kernel and 0.18 m without: the kernel is there for the outliers.
+- Drive yourself. Turn in tight circles, or leave the landmarks behind and come back: watch the error grow while you are away and drop when you return to landmarks you mapped earlier.
+</TryThis>
+
+## Algorithm
+
+<AlgorithmBox title="One step of the mini SLAM system" source="src/lib/demos/mini-slam.ts">
+1. **Predict:** add pose $\mathbf{x}_k$, initialized by composing the new odometry with the estimate of $\mathbf{x}_{k-1}$, and an odometry factor between them.
+2. **Associate:** for each reading, compute its landmark position from $\mathbf{x}_k$; pair it with the nearest landmark within 1.2 m (only recent landmarks if loop closure is off), or record it as a candidate; promote candidates seen twice. Add a range–bearing factor for every pairing.
+3. **Optimize:** run Levenberg–Marquardt on the whole graph from the previous solution, 3 iterations (10 after a loop closure), with a Cauchy kernel on the range–bearing factors.
+</AlgorithmBox>
+
+The pipeline is a pure, deterministic function of the seed and the sequence of commands, which is how the widget can replay your drive when a switch changes. The unit tests pin every number above. The seed was chosen as the most typical of 20 for the default system and both of its broken versions.
+
+## What this system simplifies
+
+It is a teaching system, and a real one differs in every component:
+
+- **Association** uses a Euclidean gate. Real systems gate with the covariance of the pose and landmark (Post 25), use descriptors to tell landmarks apart, and check loop closures for consistency before accepting them.
+- **Every step is a keyframe** and the whole graph is re-solved. Real systems keep poses only every so often, and use incremental smoothing (Post 30) or a sliding window with marginalization (Post 28) to bound the work.
+- **The sensor sees points.** A 2D lidar produces scans, not landmarks; systems like Cartographer (Hess and coauthors) match scans against local submaps and close loops between submaps, but their back end is a robust pose graph of exactly this kind.
+- **Everything is known:** the noise levels, the sensor model, the calibration. A real robot has to estimate or tune all of them, and the consistency checks of [Post 13](../tuning-and-consistency/) are how it finds out it got them wrong.
+
+## When it breaks
+
+### A wrong loop closure
+
+If the robot comes back with more drift than the gate allows, the nearest landmark within reach may be the wrong one. A wrong pairing at a loop closure is a confident lie, as Post 25 showed. The Cauchy kernel can limit the damage of a single wrong pairing, but a front end that makes many consistent mistakes, as in a corridor of identical pillars, will outvote the truth.
+
+### Being away too long
+
+Loop closure only works if the robot gets back before its drift exceeds the gate. Drive far away from all landmarks and the odometry alone carries the estimate. Come back with more than about a metre of error, and old landmarks are no longer recognized: they are mapped again, and the map silently doubles.
+
+### Growth
+
+The graph gains a pose every step and a factor for every reading, and the system re-solves all of it each time. That is fine for two laps and hopeless for an hour of driving, which is exactly the problem incremental smoothing and marginalization were invented to solve.
+
+## Summary
+
+- A SLAM system is a front end that turns sensor data into constraints (association, landmark management, loop detection) and a back end that optimizes a factor graph of them.
+- Each component in this system comes from an earlier post: motion and sensor models, landmark initialization, gating, the factor graph, Levenberg–Marquardt on the manifold, robust kernels.
+- Loop closure is what bounds the error: without it, revisited landmarks are mapped twice and the error keeps growing.
+- The robust kernel is what keeps paired outliers from bending the map.
+- Real systems add careful association, keyframes, incremental or sliding-window solvers, and much more engineering, but the structure is the same.
+
+This is the last post of the series. It started with a fan of guesses that grew without limit and ends with a robot that can say, to within a few centimetres, where it is and what is around it: Gaussians all the way to graphs.

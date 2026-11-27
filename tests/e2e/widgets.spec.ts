@@ -852,3 +852,30 @@ test.describe('post 31 widgets', () => {
     await expect(b.locator('[data-readout="sizes"]')).toHaveText('54 / 24');
   });
 });
+
+test.describe('post 32 widgets and the post 01 follow-up', () => {
+  test('DriveYourOwnSLAM: whole route, then without loop closure', async ({ page }) => {
+    await page.goto('posts/capstone-mini-slam/');
+    const w = page.locator('[data-widget="DriveYourOwnSLAM"]');
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await w.locator('[data-action="forward"]').click();
+    await expect(w.locator('[data-readout="step"]')).toHaveText('1', { timeout: 15_000 });
+    await w.locator('[data-action="full"]').click();
+    await expect(w.locator('[data-readout="step"]')).toHaveText('232', { timeout: 60_000 });
+    await expect(w.locator('[data-readout="err"]')).toHaveText('0.03 / 0.22 m');
+    await expect(w.locator('[data-readout="map"]')).toHaveText('36');
+    await w.getByRole('switch', { name: /Recognize old landmarks/ }).uncheck();
+    await expect(w.locator('[data-readout="dups"]')).toHaveText('41', { timeout: 60_000 });
+  });
+  test('DriftFan: closing the loop pinches the fan', async ({ page }) => {
+    await page.goto('posts/where-am-i/');
+    const w = page.locator('[data-widget="DriftFan"]');
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="rms"]')).toHaveText('1.98 m');
+    await w.getByRole('switch', { name: /Close the loop/ }).check();
+    await expect(w.locator('[data-readout="closing"]')).toHaveText(/Loop closed/, { timeout: 30_000 });
+    await expect(w.locator('[data-readout="rms"]')).toHaveText('0.00 m');
+  });
+});

@@ -1,7 +1,10 @@
 /** Pure model behind the DriftFan widget (post 01): odometry-only runs around a loop. */
-import type { Pose2 } from '../geometry/se2';
+import { between, pose, type Pose2 } from '../geometry/se2';
+import { betweenFactorSE2, priorFactorSE2, type Factor } from '../graph/factors';
+import { optimizeGraph } from '../graph/solver';
+import { getPose2, pose2, values } from '../graph/values';
 import { angleDiff } from '../geometry/so2';
-import { vec, type Mat } from '../math/matrix';
+import { diag, vec, type Mat } from '../math/matrix';
 import { sampleCov } from '../math/stats';
 import { applyOdometryNoise, deadReckon, odometryNoiseDraws, runSeed } from '../sim/odometry';
 import { stadiumLoop } from '../sim/trajectories';
@@ -98,4 +101,39 @@ export function toXY(poses: readonly Pose2[]): Float64Array {
     out[2 * i + 1] = q.y;
   });
   return out;
+}
+
+// ---------------------------------------------------------------- closing the loop (Post 1 follow-up, Part 4)
+
+/**
+ * Each run again, but optimized as a pose graph (Post 27) with two loop closures: at the end of each lap the
+ * robot recognizes its starting point. The odometry factors carry the run's own noisy readings with their true
+ * noise level; the loop closures say "this pose is the start", to within 2 cm and 0.5°. Every pose of the run
+ * is corrected using all of its data (this is smoothing, not filtering).
+ */
+export function closeLoops(p: DriftParams): Pose2[][] {
+  const { start, readings } = LOOP;
+  const level = Math.max(p.noisePct / 100, 1e-4);
+  const truth = deadReckon(start, readings);
+  return Array.from({ length: p.runs }, (_, r) => {
+    const noisy = applyOdometryNoise(
+      readings,
+      p.noisePct / 100,
+      odometryNoiseDraws(runSeed(p.seed, r), readings.length),
+    );
+    const odometry = noisy.map((u, k) => ({ i: k, j: k + 1, z: pose(u.d, 0, u.dtheta) }));
+    const initial = deadReckon(start, noisy);
+    const factors: Factor[] = [priorFactorSE2('x0', start, diag([1e8, 1e8, 1e8]))];
+    noisy.forEach((_, k) => {
+      const s2 = level * level * readings[k]!.d;
+      factors.push(betweenFactorSE2(`x${k}`, `x${k + 1}`, odometry[k]!.z, diag([1 / s2, 1e6, 1 / s2]), 'odometry'));
+    });
+    const loopInfo = diag([1 / 0.02 ** 2, 1 / 0.02 ** 2, 1 / ((0.5 * Math.PI) / 180) ** 2]);
+    for (const end of [LAP_STEPS, 2 * LAP_STEPS])
+      factors.push(betweenFactorSE2('x0', `x${end}`, between(truth[0]!, truth[end]!), loopInfo, 'loop'));
+    const v = values(initial.map((q, k) => [`x${k}`, pose2(q)] as const));
+    const its = optimizeGraph(factors, v, { method: 'gn', maxIterations: 5 });
+    const out = its.at(-1)!.values;
+    return initial.map((_, k) => getPose2(out, `x${k}`));
+  });
 }
