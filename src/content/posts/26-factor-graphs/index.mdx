@@ -1,0 +1,142 @@
+---
+number: 26
+title: 'Factor Graphs: SLAM as Optimization'
+description: Turn the SLAM Bayes network into a factor graph, MAP estimation into nonlinear least squares, and see the sparse system that every SLAM back end solves.
+part: 4
+status: published
+date: 2026-11-27
+prerequisites: [nonlinear-least-squares, smoothing, the-slam-problem]
+objectives:
+  - Convert a Bayes network into a factor graph, and write the MAP estimate as a sum of weighted squared residuals.
+  - Write the residual and its weight for prior, odometry and landmark factors.
+  - Linearize the problem and predict the sparsity pattern of the Jacobian J and of the information matrix Λ from the graph.
+  - Recognize an underdetermined problem (a singular Λ) and fix the gauge with a prior.
+references:
+  - key: dellaert2017
+    text: 'Dellaert, Kaess. "Factor Graphs for Robot Perception." *Foundations and Trends in Robotics* 6(1–2), 2017. Ch. 1–2 (factor graphs, MAP inference as nonlinear least squares, the sparse linear system).'
+  - key: grisetti2010
+    text: 'Grisetti, Kümmerle, Stachniss, Burgard. "A tutorial on graph-based SLAM." *IEEE Intelligent Transportation Systems Magazine* 2(4), 2010.'
+  - key: kschischang2001
+    text: 'Kschischang, Frey, Loeliger. "Factor graphs and the sum-product algorithm." *IEEE Transactions on Information Theory* 47(2), 2001.'
+  - key: thrun2005
+    text: Thrun, Burgard, Fox. *Probabilistic Robotics.* MIT Press, 2005. Ch. 11 (GraphSLAM).
+widgets: [FactorGraphBuilder]
+symbols:
+  - tex: '\phi_i'
+    meaning: factor i
+  - tex: '\mathbf{r}_i,\ \boldsymbol{\Omega}_i'
+    meaning: residual of factor i and its information
+    match: ['\mathbf{r}_i']
+  - tex: 'c(\mathbf{x}) = \tfrac12\sum_i \lVert \mathbf{r}_i \rVert^2_{\boldsymbol{\Omega}_i}'
+    meaning: total cost
+    match: ['c(\mathbf{x})']
+  - tex: '\mathbf{J}'
+    meaning: stacked Jacobian of the residuals
+  - tex: '\boldsymbol{\Lambda} = \mathbf{J}\T\boldsymbol{\Omega}\mathbf{J},\ \boldsymbol{\eta} = -\mathbf{J}\T\boldsymbol{\Omega}\mathbf{r}'
+    meaning: Gauss–Newton system Λδ = η
+    match: ['\boldsymbol{\Lambda}']
+---
+
+import FactorGraphBuilder from '../../../components/widgets/FactorGraphBuilder/FactorGraphBuilder.svelte';
+
+The filter of Posts 23 to 25 keeps only the robot's current pose and forgets the past, and it paid for that twice. Its covariance was dense, so every reading cost $O(n^2)$; and every mistake was final, because a step once taken could not be revised. There is another way to look at the same problem. Keep every pose the robot has been at, write down every measurement as a constraint between the unknowns it involves, and ask for the values that satisfy all the constraints best at once. That turns SLAM into an optimization problem, and the structure of that problem is a **factor graph**.
+
+<FactorGraphBuilder client:visible />
+
+Each circle is an unknown: five poses of a robot and three landmarks. Each square is a factor, one measurement: a prior on the first pose, odometry between consecutive poses, and range–bearing readings of landmarks. Click a square to switch it off or on, and watch the two matrices on the right change.
+
+## Intuition
+
+Think of each measurement as a spring between the unknowns it involves. An odometry reading is a spring between two consecutive poses that wants them a certain distance and angle apart; a landmark reading is a spring between a pose and a landmark; the prior is a spring tying the first pose to a fixed point. Stiff springs are precise measurements. The best estimate is the configuration in which the total energy stored in all the springs is lowest. Finding it is a least-squares problem, of exactly the kind [Post 9](../nonlinear-least-squares/) solved with Gauss–Newton.
+
+The springs explain the structure too. Each spring touches only two or three unknowns, so when the optimizer asks how the energy changes as one unknown moves, only the springs attached to it answer. The matrices it works with are mostly zeros, and the pattern of the nonzeros is a picture of the graph. Take away the spring that ties the first pose down, and the whole structure can slide and rotate freely without stretching anything: there is no single best configuration any more.
+
+## The math
+
+### From Bayes network to factor graph
+
+[Post 23](../the-slam-problem/) wrote the full SLAM posterior as a product of small pieces: a prior on the first pose, one motion model per step, one measurement model per reading. Collect all the unknowns, poses and landmarks, in one vector $\mathbf{x}$. Once the measurements are known, every piece is just a function of a few entries of $\mathbf{x}$, and the posterior is their product,
+
+$$
+p(\mathbf{x} \mid \mathbf{z}, \mathbf{u}) \propto \prod_i \phi_i(\mathbf{x}).
+$$
+
+A **factor graph** draws this product: one node per unknown, one factor node $\phi_i$ per piece, and an edge between them when the factor involves the unknown. It holds the same information as the Bayes network, but it describes the posterior after the data are in, which is the thing we want to maximize.
+
+### MAP estimation is least squares
+
+With Gaussian noise, every factor has the form $\phi_i(\mathbf{x}) \propto \exp\big(-\tfrac12\mathbf{r}_i(\mathbf{x})\T\boldsymbol{\Omega}_i\mathbf{r}_i(\mathbf{x})\big)$. Its **residual** $\mathbf{r}_i$ is the difference between what the measurement says and what the unknowns predict, and $\boldsymbol{\Omega}_i$ is the measurement's information matrix, the inverse of its noise covariance. Taking the negative logarithm turns the product into a sum, and the MAP estimate becomes
+
+$$
+\hat{\mathbf{x}} = \arg\min_{\mathbf{x}} c(\mathbf{x}),\qquad c(\mathbf{x}) = \tfrac12\sum_i \lVert \mathbf{r}_i(\mathbf{x}) \rVert^2_{\boldsymbol{\Omega}_i} = \tfrac12\sum_i \mathbf{r}_i\T\boldsymbol{\Omega}_i\mathbf{r}_i. \tag{1}
+$$
+
+The residuals of the three kinds of factor in the widget, with $\ominus$ from [Post 21](../lie-groups-for-robotics/):
+
+- **Prior** on the first pose: $\mathbf{r} = \mathbf{T}_0 \ominus \bar{\mathbf{T}}_0$, how far the pose is from where we say it starts.
+- **Odometry** between poses $k-1$ and $k$ with measured motion $\mathbf{T}_{k-1,k}$: $\mathbf{r} = \Log\big(\mathbf{T}_{k-1,k}^{-1}\mathbf{T}_{k-1}^{-1}\mathbf{T}_k\big)$, the difference between the motion the estimates imply and the motion measured.
+- **Landmark reading** $\mathbf{z} = (r, \phi)$ of landmark $\mathbf{m}_j$ from pose $\mathbf{x}_k$: $\mathbf{r} = h(\mathbf{x}_k, \mathbf{m}_j) \ominus \mathbf{z}$, with the range–bearing model of [Post 14](../robot-models-2d/) and the bearing difference wrapped.
+
+### Linearize and solve
+
+Gauss–Newton (Post 9) linearizes every residual at the current estimate, $\mathbf{r}_i(\mathbf{x}\oplus\boldsymbol{\delta}) \approx \mathbf{r}_i + \mathbf{J}_i\boldsymbol{\delta}$, where $\mathbf{J}_i$ holds the derivatives with respect to the unknowns of factor $i$ (the Jacobians of Post 21 for poses). Stacking all residuals into $\mathbf{r}$, all Jacobians into $\mathbf{J}$ and all information matrices into a block-diagonal $\boldsymbol{\Omega}$, the cost becomes quadratic in $\boldsymbol{\delta}$, and its minimum solves the normal equations
+
+$$
+\boldsymbol{\Lambda}\boldsymbol{\delta} = \boldsymbol{\eta},\qquad \boldsymbol{\Lambda} = \mathbf{J}\T\boldsymbol{\Omega}\mathbf{J} = \sum_i \mathbf{J}_i\T\boldsymbol{\Omega}_i\mathbf{J}_i,\qquad \boldsymbol{\eta} = -\mathbf{J}\T\boldsymbol{\Omega}\mathbf{r}. \tag{2}
+$$
+
+Then every unknown is updated, poses on their manifold, $\mathbf{x} \leftarrow \mathbf{x}\oplus\boldsymbol{\delta}$, and the process repeats until the steps are tiny. $\boldsymbol{\Lambda}$ is the information matrix of [Post 19](../information-filter/), now over the whole trajectory and the map, and its inverse at the solution is the covariance of the estimate.
+
+### The structure of J and Λ
+
+Factor $i$ contributes a band of rows to $\mathbf{J}$, one per entry of its residual, and those rows are zero except in the columns of the unknowns it involves. An odometry factor touches 6 of the columns, a landmark reading 5. So $\mathbf{J}$ is mostly zeros, whatever the size of the problem.
+
+By (2), factor $i$ adds $\mathbf{J}_i\T\boldsymbol{\Omega}_i\mathbf{J}_i$ to $\boldsymbol{\Lambda}$: a dense block on the rows and columns of its own unknowns, and nothing anywhere else. The block of $\boldsymbol{\Lambda}$ for unknowns $a$ and $b$ is therefore nonzero exactly when some factor involves both. **The sparsity pattern of $\boldsymbol{\Lambda}$ is the adjacency matrix of the graph**, with one dense block on the diagonal per unknown. In Post 19 this was the banded matrix of a chain; with landmarks, each landmark adds entries linking it to the poses that saw it. The number of nonzeros grows with the number of factors, not with the square of the number of unknowns.
+
+Solving (2) is a sparse Cholesky factorization $\boldsymbol{\Lambda} = \mathbf{L}\mathbf{L}\T$ followed by two triangular solves. Eliminating variables one at a time, as Cholesky does, is the same as removing nodes from the graph and connecting their neighbours. The order of elimination therefore decides how many new nonzeros (fill-in) appear, which is the topic of Post 28. For the linear chain of Post 18, this is exactly what the RTS smoother does in its forward and backward passes.
+
+### When Λ is singular
+
+If some direction of $\boldsymbol{\delta}$ changes no residual, $\boldsymbol{\Lambda}$ has a zero eigenvalue in that direction and (2) has no unique solution. Two common causes: an unknown that no factor constrains enough (a landmark seen once by a bearing-only sensor, or not at all), and the **gauge** of Post 23. Odometry and landmark readings are all relative, so shifting and rotating everything together changes none of them: without a prior, three directions are free in the plane. The prior on the first pose removes them.
+
+## Play with it
+
+<TryThis>
+- With all 13 factors on, $\mathbf{J}$ has 31 rows (residual entries) and 21 columns (unknowns: 5 poses × 3 + 3 landmarks × 2), but only 135 of its 651 entries are nonzero. Press **Solve**: Gauss–Newton converges in 6 iterations, the cost falls from 463 to 5.64, and the RMS error of the estimate from 0.58 m to 0.09 m. A final cost near $(31 - 21)/2 = 5$ is what a correct noise model predicts: each residual entry contributes about ½ to the cost, minus what the unknowns can absorb.
+- Switch off the **prior on x0**. The readout reports 3 unconstrained directions: the whole map can slide in $x$ and $y$ and rotate. $\boldsymbol{\Lambda}$ is singular and Solve is disabled.
+- Switch the prior back on and switch off both readings of **l2**. Now 2 directions are free: nothing says where landmark 2 is. Its rows of $\boldsymbol{\Lambda}$ are empty.
+- Switch everything back on and remove **odometry x1–x2**. The problem is still solvable: landmarks 0 and 1, both seen from x1 and x2, tie the two poses together instead.
+</TryThis>
+
+## Algorithm
+
+<AlgorithmBox title="Gauss–Newton on a factor graph" source="src/lib/graph/solver.ts">
+1. Order the unknowns and choose a fill-reducing elimination order for them (Post 28).
+2. **Linearize:** for each factor, compute $\mathbf{r}_i$ and $\mathbf{J}_i$ at the current estimate and add $\mathbf{J}_i\T\boldsymbol{\Omega}_i\mathbf{J}_i$ and $-\mathbf{J}_i\T\boldsymbol{\Omega}_i\mathbf{r}_i$ into the sparse $\boldsymbol{\Lambda}$ and $\boldsymbol{\eta}$.
+3. **Solve** $\boldsymbol{\Lambda}\boldsymbol{\delta} = \boldsymbol{\eta}$ by sparse Cholesky.
+4. **Update** every unknown, $\mathbf{x} \leftarrow \mathbf{x}\oplus\boldsymbol{\delta}$ (poses on SE(2), landmarks by addition), and repeat from 2 until the step or the decrease in cost is negligible. Levenberg–Marquardt adds damping to $\boldsymbol{\Lambda}$ and rejects steps that increase the cost.
+</AlgorithmBox>
+
+The factors are in `src/lib/graph/factors.ts`, the sparse matrices and Cholesky factorization in `src/lib/graph/sparse.ts`. The unit tests check that every factor's Jacobian matches finite differences on the manifold. They also check that Gauss–Newton solves a linear problem in one step, that a noise-free pose graph is solved exactly, and that the sparse factorization equals the dense one.
+
+## When it breaks
+
+### A bad starting point
+
+Gauss–Newton finds the minimum near where it starts. The cost (1) of a SLAM problem is not convex, because rotations are involved, and from a poor initial guess the iterations can settle in a wrong local minimum or diverge. The initial guess usually comes from composing the odometry. That is good enough for short trajectories and risky for long ones with large heading drift; Post 27 shows Levenberg–Marquardt pulling a badly drifted trajectory into place.
+
+### Outliers
+
+Squared residuals give a wrong measurement, such as a false loop closure, an enormous say: its cost grows quadratically with its error, so the optimizer bends everything else to accommodate it. Post 29 replaces the squares with robust kernels that stop listening to measurements that disagree too much.
+
+### Overconfident or underconfident factors
+
+The weights $\boldsymbol{\Omega}_i$ decide who wins when measurements disagree. Odometry weighted too heavily makes loop closures unable to correct drift; landmarks weighted too heavily let a single bad reading pull the trajectory. A final cost near half the number of residual entries minus unknowns, as in the first Try-this item, is a quick check that the weights are about right; it is the NIS test of [Post 13](../tuning-and-consistency/) in another form.
+
+## Summary
+
+- A factor graph has one node per unknown and one factor per measurement; the posterior is the product of the factors.
+- With Gaussian noise, MAP estimation is nonlinear least squares: minimize $c(\mathbf{x}) = \tfrac12\sum_i\lVert\mathbf{r}_i\rVert^2_{\boldsymbol{\Omega}_i}$.
+- Gauss–Newton linearizes every factor and solves the sparse system $\boldsymbol{\Lambda}\boldsymbol{\delta} = \boldsymbol{\eta}$, then updates poses on their manifold.
+- $\mathbf{J}$ has one band of rows per factor; $\boldsymbol{\Lambda}$ has a nonzero block exactly where two unknowns share a factor. Its sparsity is the graph.
+- Relative measurements leave the gauge free: without a prior, $\boldsymbol{\Lambda}$ is singular.

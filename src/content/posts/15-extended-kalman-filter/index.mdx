@@ -160,7 +160,7 @@ Even with a good estimate, linearization fails when the uncertainty is large rel
 
 ### Jacobians at the wrong point
 
-The EKF evaluates its Jacobians at its estimate, not at the truth, so any error in the estimate also makes the linearization wrong. This feeds on itself: a slightly wrong estimate gives slightly wrong Jacobians, which give an update that is slightly too confident. In long-running systems such as SLAM (Part 4), this is a known source of inconsistency. Iterated EKFs re-linearize the update at the new estimate, and optimization-based methods (Post 26) re-linearize everything.
+The EKF evaluates its Jacobians at its estimate, not at the truth, so any error in the estimate also makes the linearization wrong. This feeds on itself: a slightly wrong estimate gives slightly wrong Jacobians, which give an update that is slightly too confident. In long-running systems such as SLAM (Part 4), this is a known source of inconsistency. Iterated EKFs re-linearize the update at the new estimate, and optimization-based methods ([Post 26](../factor-graphs/)) re-linearize everything.
 
 ## Summary
 

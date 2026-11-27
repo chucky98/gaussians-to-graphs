@@ -2,7 +2,7 @@
 
 ## Current phase: 4 — Part 4 (SLAM) in progress
 
-## Next task: Phase 4 — post 26 `factor-graphs` (FactorGraphBuilder)
+## Next task: Phase 4 — post 27 `pose-graph-optimization` (PoseGraph2D, solver in a worker)
 
 ## Posts
 
@@ -33,7 +33,8 @@
 | 23    | the-slam-problem                 | published | CorrelationsEmerge               | ~2,500 words. Full/online SLAM, Bayes-net figure, correlations born at initialization, a loop closure shrinks every ellipse.    |
 | 24    | ekf-slam                         | published | EKFSLAM                          | ~2,600 words. Three steps and their cost,                                                                                       | ρ   | heat map filling in, loop closure, inconsistency over 50 runs. |
 | 25    | data-association                 | published | AssociationGating (scene, run)   | ~2,600 words. Gating, NN vs JCBB under a shared pose error, clutter, new landmarks; one forced wrong pairing wrecks the map.    |
-| 26–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                                |                                                                                                                                 |
+| 26    | factor-graphs                    | published | FactorGraphBuilder               | ~2,500 words. Bayes net → factor graph, MAP = NLLS, J and Λ sparsity = the graph, singular Λ and the gauge.                     |
+| 27–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                                |                                                                                                                                 |
 
 ## Infrastructure checklist
 
@@ -164,6 +165,7 @@
 - 2026-11-27 — **Graph library core (`infra/graph-core`, ahead of post 26):** `graph/values.ts` (immutable typed store: SE(2), SE(3), 2D/3D points; retract X ⊕ δ; orderings), `graph/factors.ts` (generic prior and between factors on any Lie group with right-perturbation Jacobians; range–bearing; point prior), `graph/sparse.ts` (triplets → CSC, elimination tree, up-looking sparse Cholesky after Davis 2006 §4.2, fill count, minimum-degree ordering, block orderings, spy pattern), sparse GN/LM on factor graphs in `graph/solver.ts` (Marquardt damping, IRLS hooks for post 29), `graph/marginalize.ts`, `graph/io.ts` (g2o SE(2)), `graph/pose-graph.ts`, `sim/manhattan.ts`. All DESIGN §8.1 invariants for sparse, solver, marginalize and io are tested; flipping a sign in the between-factor Jacobian makes three tests fail.
 - 2026-11-27 — **Minimum degree instead of AMD.** DESIGN asks for approximate minimum degree. `minimumDegree` eliminates a node of exactly smallest degree in the elimination graph (AMD approximates these degrees for speed on very large matrices). The orderings are of the same kind; the exact version is simpler to verify and fast enough here (1,000 poses: a full LM iteration of the Manhattan graph takes ~60–90 ms in Node). Tests: valid permutation; never more fill than natural on grid graphs; < 60% of natural fill on a 16 × 16 grid. Also no separate dense fallback: the sparse path handles small problems too.
 - 2026-11-27 — **Manhattan generator:** a robot on a grid of 1 m blocks inside ±8 blocks, turning with probability 0.3; revisits ≥ 20 poses apart are recognized with probability 0.5. With 1,000 poses (seed 3) there are 336 loop closures; dead reckoning is 3.44 m RMS off; LM reaches the optimum in 3 iterations (cost 8.1·10⁵ → 460), 0.35 m RMS.
+- 2026-11-27 — **FactorGraphBuilder (post 26):** five poses and three landmarks; 13 candidate factors (prior, 4 odometry, 8 range–bearing readings within 3.2 m) with seeded measurements; the initial guess offsets every unknown by ~0.4 m / 8°. Factors toggle by clicking their squares (role="switch", keyboard Enter/Space) or a checkbox list. The widget computes J and Λ densely (21 unknowns) and counts "unconstrained directions" as eigenvalues of Λ below 1e-9 of the largest: 3 without the prior (the gauge), 2 without any reading of landmark 2. Solve runs sparse GN from the library.
 
 ## Follow-ups / known issues
 
