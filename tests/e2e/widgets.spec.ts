@@ -717,3 +717,33 @@ test.describe('post 24 widgets', () => {
     await expect(w.locator('[data-readout="robot"]')).toHaveText('0.50 m');
   });
 });
+
+test.describe('post 25 widgets', () => {
+  test('AssociationGating scene: JCBB vs nearest neighbour, the gate', async ({ page }) => {
+    await page.goto('posts/data-association/');
+    const w = page.locator('[data-widget="AssociationGating"]').first();
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="correct"]')).toHaveText('6');
+    await expect(w.locator('[data-readout="error"]')).toHaveText('0.60 → 0.01 m');
+    await w.getByLabel('Association').selectOption('nn');
+    await expect(w.locator('[data-readout="wrong"]')).toHaveText('4');
+    await expect(w.locator('[data-readout="error"]')).toHaveText('0.60 → 0.51 m');
+    await w.getByLabel('Association').selectOption('jcbb');
+    await w.getByRole('slider', { name: 'Robot position error (sideways)' }).fill('1.5');
+    await expect(w.locator('[data-readout="correct"]')).toHaveText('5');
+    await w.getByLabel('Gate probability').selectOption('0.9');
+    await expect(w.locator('[data-readout="wrong"]')).toHaveText('4');
+  });
+  test('AssociationGating run: honest pairings, then one forced mistake', async ({ page }) => {
+    await page.goto('posts/data-association/');
+    const w = page.locator('[data-widget="AssociationGating"]').nth(1);
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="pairs"]')).toHaveText('581 / 0');
+    await expect(w.locator('[data-readout="n"]')).toHaveText('16');
+    await w.getByRole('switch', { name: /Force one wrong pairing/ }).check();
+    await expect(w.locator('[data-readout="dups"]')).toHaveText('13');
+    await expect(w.locator('[data-readout="err"]')).toHaveText('4.12 m');
+  });
+});

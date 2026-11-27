@@ -1,0 +1,134 @@
+---
+number: 25
+title: 'Data Association: Which Landmark Is That?'
+description: Gating with the Mahalanobis distance, nearest neighbour versus joint compatibility, clutter, and what a single wrong pairing does to a map.
+part: 4
+status: published
+date: 2026-11-27
+prerequisites: [ekf-slam]
+objectives:
+  - Gate readings with the Mahalanobis distance of the innovation, and choose a gate probability.
+  - Explain why nearest-neighbour association fails when the robot's own pose is uncertain, and how joint compatibility (JCBB) fixes it.
+  - Recognize clutter and ambiguity, and decide when a reading should start a new landmark.
+  - Describe what one wrong association does to an EKF-SLAM map.
+references:
+  - key: neira2001
+    text: 'Neira, Tardós. "Data association in stochastic mapping using the joint compatibility test." *IEEE Transactions on Robotics and Automation* 17(6), 2001.'
+  - key: barshalom2001
+    text: Bar-Shalom, Li, Kirubarajan. *Estimation with Applications to Tracking and Navigation.* Wiley, 2001. §5.4 (validation gates and the normalized innovation squared).
+  - key: thrun2005
+    text: Thrun, Burgard, Fox. *Probabilistic Robotics.* MIT Press, 2005. §10.3 (EKF-SLAM with unknown correspondences, maximum-likelihood association).
+  - key: durrantwhyte2006
+    text: 'Durrant-Whyte, Bailey. "Simultaneous localization and mapping: part I." *IEEE Robotics & Automation Magazine* 13(2), 2006.'
+widgets: [AssociationGating]
+symbols:
+  - tex: 'd_M'
+    meaning: Mahalanobis distance
+    match: ['d^2_{ij}']
+  - tex: '\chi^2_n(p)'
+    meaning: chi-square quantile (the gate)
+    match: ['\chi^2_2(p)']
+  - tex: '\mathcal{H},\ D^2_{\mathcal{H}}'
+    meaning: association hypothesis; its joint distance
+    match: ['D^2_{\mathcal{H}}']
+  - tex: '\boldsymbol{\nu}_k,\ \mathbf{S}_k'
+    meaning: innovation and its covariance
+    match: ['\boldsymbol{\nu}_{ij}']
+---
+
+import AssociationGating from '../../../components/widgets/AssociationGating/AssociationGating.svelte';
+
+Posts 23 and 24 cheated. Every reading arrived with a label saying which landmark it came from. A real lidar returns a list of points; a camera returns a list of corners. Before the filter can use a reading it must decide which landmark produced it, or that none did. This is **data association**. It is the decision that makes or breaks SLAM in practice, because a wrong answer is not noise the filter can average away: it is a confident correction in the wrong direction.
+
+<AssociationGating client:visible />
+
+The robot is really at the origin, facing a row of landmarks 1 m apart. Its estimate (blue) is 0.6 m off to the side, and its uncertainty says that is possible. Each cross is where a reading puts a landmark, seen from the estimated pose, so every cross lands 0.6 m from its true landmark, closer to the neighbour. Switch the association between joint compatibility and nearest neighbour.
+
+## Intuition
+
+The obvious rule is to pair each reading with the closest landmark. It works when the robot knows where it is. But the robot's uncertainty is not independent from reading to reading: if it is wrong about its own position, every reading is shifted the same way. Judged one at a time, each shifted reading looks like it belongs to the neighbour. Judged together, the readings say something clearer: "all of them are shifted by the same amount, and the pattern matches the row of landmarks exactly, if I am 0.6 m to the side of where I thought." Only the second view uses the correlations the filter has been so careful to keep.
+
+So there are two questions for each candidate pairing. Is it plausible at all, given the uncertainty? That is a **gate**. And is a whole set of pairings plausible together? That is **joint compatibility**. Readings that fit no landmark are either new landmarks or clutter, the spurious returns every sensor produces.
+
+## The math
+
+### Gating: individual compatibility
+
+To test whether reading $i$ could come from landmark $j$, predict the reading $h_j(\hat{\mathbf{x}})$ and form the innovation of [Post 15](../extended-kalman-filter/), $\boldsymbol{\nu}_{ij} = \mathbf{z}_i \ominus h_j(\hat{\mathbf{x}})$, with covariance $\mathbf{S}_{ij} = \mathbf{H}_j\mathbf{P}\mathbf{H}_j\T + \mathbf{R}$. If the pairing is right, $\boldsymbol{\nu}_{ij}$ is a Gaussian with that covariance, and its squared Mahalanobis distance (from [Post 2](../gaussians-and-covariance/))
+
+$$
+d^2_{ij} = \boldsymbol{\nu}_{ij}\T\mathbf{S}_{ij}^{-1}\boldsymbol{\nu}_{ij}
+$$
+
+follows a chi-square distribution with 2 degrees of freedom. The pairing is **individually compatible** if $d^2_{ij} \le \chi^2_2(p)$, the gate: a correct pairing passes with probability $p$. Because $\mathbf{S}_{ij}$ contains the robot's uncertainty, the gate widens in exactly the directions in which the robot is unsure of itself. In the widget, each dashed ellipse is a landmark's gate drawn in the plane: a cross inside it passes.
+
+### Nearest neighbour
+
+**Nearest-neighbour** association (NN) pairs each reading with the individually compatible landmark of smallest $d^2_{ij}$, taking the closest pairs first so that no landmark is used twice. It is fast, $O(mn)$ for $m$ readings and $n$ landmarks, and it is correct when the readings are well separated relative to the uncertainty. Its weakness is that each decision is made alone, as if the errors of the predictions were independent. They are not: they share the robot's error.
+
+### Joint compatibility
+
+A **hypothesis** $\mathcal{H}$ assigns each reading a landmark or nothing. Stack the innovations of its $k$ pairings into one vector $\boldsymbol{\nu}_{\mathcal{H}}$, with covariance $\mathbf{S}_{\mathcal{H}} = \mathbf{H}_{\mathcal{H}}\mathbf{P}\mathbf{H}_{\mathcal{H}}\T + \mathbf{R}_{\mathcal{H}}$. Here $\mathbf{H}_{\mathcal{H}}$ stacks the measurement Jacobians, and $\mathbf{R}_{\mathcal{H}}$ is block-diagonal. Through $\mathbf{P}$, the off-diagonal blocks of $\mathbf{S}_{\mathcal{H}}$ carry the shared robot error. The hypothesis is **jointly compatible** if
+
+$$
+D^2_{\mathcal{H}} = \boldsymbol{\nu}_{\mathcal{H}}\T\mathbf{S}_{\mathcal{H}}^{-1}\boldsymbol{\nu}_{\mathcal{H}} \le \chi^2_{2k}(p). \tag{1}
+$$
+
+A set of shifted readings that all point to "the robot is 0.6 m to the side" passes (1) easily: once the shared shift is explained, what is left is small. A set of pairings in which each reading is near a different neighbour, implying different shifts, fails.
+
+**Joint compatibility branch and bound** (JCBB), by Neira and Tardós, searches for the jointly compatible hypothesis with the most pairings. It walks a tree, one reading per level, trying each individually compatible landmark or "no pairing". It cuts a branch as soon as its partial hypothesis fails (1), or when it can no longer beat the best number of pairings found so far. Among hypotheses with equally many pairings, it prefers the smaller $D^2_{\mathcal{H}}$. The search is exponential in the worst case, but the gates and the bound make it fast for the handful of readings a robot takes at a time.
+
+### New landmarks and clutter
+
+A reading that JCBB leaves unpaired is either a landmark seen for the first time or clutter. A common rule, used in the second widget below: start a new landmark only if the reading lies outside a much wider gate (here $\chi^2_2(0.9999)$) of every known landmark. A reading that is neither paired nor clearly new is ambiguous and is dropped. Dropping a real reading costs a little information; pairing it wrongly costs much more, as we will see. Clutter is the reason the gates cannot simply be made huge: a wider gate admits more spurious readings.
+
+## Play with it
+
+<TryThis>
+- At the defaults (0.6 m off, JCBB), all six readings are paired correctly, and the update moves the robot from 0.60 m to 0.01 m from the truth. Switch to **nearest neighbour**: four readings go to the wrong neighbour and one is left unpaired. The update moves the robot the wrong way round: it ends 0.51 m off, sure of itself and wrong.
+- Lower the robot's error to 0.45 m: nearest neighbour now gets all six right. It starts failing just above half the spacing between landmarks; at 0.55 m it already makes one wrong pairing. JCBB stays correct up to 1.2 m.
+- Set the error to 1.5 m, two and a half standard deviations. With a gate of 0.99, JCBB pairs five readings correctly and the robot ends 0.08 m off. Lower the gate to 0.9: the true pairings no longer pass, and JCBB can only choose among the wrong ones. Four wrong pairings, and the robot ends 1.04 m off.
+- Back at 0.6 m, add 8 clutter readings and widen the gate to 0.999: nearest neighbour now also accepts one clutter reading as a landmark, while JCBB still pairs only the six real ones.
+</TryThis>
+
+The second view runs EKF-SLAM on the world of Post 24 with unlabelled readings, all associated by JCBB.
+
+<AssociationGating client:visible mode="run" />
+
+<TryThis>
+- Over the 240 steps, JCBB makes 581 pairings, all correct, and starts exactly the 16 real landmarks. It leaves 4 of the 601 readings unused as ambiguous, which is why the final error is 0.72 m rather than the 0.70 m of the labelled run in [Post 24](../ekf-slam/).
+- Switch on **Force one wrong pairing at the loop closure**. At step 131 one reading of landmark 15 is paired with landmark 14, a single mistake. For a moment the error even looks smaller. Then the estimate drifts away: 19 more wrong pairings follow, 13 duplicate landmarks are started for landmarks the map already has, and the robot is 3.11 m off at step 160 (0.20 m without the mistake) and 4.12 m off at the end.
+</TryThis>
+
+## Algorithm
+
+<AlgorithmBox title="JCBB (Neira and Tardós)" source="src/lib/filters/association.ts">
+1. For each reading $i$ and landmark $j$, compute $d^2_{ij}$; keep the landmarks inside the gate $\chi^2_2(p)$ as reading $i$'s candidates.
+2. Depth-first over readings $i = 1, \ldots, m$: for each candidate $j$ not yet used, add $(i, j)$ to the current hypothesis and continue only if (1) holds. Also try leaving reading $i$ unpaired, if enough readings remain to beat the best hypothesis.
+3. At the bottom, keep the hypothesis with the most pairings, breaking ties by the smaller $D^2_{\mathcal{H}}$.
+4. Update the filter with every pairing; start new landmarks only from unpaired readings outside a wide gate of every landmark.
+</AlgorithmBox>
+
+The run without labels is `runUnlabelled` in `src/lib/demos/association.ts`. The unit tests check that $D^2_{\mathcal{H}}$ for a single pairing equals $d^2_{ij}$, and that JCBB never returns a hypothesis that fails (1). They also check that JCBB finds the correct pairing whenever the correct pairing is jointly compatible and has the most pairs, and they pin every number above.
+
+## When it breaks
+
+### The truth outside the gate
+
+JCBB can only choose among the hypotheses that pass its gates. If the robot is more lost than its covariance admits, which is exactly what the overconfidence of Post 24 produces, the true pairing fails the gate and the best remaining hypothesis is wrong. The widget's 1.5 m case at a gate of 0.9 is this failure. Wider gates help, but they admit more clutter and make the search slower.
+
+### Symmetric and repetitive places
+
+A long corridor of identical doors, a row of identical pillars: if the world itself is repetitive, several hypotheses fit equally well, and no amount of statistics can choose. More distinctive features (a descriptor for each landmark, as a camera provides), or more context, such as a longer window of readings, are the remedies.
+
+### One mistake spreads
+
+A wrong pairing is applied with full confidence. Through the correlations, it shifts the robot and every landmark; later readings no longer fit their landmarks, more pairings go wrong, and new duplicate landmarks are started. A filter cannot take an update back. This fragility is one of the strongest arguments for keeping the whole trajectory and optimizing it: Post 29 shows how a robust optimizer can recognize a wrong loop closure even after it has been accepted, and switch it off.
+
+## Summary
+
+- Data association decides which landmark, if any, produced each reading. A wrong decision is a confident error, not noise.
+- Gate each candidate pairing with the Mahalanobis distance of its innovation, $d^2_{ij} \le \chi^2_2(p)$; the gate grows with the robot's uncertainty.
+- Nearest neighbour decides each reading alone and fails when the robot's pose error shifts all readings towards their neighbours.
+- JCBB searches for the largest jointly compatible hypothesis, using the correlations between predictions; it is robust to a shared pose error.
+- One forced wrong pairing at a loop closure is enough to wreck an EKF-SLAM map.
