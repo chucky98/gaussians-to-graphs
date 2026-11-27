@@ -14,6 +14,8 @@ import {
   nLandmarks,
 } from '../../../src/lib/filters/ekf-slam';
 import { numericJacobian } from '../../../src/lib/math/autodiff';
+import { ekfUpdate } from '../../../src/lib/filters/ekf';
+import { wrapAngle } from '../../../src/lib/geometry/so2';
 import {
   det,
   diag,
@@ -108,12 +110,27 @@ describe('ekf-slam', () => {
       Array.from(rangeBearing(s.x.subarray(0, 3), s.x.subarray(5, 7))),
     );
   });
-  it('an update keeps P symmetric PSD and shrinks the robot block', () => {
+  it('the O(n²) update equals the generic EKF update (Joseph form) of Post 15', () => {
+    const s = someState();
+    const z = slamPredictReading(s, 1).map((v, i) => v + (i ? -0.02 : 0.08));
+    const fast = slamUpdate(s, z, 1, R);
+    const ref = ekfUpdate({ x: s.x, P: s.P }, z, {
+      h: () => slamPredictReading(s, 1),
+      H: () => slamH(s, 1),
+      R,
+      residual: (a, b) => Float64Array.of(a[0]! - b[0]!, wrapAngle(a[1]! - b[1]!)),
+    });
+    expect(maxAbsDiff(fast.state.P, ref.state.P)).toBeLessThan(1e-12);
+    expect(Math.max(...fast.state.x.map((v, i) => Math.abs(v - ref.state.x[i]!)))).toBeLessThan(1e-12);
+    expect(fast.nis).toBeCloseTo(ref.nis, 10);
+    expect(maxAbsDiff(fast.S, ref.S)).toBeLessThan(1e-14);
+  });
+  it('an update keeps P symmetric PSD and shrinks the landmark block', () => {
     const s = someState();
     const z = slamPredictReading(s, 0).map((v, i) => v + (i ? 0.01 : 0.05));
     const u = slamUpdate(s, z, 0, R);
     expect(isSymmetricPSD(u.state.P)).toBe(true);
-    expect(det(block(u.state, -1, 3))).toBeLessThan(det(block(s, -1, 3)));
+    expect(det(block(u.state, 0))).toBeLessThan(det(block(s, 0)));
   });
   it('Dissanayake et al. (2001): no landmark block determinant ever increases (the CorrelationsEmerge run)', () => {
     const r = corrRun();

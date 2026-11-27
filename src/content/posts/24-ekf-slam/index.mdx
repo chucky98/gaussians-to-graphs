@@ -1,0 +1,150 @@
+---
+number: 24
+title: EKF-SLAM
+description: The classic SLAM filter step by step. How the state grows, why every reading costs O(n²), how the covariance fills in, and why the filter grows overconfident.
+part: 4
+status: published
+date: 2026-11-27
+prerequisites: [the-slam-problem]
+objectives:
+  - Run the three steps of EKF-SLAM (predict, initialize a landmark, update) and say which blocks of the covariance each step touches.
+  - Count the memory and time EKF-SLAM needs, and explain why both grow with the square of the number of landmarks.
+  - Read a covariance heat map, and explain why it fills in as the robot drives and at a loop closure.
+  - Explain why EKF-SLAM becomes overconfident over time, and recognize the symptom in a consistency test.
+references:
+  - key: thrun2005
+    text: Thrun, Burgard, Fox. *Probabilistic Robotics.* MIT Press, 2005. §10.2 (EKF-SLAM with known correspondences) and §10.3 (unknown correspondences).
+  - key: durrantwhyte2006
+    text: 'Durrant-Whyte, Bailey. "Simultaneous localization and mapping: part I." *IEEE Robotics & Automation Magazine* 13(2), 2006.'
+  - key: bailey2006
+    text: 'Bailey, Nieto, Guivant, Stevens, Nebot. "Consistency of the EKF-SLAM algorithm." *IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)*, 2006.'
+  - key: huang2010
+    text: 'Huang, Mourikis, Roumeliotis. "Observability-based rules for designing consistent EKF SLAM estimators." *International Journal of Robotics Research* 29(5), 2010.'
+  - key: julier2001
+    text: 'Julier, Uhlmann. "A counter example to the theory of simultaneous localization and map building." *IEEE International Conference on Robotics and Automation (ICRA)*, 2001.'
+widgets: [EKFSLAM]
+symbols:
+  - tex: '\mathbf{P}_{rr},\ \mathbf{P}_{rm},\ \mathbf{P}_{mm}'
+    meaning: robot, robot–map and map blocks of P
+    match: ['\mathbf{P}_{rm}']
+  - tex: 'g(\cdot),\ \mathbf{G}_r,\ \mathbf{G}_z'
+    meaning: landmark from its first reading; Jacobians
+    match: ['\mathbf{G}_r']
+  - tex: '\mathbf{K}_k'
+    meaning: Kalman gain
+    match: ['\mathbf{K}']
+  - tex: '\epsilon_k,\ \epsilon_{\nu,k}'
+    meaning: NEES (consistency test)
+    match: ['\bar{\epsilon}_k']
+---
+
+import EKFSLAM from '../../../components/widgets/EKFSLAM/EKFSLAM.svelte';
+
+[Post 23](../the-slam-problem/) showed why SLAM ties the robot and every landmark together, with six landmarks on a small loop. Real maps hold hundreds or thousands. This post treats EKF-SLAM, the filter behind that picture and the first SLAM algorithm to work in practice, as an algorithm. What does each step compute, what does it cost, what does its covariance look like as the map grows, and where does it fail?
+
+<EKFSLAM client:visible />
+
+The left panel is the map: 16 landmarks around a 6 m circle, with the filter's estimates and 95% ellipses. The right panel is the filter's covariance matrix itself, one row and one column for every number it estimates, coloured by how strongly each pair of errors is correlated. Watch it grow and darken as you play.
+
+## Intuition
+
+EKF-SLAM is the extended Kalman filter of [Post 15](../extended-kalman-filter/) with a state that keeps growing. It starts with three numbers, the robot's pose, and adds two for every landmark it meets. Its covariance grows with the square of that: every new landmark brings a new row and column, and almost all of the new entries are nonzero, because the landmark inherits the robot's correlations.
+
+Each step of the filter touches a different part of that matrix. Driving changes only the robot: its own block and its correlations with the map. Seeing a new landmark appends a row and a column. Re-seeing a known landmark corrects the robot and, through the correlations, every landmark, so it rewrites the whole matrix. That last step is what makes EKF-SLAM accurate, and it is also what makes it expensive.
+
+## The math
+
+### The state and the three steps
+
+The state is the pose followed by the landmarks, $(\mathbf{x}_k, \mathbf{m}_1, \ldots, \mathbf{m}_n)$, with $3 + 2n$ numbers and the covariance blocks $\mathbf{P}_{rr}$, $\mathbf{P}_{rm}$ and $\mathbf{P}_{mm}$ of Post 23.
+
+**Predict.** Landmarks do not move, so the motion model changes only the pose. With $\mathbf{F}_k$ and $\mathbf{V}_k$ the Jacobians of the velocity model of [Post 14](../robot-models-2d/) and $\mathbf{M}_k$ the covariance of the control noise,
+
+$$
+\mathbf{P}_{rr} \leftarrow \mathbf{F}_k\mathbf{P}_{rr}\mathbf{F}_k\T + \mathbf{V}_k\mathbf{M}_k\mathbf{V}_k\T,\qquad
+\mathbf{P}_{rm} \leftarrow \mathbf{F}_k\mathbf{P}_{rm},\qquad
+\mathbf{P}_{mm} \text{ unchanged.} \tag{1}
+$$
+
+The robot's uncertainty grows; the map's does not; the cross-correlations are carried along with the robot. This costs $O(n)$.
+
+**Initialize.** A landmark seen for the first time is appended with $g(\cdot)$ and its Jacobians $\mathbf{G}_r$ and $\mathbf{G}_z$, as in Post 23: two new rows and columns, whose cross terms $\mathbf{G}_r\mathbf{P}_{r\,\cdot}$ copy the robot's correlations with everything already in the map. Also $O(n)$. A range–bearing sensor fixes a landmark's position from a single reading; a camera, which measures only a bearing, cannot, and needs the landmark to be seen from two places before it can be added.
+
+**Update.** A reading $\mathbf{z}$ of landmark $j$ has a Jacobian $\mathbf{H}$ with only five nonzero columns: three for the pose and two for the landmark. The update is the Kalman update of Post 15,
+
+$$
+\mathbf{S} = \mathbf{H}\mathbf{P}\mathbf{H}\T + \mathbf{R},\quad
+\mathbf{K} = \mathbf{P}\mathbf{H}\T\mathbf{S}^{-1},\quad
+\hat{\mathbf{x}} \leftarrow \hat{\mathbf{x}} + \mathbf{K}\boldsymbol{\nu},\quad
+\mathbf{P} \leftarrow \mathbf{P} - \mathbf{K}\mathbf{S}\mathbf{K}\T. \tag{2}
+$$
+
+Thanks to the sparse $\mathbf{H}$, $\mathbf{P}\mathbf{H}\T$ costs only $O(n)$, but $\mathbf{K}\mathbf{S}\mathbf{K}\T$ is a full $(3 + 2n) \times (3 + 2n)$ matrix: every entry of $\mathbf{P}$ changes. One reading costs $O(n^2)$.
+
+### What that costs
+
+The memory is the covariance, $(3 + 2n)^2$ numbers, and so is the work of every reading:
+
+| Landmarks $n$ | State size $3 + 2n$ | Entries of $\mathbf{P}$ |
+|---|---|---|
+| 16 | 35 | 1,225 |
+| 100 | 203 | 41,209 |
+| 1,000 | 2,003 | 4,012,009 |
+| 10,000 | 20,003 | 400,120,009 |
+
+A robot that reads ten landmarks per step in a map of 1,000 updates forty million numbers per step. A building-sized map is out of reach. The covariance is dense because the past poses were marginalized out ([Post 19](../information-filter/)); Posts 26 to 28 keep them and find a sparse problem instead.
+
+### How the matrix fills in
+
+Each new landmark is born correlated with the robot, so its row in the heat map is dark where the robot's row is dark. Landmarks mapped from nearby poses become correlated with each other. Landmarks mapped far apart are only weakly linked, through the robot's long chain of moves. The correlations therefore fade with the distance along the chain, like the covariance of Post 19. Just before the loop closure in the widget, landmarks mapped one after the other have an average canonical correlation (Post 23) of 0.96, but the first and the last landmark mapped only 0.38. Then the loop closes. A reading of a landmark mapped at the very start relates the end of the chain to its beginning, and the correlations spread over the whole matrix: one reading later the first and last are at 0.58, and by the end of the run at 0.79. In the limit, as Dissanayake and coauthors proved, all landmarks become fully correlated: their positions relative to each other become known exactly, while the map as a whole is no better known than the robot's starting point.
+
+### Why the filter becomes overconfident
+
+A consistent filter's errors match its reported uncertainty: the average normalized estimation error squared (NEES) $\bar{\epsilon}_k$ over many runs, from [Post 13](../tuning-and-consistency/), stays near the state's dimension. EKF-SLAM does not stay consistent. The reason is subtle. The true problem has three directions that no measurement can ever pin down: shifting and rotating the robot's whole trajectory and the map together changes no reading (the gauge of Post 23). The EKF linearizes each reading at its *current* estimate, and estimates of the same quantity taken at different times differ slightly. The linearized model then appears to observe the global heading a little. The filter gains heading information that does not exist, and its heading uncertainty, and everything that depends on it, becomes too small. Huang, Mourikis and Roumeliotis traced the problem to this mismatch of observability, and showed that fixing the linearization points removes most of it.
+
+## Play with it
+
+<TryThis>
+- At the default step 90, the filter holds 12 landmarks: a state of 27 numbers and a covariance of 27 × 27 = 729 entries. The robot's position is uncertain by 0.54 m, and 73% of the landmark pairs are strongly correlated (|ρ| ≥ 0.5).
+- Press **Go to just before the loop closure** (step 130). All 16 landmarks are mapped, 1,225 entries; the robot is uncertain by 0.53 m and the landmarks by 0.38 m on average, with 55% of the pairs strongly correlated. Step once: the robot re-reads landmark 15, one of the two it mapped at its very first step. Its uncertainty halves to 0.25 m, the landmarks average 0.30 m, and 74% of the pairs are now strongly correlated.
+- Run to the end, step 240. 86% of the landmark pairs are strongly correlated; the heat map has filled in almost everywhere.
+- Switch to **more heading noise** and go to step 240. The robot's estimate ends 1.56 m from the truth, while the filter reports an uncertainty of only 0.50 m: an error three times its own estimate of it. That is overconfidence, in a single run.
+</TryThis>
+
+One run can be unlucky, so the claim of inconsistency needs many runs. Over 50 seeded runs of the default scenario, the run-averaged NEES of the robot pose has a 95% band of 2.36 to 3.72. During the first lap (steps 10 to 130) it leaves the band at only 2 of 121 steps. After the loop closure it is above the band at 68 of the remaining 110 steps, averaging 3.90 over the last 40, where 3 is expected. With twice the heading noise it is above the band at every step after the closure, averaging 7.39 over the last 40: the filter's ellipses are far too small.
+
+## Algorithm
+
+<AlgorithmBox title="EKF-SLAM (one step, known correspondences)" source="src/lib/filters/ekf-slam.ts">
+1. **Predict** with the control: move the pose estimate, update $\mathbf{P}_{rr}$ and $\mathbf{P}_{rm}$ with (1). Cost $O(n)$.
+2. For each reading $(\mathbf{z}, j)$: if landmark $j$ is **new**, append $g(\hat{\mathbf{x}}_k, \mathbf{z})$ and its covariance rows (Post 23), $O(n)$.
+3. Otherwise **update** with (2), computing $\mathbf{P}\mathbf{H}\T$ from the five nonzero columns of $\mathbf{H}$ and then $\mathbf{P} \leftarrow \mathbf{P} - \mathbf{K}\mathbf{S}\mathbf{K}\T$, $O(n^2)$. Wrap the heading.
+</AlgorithmBox>
+
+The update avoids the Joseph form of Post 12, which would cost $O(n^3)$; the unit tests check that it agrees with the general EKF update to within $10^{-12}$. The consistency numbers above are computed by `consistencyRuns` in `src/lib/demos/ekf-slam-run.ts` and pinned in the post's tests.
+
+## When it breaks
+
+### Overconfidence
+
+Inconsistency is not a rare failure; it is the normal behaviour of EKF-SLAM over long runs, and it gets worse with more heading uncertainty, as the numbers above show. Bailey and coauthors found the same in simulation, and Julier and Uhlmann showed early that even a stationary robot repeatedly observing landmarks becomes overconfident. Remedies include linearizing with fixed points (the first-estimates Jacobian of Huang and coauthors), using the robot's own frame for the map (robocentric mapping), or leaving filtering for optimization, which relinearizes the whole problem whenever it improves the estimate (Post 27).
+
+### Quadratic cost
+
+Every reading rewrites the whole covariance. Working around this means giving something up: splitting the map into local submaps, dropping weak correlations, or keeping the information form, which is sparse only if the past poses are kept. That last idea leads to graph-based SLAM.
+
+### Linearization and large uncertainty
+
+Each step linearizes the motion and the sensor at the current estimate. With large heading uncertainty, the robot's position is a banana, as in [Post 22](../uncertainty-on-poses/), and the Gaussian of the filter fits it badly; landmarks initialized from such a pose inherit the error. Frequent loop closures keep the heading uncertainty, and with it the linearization error, small.
+
+### Correspondence
+
+Everything above assumed that each reading arrives labelled with its landmark. Without the labels, the filter must guess, and a wrong guess applies (2) with the wrong $\mathbf{H}$: a confident correction in the wrong direction, spread through all the correlations to the whole map. That is the next post.
+
+## Summary
+
+- EKF-SLAM is the EKF on a state of $3 + 2n$ numbers: the robot's pose and every landmark seen so far.
+- Prediction touches only the robot's block and its correlations ($O(n)$); a new landmark appends rows and columns ($O(n)$); every update rewrites the whole covariance ($O(n^2)$).
+- The covariance is dense and fills in as the robot drives and closes loops; landmarks become strongly correlated with each other.
+- Over long runs EKF-SLAM becomes overconfident, because linearizing at changing estimates makes the unobservable global heading look observable.
+- Quadratic cost and inconsistency both motivate the graph-based methods of Posts 26 to 28.

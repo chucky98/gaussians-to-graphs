@@ -138,7 +138,7 @@ Nothing in the measurements says where the map is in the world. Shift and rotate
 3. For each reading: if the landmark is **new**, append it with (1); otherwise **update** with the EKF update of Post 15, whose gain reaches every correlated landmark.
 </AlgorithmBox>
 
-The next post looks at this filter in detail: its cost, how its covariance fills in, and where it goes wrong. The tests in `tests/unit/filters/ekf-slam.test.ts` check the augmentation (1) against a generic linear transform of the joint Gaussian, and that a prediction leaves the map block untouched. They also check that the determinant of every landmark's covariance block never increases during this widget's run, the first property above.
+The [next post](../ekf-slam/) looks at this filter in detail: its cost, how its covariance fills in, and where it goes wrong. The tests in `tests/unit/filters/ekf-slam.test.ts` check the augmentation (1) against a generic linear transform of the joint Gaussian, and that a prediction leaves the map block untouched. They also check that the determinant of every landmark's covariance block never increases during this widget's run, the first property above.
 
 ## When it breaks
 
@@ -148,7 +148,7 @@ It is tempting to keep only one ellipse per landmark and forget the off-diagonal
 
 ### Correlations cost memory and time
 
-With $n$ landmarks, $\mathbf{P}$ has $(3 + 2n)^2$ entries, and every update touches all of them. That is fine for six landmarks and painful for six thousand. Post 24 measures the cost; Posts 26 to 28 escape it by keeping the full trajectory, where the information matrix stays sparse.
+With $n$ landmarks, $\mathbf{P}$ has $(3 + 2n)^2$ entries, and every update touches all of them. That is fine for six landmarks and painful for six thousand. [Post 24](../ekf-slam/) measures the cost; Posts 26 to 28 escape it by keeping the full trajectory, where the information matrix stays sparse.
 
 ### Knowing which landmark is which
 

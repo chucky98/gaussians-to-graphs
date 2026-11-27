@@ -2,7 +2,7 @@
 
 ## Current phase: 4 — Part 4 (SLAM) in progress
 
-## Next task: Phase 4 — post 24 `ekf-slam` (EKFSLAM)
+## Next task: Phase 4 — post 25 `data-association` (AssociationGating)
 
 ## Posts
 
@@ -31,7 +31,8 @@
 | 21    | lie-groups-for-robotics          | published | TangentSpace, SE2Exp             | ~2,700 words. SO(2) circle and tangent line; SE(2) constant-twist arc vs N steps vs naive sum; Jacobian table; SE(3) brief.     |
 | 22    | uncertainty-on-poses             | published | PoseCompounding                  | ~1,800 words. Gaussian on SE(2); compounding with the adjoint; (x, y, θ) ellipse 69% vs tangent region 97%; first-order limits. |
 | 23    | the-slam-problem                 | published | CorrelationsEmerge               | ~2,500 words. Full/online SLAM, Bayes-net figure, correlations born at initialization, a loop closure shrinks every ellipse.    |
-| 24–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                                |                                                                                                                                 |
+| 24    | ekf-slam                         | published | EKFSLAM                          | ~2,600 words. Three steps and their cost,                                                                                       | ρ   | heat map filling in, loop closure, inconsistency over 50 runs. |
+| 25–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                                |                                                                                                                                 |
 
 ## Infrastructure checklist
 
@@ -154,6 +155,8 @@
 - 2026-11-27 — **Phase 4 started with post 23.** `filters/ekf-slam.ts`: state [pose, m₁, …], prediction touching only the pose block and cross blocks (O(n)), landmark augmentation by the linearized inverse sensor model, updates through the generic `ekfUpdate`, and `canonicalCorrelation` (largest canonical correlation of two 2D blocks) as the "link strength". Tests: augmentation = linear transform of the joint Gaussian; prediction = full F P Fᵀ + Q with the map block untouched; Jacobians vs finite differences; Dissanayake et al.'s monotone landmark determinants on the widget's run.
 - 2026-11-27 — **SLAM worlds (`demos/slam-world.ts`):** the robot follows its planned circle exactly and its odometry reports noisy controls (as in MCL, post 17), so which landmark is seen when does not depend on the seed. CorrelationsEmerge: six landmarks on alternating radii, range 2.5 m; seed 20 is the most typical of 40 (robot and landmark uncertainty before/after the closure, error). Known data association until post 25. Post 23 also adds a static Bayes-network figure (`figures/SlamBayesNet.astro`).
 - 2026-11-27 — **Post 23 notation:** the map m with n landmarks; P_rr, P_rm, P_mm; g, G_r, G_z (landmark initialization); ρ_ab (canonical correlation).
+- 2026-11-27 — **EKF-SLAM update in O(n²)** (post 24): K = P Hᵀ S⁻¹ from H's five nonzero columns, P ← P − K S Kᵀ, returning ν, S and the NIS (post 25 gates on them). Tested equal to the generic Joseph-form `ekfUpdate` within 1e-12; the Joseph form would cost O(n³) here. One run of post 24's scenario (240 steps, 16 landmarks) takes ~70 ms; 50-run consistency studies run in the unit tests.
+- 2026-11-27 — **EKFSLAM scenario:** 16 landmarks frozen from a seeded layout around a 6 m circle, range 3.5 m, 240 steps (1.6 laps); seed 18 most typical of 40. The loop closure is defined as the largest one-step drop of the robot's uncertainty after the first quarter (step 131, re-reading landmark 15). Inconsistency shown with 50-run averaged NEES: in band during lap 1, above it at 68 of 110 steps after the closure (×2 heading noise: all 110). Heat map: |correlation| of the full state, padded to the final 35 × 35 so it visibly grows.
 
 ## Follow-ups / known issues
 

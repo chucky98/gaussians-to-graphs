@@ -9,7 +9,8 @@
  *    linearized transform with Jacobians G_r = ∂g/∂x_r and G_z = ∂g/∂z:
  *      P_mm = G_r P_rr G_rᵀ + G_z R G_zᵀ,   P_m· = G_r P_r·
  *  - update with a reading of a known landmark: the EKF update with H nonzero only in the pose and that
- *    landmark's columns. It changes every entry of P: this is how one reading improves the whole map.
+ *    landmark's columns, done in O(n²). It changes every entry of P: this is how one reading improves the
+ *    whole map.
  *
  * `ids[j]` is the true identity of the landmark in slot j (for drawing and for data association tests).
  */
@@ -22,8 +23,6 @@ import {
   velocityMotion,
   type VelocityControl,
 } from '../models/unicycle';
-import { ekfUpdate } from './ekf';
-import type { KfUpdate } from './kf';
 
 export interface SlamState {
   x: Vec;
@@ -125,23 +124,87 @@ export function slamPredictReading(s: SlamState, j: number): Vec {
   return rangeBearing(s.x.subarray(0, 3), s.x.subarray(3 + 2 * j, 5 + 2 * j));
 }
 
-const bearingResidual = (z: Vec, zh: Vec) => Float64Array.of(z[0]! - zh[0]!, wrapAngle(z[1]! - zh[1]!));
-const wrapPose = (x: Vec) => {
-  const y = Float64Array.from(x);
-  y[2] = wrapAngle(y[2]!);
-  return y;
-};
+export interface SlamUpdate {
+  state: SlamState;
+  /** Innovation ν = z ⊟ ẑ, its covariance S and the normalized innovation squared νᵀ S⁻¹ ν. */
+  nu: Vec;
+  S: Mat;
+  nis: number;
+}
 
-/** EKF update with a reading z of the landmark in slot j. Returns the new state and the diagnostics. */
-export function slamUpdate(s: SlamState, z: Vec, j: number, R: Mat): { state: SlamState; update: KfUpdate } {
-  const H = slamH(s, j);
-  const u = ekfUpdate(
-    { x: s.x, P: s.P },
-    z,
-    { h: () => slamPredictReading(s, j), H: () => H, R, residual: bearingResidual },
-    { normalize: wrapPose },
+/** Innovation of a reading z of slot j: ν = z ⊟ h(x̂) and S = H P Hᵀ + R, using only H's nonzero columns. */
+export function slamInnovation(
+  s: SlamState,
+  z: Vec,
+  j: number,
+  R: Mat,
+): { nu: Vec; S: Mat; PHt: Float64Array; cols: number[]; Hc: Float64Array } {
+  const n = s.x.length;
+  const pose = s.x.subarray(0, 3);
+  const m = s.x.subarray(3 + 2 * j, 5 + 2 * j);
+  const { Hx, Hm } = rangeBearingJacobians(pose, m);
+  const cols = [0, 1, 2, 3 + 2 * j, 4 + 2 * j];
+  // H restricted to its five nonzero columns (2 × 5, row-major).
+  const Hc = Float64Array.of(
+    Hx.data[0]!,
+    Hx.data[1]!,
+    Hx.data[2]!,
+    Hm.data[0]!,
+    Hm.data[1]!,
+    Hx.data[3]!,
+    Hx.data[4]!,
+    Hx.data[5]!,
+    Hm.data[2]!,
+    Hm.data[3]!,
   );
-  return { state: { x: u.state.x, P: u.state.P, ids: s.ids }, update: u };
+  // PHt = P Hᵀ (n × 2).
+  const PHt = new Float64Array(2 * n);
+  for (let i = 0; i < n; i++)
+    for (let r = 0; r < 2; r++) {
+      let v = 0;
+      for (let c = 0; c < 5; c++) v += s.P.data[i * n + cols[c]!]! * Hc[r * 5 + c]!;
+      PHt[i * 2 + r] = v;
+    }
+  const S = zeros(2, 2);
+  for (let r = 0; r < 2; r++)
+    for (let q = 0; q < 2; q++) {
+      let v = R.data[r * 2 + q]!;
+      for (let c = 0; c < 5; c++) v += Hc[r * 5 + c]! * PHt[cols[c]! * 2 + q]!;
+      S.data[r * 2 + q] = v;
+    }
+  const zh = rangeBearing(pose, m);
+  const nu = Float64Array.of(z[0]! - zh[0]!, wrapAngle(z[1]! - zh[1]!));
+  return { nu, S, PHt, cols, Hc };
+}
+
+/**
+ * EKF update with a reading z of the landmark in slot j, in O(n²): K = P Hᵀ S⁻¹, x̂ ← x̂ + K ν,
+ * P ← P − K S Kᵀ (then symmetrized). H has only five nonzero columns, so P Hᵀ costs O(n).
+ */
+export function slamUpdate(s: SlamState, z: Vec, j: number, R: Mat): SlamUpdate {
+  const n = s.x.length;
+  const { nu, S, PHt } = slamInnovation(s, z, j, R);
+  const d = S.data[0]! * S.data[3]! - S.data[1]! * S.data[2]!;
+  const Si = [S.data[3]! / d, -S.data[1]! / d, -S.data[2]! / d, S.data[0]! / d];
+  const K = new Float64Array(2 * n);
+  for (let i = 0; i < n; i++) {
+    const [a, b] = [PHt[i * 2]!, PHt[i * 2 + 1]!];
+    K[i * 2] = a * Si[0]! + b * Si[2]!;
+    K[i * 2 + 1] = a * Si[1]! + b * Si[3]!;
+  }
+  const x = Float64Array.from(s.x);
+  for (let i = 0; i < n; i++) x[i]! += K[i * 2]! * nu[0]! + K[i * 2 + 1]! * nu[1]!;
+  x[2] = wrapAngle(x[2]!);
+  // K S Kᵀ = PHt Kᵀ (since K S = PHt).
+  const P = zeros(n, n);
+  for (let i = 0; i < n; i++)
+    for (let k = i; k < n; k++) {
+      const v = s.P.data[i * n + k]! - (PHt[i * 2]! * K[k * 2]! + PHt[i * 2 + 1]! * K[k * 2 + 1]!);
+      P.data[i * n + k] = v;
+      P.data[k * n + i] = v;
+    }
+  const nis = nu[0]! * (Si[0]! * nu[0]! + Si[1]! * nu[1]!) + nu[1]! * (Si[2]! * nu[0]! + Si[3]! * nu[1]!);
+  return { state: { x, P, ids: s.ids }, nu, S, nis };
 }
 
 /** Slot of a landmark identity, or −1 if it is not in the map yet. */
