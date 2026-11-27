@@ -330,6 +330,8 @@ Typography: scalars are italic ($x$), vectors are bold lowercase ($\mathbf{x}$),
 | $\boldsymbol{\tau} = (\boldsymbol{\rho}, \theta)$ | SE(2) tangent vector (twist): body-frame translation part, then the turn; SE(3): $(\boldsymbol{\rho}, \boldsymbol{\theta})$ |
 | $\mathbf{V}(\theta)$ | SE(2) matrix with $\mathbf{t} = \mathbf{V}(\theta)\boldsymbol{\rho}$ in $\Exp$ (post 21) |
 | $N$ | number of steps: of data (post 18), of a motion split into pieces (post 21) |
+| $\bar{\mathbf{T}}$ | mean of a Gaussian on a group, $\mathbf{T} = \bar{\mathbf{T}}\Exp(\boldsymbol{\tau})$, $\boldsymbol{\tau}\sim\N(\mathbf{0},\mathbf{P})$ (post 22) |
+| $\sigma_\theta, \sigma_{xy}$ | heading and position noise per move (post 22) |
 | $(\cdot)^\wedge$, $(\cdot)^\vee$ | hat and vee |
 | $\operatorname{Exp}$, $\operatorname{Log}$ | maps between $\mathbb{R}^n$ and the group (capitalized, Solà et al.) |
 | $\oplus$, $\ominus$ | right-plus and right-minus on manifolds |

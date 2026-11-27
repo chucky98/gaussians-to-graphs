@@ -654,3 +654,26 @@ test.describe('post 21 widgets', () => {
     await expect(w.locator('[data-readout="gap"]')).toHaveText('1.41 m');
   });
 });
+
+test.describe('post 22 widgets', () => {
+  test('PoseCompounding: ellipse vs tangent region, heading noise, steps', async ({ page }) => {
+    await page.goto('posts/uncertainty-on-poses/');
+    const w = page.locator('[data-widget="PoseCompounding"]');
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="cart"]')).toHaveText('69%');
+    await expect(w.locator('[data-readout="tan"]')).toHaveText('97%');
+    await expect(w.locator('[data-readout="heading"]')).toHaveText('15.8°');
+    const noise = w.getByRole('slider', { name: 'Heading noise per step' });
+    await noise.fill('1');
+    await expect(w.locator('[data-readout="cart"]')).toHaveText('95%');
+    await expect(w.locator('[data-readout="tan"]')).toHaveText('95%');
+    await noise.fill('10');
+    await expect(w.locator('[data-readout="cart"]')).toHaveText('30%');
+    await expect(w.locator('[data-readout="heading"]')).toHaveText('31.6°');
+    await w.locator('[data-action="reset"]').click();
+    await w.getByRole('slider', { name: 'Steps' }).fill('20');
+    await expect(w.locator('[data-readout="cart"]')).toHaveText('39%');
+    await expect(w.locator('[data-readout="tan"]')).toHaveText('96%');
+  });
+});

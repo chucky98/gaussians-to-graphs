@@ -114,7 +114,7 @@ $$
 
 $\mathbf{X}\oplus\boldsymbol{\tau}$ starts at $\mathbf{X}$ and moves by $\boldsymbol{\tau}$, expressed in $\mathbf{X}$'s own frame: for a pose, "drive forward 1 m" means forward for that robot. $\mathbf{Y}\ominus\mathbf{X}$ is the tangent vector at $\mathbf{X}$ that reaches $\mathbf{Y}$, so $\mathbf{X}\oplus(\mathbf{Y}\ominus\mathbf{X}) = \mathbf{Y}$. For vectors, $\oplus$ and $\ominus$ are just $+$ and $-$. On SO(2), $\ominus$ is subtraction of angles followed by wrapping: Post 15's helper.
 
-Everything a filter does with vectors now has a group version. An EKF on a group stores the mean on the group and the covariance in the tangent space, corrects with $\hat{\mathbf{X}} \leftarrow \hat{\mathbf{X}}\oplus\mathbf{K}\boldsymbol{\nu}$, and forms residuals as $\mathbf{z}\ominus h(\hat{\mathbf{X}})$. The next post does exactly this with uncertain poses.
+Everything a filter does with vectors now has a group version. An EKF on a group stores the mean on the group and the covariance in the tangent space, corrects with $\hat{\mathbf{X}} \leftarrow \hat{\mathbf{X}}\oplus\mathbf{K}\boldsymbol{\nu}$, and forms residuals as $\mathbf{z}\ominus h(\hat{\mathbf{X}})$. The [next post](../uncertainty-on-poses/) does exactly this with uncertain poses.
 
 ### The adjoint
 
@@ -224,7 +224,7 @@ There are two consistent choices for every operation, and books differ. Solà an
 
 ### Poses are not vectors
 
-Treating $(x, y, \theta)$ as a vector works for small motions and fails for large ones, as the naive sum showed. The same goes for uncertainty: a Gaussian written directly over $(x, y, \theta)$ is the wrong shape for a pose that has turned while uncertain. Post 22 puts the Gaussian in the tangent space instead, and the banana of Posts 4 and 14 turns back into an ellipse.
+Treating $(x, y, \theta)$ as a vector works for small motions and fails for large ones, as the naive sum showed. The same goes for uncertainty: a Gaussian written directly over $(x, y, \theta)$ is the wrong shape for a pose that has turned while uncertain. [Post 22](../uncertainty-on-poses/) puts the Gaussian in the tangent space instead, and the banana of Posts 4 and 14 turns back into an ellipse.
 
 ## Summary
 

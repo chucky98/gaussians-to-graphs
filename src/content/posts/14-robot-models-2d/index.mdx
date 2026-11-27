@@ -163,7 +163,7 @@ The unit tests check every analytic Jacobian in this post, for both motion model
 
 ### Large heading uncertainty
 
-Choose **Long drive, poor heading control** in the sampler: 8 s with a turn-rate noise of 0.5 rad/s. The final heading now spreads by 55°, and the cloud is a full banana around the start. Only 75.8% of the samples fall inside the linearized 95% ellipse, and the linearized centre is 1.34 m from the samples' actual mean, which lies inside the curve of the banana rather than on it. A filter that linearizes ([Post 15](../extended-kalman-filter/)) will be overconfident and biased here; the remedies are better linearization ([Post 16](../unscented-kalman-filter/)), samples ([Post 17](../particle-filter/)), or the tangent-space Gaussians of Post 22.
+Choose **Long drive, poor heading control** in the sampler: 8 s with a turn-rate noise of 0.5 rad/s. The final heading now spreads by 55°, and the cloud is a full banana around the start. Only 75.8% of the samples fall inside the linearized 95% ellipse, and the linearized centre is 1.34 m from the samples' actual mean, which lies inside the curve of the banana rather than on it. A filter that linearizes ([Post 15](../extended-kalman-filter/)) will be overconfident and biased here; the remedies are better linearization ([Post 16](../unscented-kalman-filter/)), samples ([Post 17](../particle-filter/)), or the tangent-space Gaussians of [Post 22](../uncertainty-on-poses/).
 
 ### Angles
 

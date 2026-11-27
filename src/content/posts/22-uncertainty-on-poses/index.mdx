@@ -1,0 +1,154 @@
+---
+number: 22
+title: 'Uncertainty on Poses: Where Bananas Come From'
+description: Why an ellipse over (x, y, θ) fits a drifting robot badly, and how a Gaussian in the tangent space, compounded with the adjoint, fits the banana.
+part: 3
+status: published
+date: 2026-11-27
+prerequisites: [lie-groups-for-robotics]
+objectives:
+  - Define a Gaussian on a group, with its mean on the group and its covariance in the tangent space, and sample from it.
+  - Compound uncertain poses by propagating the tangent-space covariance with the adjoint.
+  - Explain why a Gaussian over the numbers (x, y, θ) misrepresents the uncertainty of a pose that has turned while uncertain, and show that it is the same first-order information in the wrong coordinates.
+  - Recognize where first-order compounding itself starts to fail.
+references:
+  - key: long2012
+    text: 'Long, Wolfe, Mashner, Chirikjian. "The banana distribution is Gaussian: a localization study with exponential coordinates." *Robotics: Science and Systems*, 2012.'
+  - key: barfoot2014
+    text: 'Barfoot, Furgale. "Associating uncertainty with three-dimensional poses for use in estimation problems." *IEEE Transactions on Robotics* 30(3), 2014.'
+  - key: smith1990
+    text: 'Smith, Self, Cheeseman. "Estimating uncertain spatial relationships in robotics." In *Autonomous Robot Vehicles*, Springer, 1990.'
+  - key: sola2018
+    text: 'Solà, Deray, Atchuthan. "A micro Lie theory for state estimation in robotics." arXiv:1812.01537, 2018. The parts on uncertainty in manifolds and covariance propagation.'
+  - key: barfoot2024
+    text: Barfoot. *State Estimation for Robotics*, 2nd ed. Cambridge University Press, 2024. The chapter "Matrix Lie Groups" (uncertainty on poses and its compounding).
+widgets: [PoseCompounding]
+symbols:
+  - tex: '\bar{\mathbf{T}}'
+    meaning: mean of a Gaussian on a group
+  - tex: '\boldsymbol{\tau}'
+    meaning: tangent-space perturbation
+  - tex: '\mathbf{T} \in \SE(n),\ \mathbf{T}_{ij}'
+    meaning: pose; relative pose
+    match: ['\mathbf{T}_{k-1,k}']
+  - tex: '\mathbf{Ad}_{\mathbf{T}},\ \mathbf{J}_r,\ \mathbf{J}_l'
+    meaning: adjoint, which carries P along the chain
+    match: ['\mathbf{Ad}']
+  - tex: '\sigma_\theta'
+    meaning: heading noise per step
+---
+
+import PoseCompounding from '../../../components/widgets/PoseCompounding/PoseCompounding.svelte';
+
+A robot drives ten 1-metre moves in a straight line. Its wheels are good, but each move comes with a small random error in heading, with a standard deviation of 5°, and an even smaller one in position. Where is it at the end? The obvious answer is an ellipse around the planned end point: a Gaussian over $x$, $y$ and the heading $\theta$, propagated with Jacobians the way every filter so far has done it. Here is the answer next to 2,000 simulated runs.
+
+<PoseCompounding client:visible />
+
+The runs do not form an ellipse. They spread along an arc around the start, a **banana**, and the dashed 95% ellipse holds only 69% of them: it covers empty space outside the arc and misses both tips. The solid outline is a Gaussian too, with the same mean and the same first-order propagation. The only difference is where it is defined: in the tangent space of the pose, the subject of [Post 21](../lie-groups-for-robotics/). It holds 97% of the runs, close to its nominal 95%.
+
+## Intuition
+
+A heading error is a lever. A robot that is off by a small angle and then drives a distance $d$ ends up about $d$ times that angle to the side ([Post 1](../where-am-i/) worked out how this adds up). But the lever turns about a point: a robot that drives 10 m with a heading off by 15° does not end up 10 m forward and 2.6 m to the side; it ends up on a circle of radius 10 m, 2.6 m to the side **and 0.34 m short**. Put many runs together, each with its own heading error, and their end points lie along that circle. That is the banana. It is not a sign of a strange noise model; it comes from nothing more than rotation.
+
+A Gaussian over the numbers $(x, y, \theta)$ cannot bend. Its 95% region is an ellipsoid, and the region of $(x, y)$ an ellipse. The tangent space can: it is where small changes of the pose are ordinary vectors, and the exponential map turns a straight line of changes, "the same move with a slightly different heading", into an arc. So put the Gaussian on the small changes, and let Exp do the bending.
+
+## The math
+
+### A Gaussian on a group
+
+Following Post 21, a random pose $\mathbf{T}$ is described by a mean $\bar{\mathbf{T}}$ on the group and a Gaussian perturbation in the tangent space at the mean:
+
+$$
+\mathbf{T} = \bar{\mathbf{T}}\oplus\boldsymbol{\tau} = \bar{\mathbf{T}}\Exp(\boldsymbol{\tau}),\qquad \boldsymbol{\tau}\sim\N(\mathbf{0}, \mathbf{P}). \tag{1}
+$$
+
+The mean is a pose and the covariance $\mathbf{P}$ is an ordinary $3\times 3$ matrix (for SE(2)), but its axes are the robot's own: forward, left and turn, at the mean. Sampling is easy: draw $\boldsymbol{\tau}$ and apply (1). The reverse question, which perturbation produced a given pose, is answered by $\boldsymbol{\tau} = \mathbf{T}\ominus\bar{\mathbf{T}} = \Log(\bar{\mathbf{T}}^{-1}\mathbf{T})$. For small $\mathbf{P}$, (1) and a Gaussian over $(x, y, \theta)$ describe nearly the same thing; for a large heading spread they do not.
+
+### Compounding
+
+The robot's pose after $k$ moves is the previous pose composed with the $k$-th relative motion $\mathbf{T}_{k-1,k}$:
+
+$$
+\mathbf{T}_k = \mathbf{T}_{k-1}\,\mathbf{T}_{k-1,k},\qquad \mathbf{T}_{k-1,k} = \bar{\mathbf{T}}_{k-1,k}\oplus\mathbf{w}_k,\quad \mathbf{w}_k\sim\N(\mathbf{0}, \mathbf{Q}),
+$$
+
+where $\bar{\mathbf{T}}_{k-1,k}$ is the planned move and $\mathbf{w}_k$ its error in the robot's frame, with covariance $\mathbf{Q} = \diag(\sigma_{xy}^2, \sigma_{xy}^2, \sigma_\theta^2)$ here. Write the previous pose as $\bar{\mathbf{T}}_{k-1}\Exp(\boldsymbol{\tau}_{k-1})$ and move the perturbation past the planned motion with the adjoint identity of Post 21, $\Exp(\boldsymbol{\tau})\,\mathbf{X} = \mathbf{X}\Exp(\mathbf{Ad}_{\mathbf{X}^{-1}}\boldsymbol{\tau})$:
+
+$$
+\mathbf{T}_k = \bar{\mathbf{T}}_{k-1}\bar{\mathbf{T}}_{k-1,k}\,\Exp\big(\mathbf{Ad}_{\bar{\mathbf{T}}_{k-1,k}^{-1}}\boldsymbol{\tau}_{k-1}\big)\Exp(\mathbf{w}_k)
+\approx \bar{\mathbf{T}}_k\Exp\big(\mathbf{Ad}_{\bar{\mathbf{T}}_{k-1,k}^{-1}}\boldsymbol{\tau}_{k-1} + \mathbf{w}_k\big).
+$$
+
+The first step is exact; the second keeps only first-order terms ($\Exp(\mathbf{a})\Exp(\mathbf{b}) \approx \Exp(\mathbf{a} + \mathbf{b})$ for small $\mathbf{a}$, $\mathbf{b}$). The mean follows the plan, $\bar{\mathbf{T}}_k = \bar{\mathbf{T}}_{k-1}\bar{\mathbf{T}}_{k-1,k}$, and the perturbations add, so their covariances add:
+
+$$
+\mathbf{P}_k = \mathbf{Ad}_{\bar{\mathbf{T}}_{k-1,k}^{-1}}\,\mathbf{P}_{k-1}\,\mathbf{Ad}_{\bar{\mathbf{T}}_{k-1,k}^{-1}}\T + \mathbf{Q}. \tag{2}
+$$
+
+The adjoint re-expresses the old uncertainty in the frame of the new pose. For a straight move of length $d$ it is
+
+$$
+\mathbf{Ad}_{\bar{\mathbf{T}}_{k-1,k}^{-1}} = \begin{bmatrix} 1 & 0 & 0 \\ 0 & 1 & d \\ 0 & 0 & 1 \end{bmatrix}:
+$$
+
+each move adds $d$ times the heading perturbation to the sideways one, the lever in matrix form. After $N$ straight moves the sideways variance is $d^2\sigma_\theta^2\sum_{m=0}^{N-1} m^2 + N\sigma_{xy}^2$, which grows like $N^3$, so the sideways spread grows like $N^{3/2}$, as in Post 1. In the widget's default, 2.18 m², a standard deviation of 1.48 m.
+
+### The same information in the wrong coordinates
+
+The Cartesian alternative, the classic compounding of Smith, Self and Cheeseman, treats $(x, y, \theta)$ as a vector and linearizes the composition about the plan, as an EKF would:
+
+$$
+\mathbf{P}_k^{\text{xyθ}} = \mathbf{F}_k\mathbf{P}_{k-1}^{\text{xyθ}}\mathbf{F}_k\T + \mathbf{V}_k\mathbf{Q}\mathbf{V}_k\T,
+$$
+
+with $\mathbf{F}_k$ the Jacobian of the composition with respect to the old pose and $\mathbf{V}_k$ with respect to the move, both in $(x, y, \theta)$ coordinates. Both methods use the same mean and are exact to first order, so they must agree to first order, and they do: the two covariances are related exactly by the Jacobian $\mathbf{J}$ of (1) at $\boldsymbol{\tau} = \mathbf{0}$, which rotates the forward and left axes into $x$ and $y$,
+
+$$
+\mathbf{P}^{\text{xyθ}}_N = \mathbf{J}\mathbf{P}_N\mathbf{J}\T,\qquad \mathbf{J} = \begin{bmatrix} \mathbf{C}(\bar\theta_N) & \mathbf{0} \\ \mathbf{0}\T & 1 \end{bmatrix}.
+$$
+
+They carry the same numbers. The difference is the shape the numbers are given. In $(x, y, \theta)$, a large heading variance and a large sideways variance, strongly correlated, make a long, straight ellipse. In the tangent space the same numbers mean "turn a little, and move sideways in proportion", and pushed through Exp, which turns straight lines of turning into arcs, they make a banana. Long and coauthors put it in the title of their paper: the banana distribution is Gaussian, in the right coordinates.
+
+### Drawing the region
+
+The ellipse of $(x, y)$ is the usual 95% ellipse of the marginal. The solid outline is the 95% region of the tangent model's $(x, y)$ marginal: the smallest region holding 95% of its probability. There is no closed form, so the widget computes it. For each point $(x, y)$ and each heading $\theta$ on a fine grid, it finds $\boldsymbol{\tau} = \Log(\bar{\mathbf{T}}^{-1}\mathbf{T})$ and evaluates the Gaussian density of $\boldsymbol{\tau}$. It multiplies by the factor $1/\det\mathbf{J}_r(\boldsymbol{\tau})$ that converts a density over $\boldsymbol{\tau}$ to one over $(x, y, \theta)$, adds up over $\theta$, and draws the contour that encloses 95% of the total.
+
+## Play with it
+
+<TryThis>
+- At the defaults, the final heading spreads by 15.8°. The dashed ellipse holds 69% of the runs, the solid region 97%. The runs bend back towards the start: their average position is 0.17 m short of the planned end point, which no ellipse centred there can show.
+- Lower the heading noise to 1° per step. The banana straightens into an ellipse, and both outlines hold 95% of the runs. With small heading errors, all of this is unnecessary.
+- Raise it to 10° per step. The final heading now spreads by 31.6°; the ellipse holds only 30% of the runs, while the tangent region still holds 95%.
+- Back at 5°, set the number of steps to 20. The banana grows longer and thinner: 39% for the ellipse, 96% for the tangent region. Or keep 10 steps and set the turn per step to 10°: the robot drives a curve and the banana follows it. The ellipse recovers to 88%: on a curve the end point stays closer to the places where the earlier heading errors happened, so they swing it less far.
+</TryThis>
+
+## Algorithm
+
+<AlgorithmBox title="Compounding an uncertain pose in the tangent space" source="src/lib/demos/pose-compounding.ts">
+1. Start with $\bar{\mathbf{T}}_0$ and $\mathbf{P}_0$ (zero if the start is known exactly).
+2. For each planned move $\bar{\mathbf{T}}_{k-1,k}$ with error covariance $\mathbf{Q}_k$: set $\mathbf{A} = \mathbf{Ad}_{\bar{\mathbf{T}}_{k-1,k}^{-1}}$, then $\mathbf{P}_k = \mathbf{A}\mathbf{P}_{k-1}\mathbf{A}\T + \mathbf{Q}_k$ and $\bar{\mathbf{T}}_k = \bar{\mathbf{T}}_{k-1}\bar{\mathbf{T}}_{k-1,k}$.
+3. To sample: draw $\boldsymbol{\tau}\sim\N(\mathbf{0}, \mathbf{P}_N)$ and return $\bar{\mathbf{T}}_N\Exp(\boldsymbol{\tau})$. To test whether a pose $\mathbf{T}$ is plausible: compute $\boldsymbol{\tau} = \Log(\bar{\mathbf{T}}_N^{-1}\mathbf{T})$ and its Mahalanobis distance under $\mathbf{P}_N$.
+</AlgorithmBox>
+
+Step 2 is `composeCovariance` in `src/lib/geometry/lie.ts`, written once for every group, so the same code compounds 3D poses on SE(3). The unit tests check that (2) matches the sample covariance of the simulated runs when the noise is small. They also check that the Cartesian covariance equals $\mathbf{J}\mathbf{P}_N\mathbf{J}\T$ exactly, and that the grid behind the tangent model's region holds more than 99.9% of its probability.
+
+## When it breaks
+
+### First order is still first order
+
+The tangent-space Gaussian gets the shape right, but (2) drops the second-order terms of $\Exp(\mathbf{a})\Exp(\mathbf{b})$. With large heading noise they matter in one direction: along the path. A run with heading errors always ends a little short, as the intuition section showed, and that shortening is second order in the heading error. At the defaults, the runs' perturbations along the path have a standard deviation of 0.15 m, against 0.095 m predicted by (2). Because the forward direction is the narrowest axis of the distribution, this small miss matters: in all three dimensions, only 86% of the runs fall inside the 95% ellipsoid of $\mathbf{P}_N$, although their $(x, y)$ positions sit well inside the drawn region. Barfoot and Furgale derive the higher-order corrections; for most filters, keeping the heading uncertainty small with frequent measurements is the practical answer.
+
+### Mean, mode and average
+
+The mean $\bar{\mathbf{T}}$ of (1) is the planned pose, at the centre of the banana's curve of possible headings but not at the average of the runs, which lies inside the curve. Averaging poses as vectors therefore gives a pose that none of the runs is near. A proper average on the group is found by iterating $\bar{\mathbf{T}} \leftarrow \bar{\mathbf{T}}\Exp\big(\tfrac{1}{M}\sum_i \Log(\bar{\mathbf{T}}^{-1}\mathbf{T}_i)\big)$ until it stops moving.
+
+### Left or right
+
+We put the perturbation on the right, in the robot's frame. The same distribution can be written with the perturbation on the left, in the world frame, $\mathbf{T} = \Exp(\boldsymbol{\tau}')\bar{\mathbf{T}}$, with covariance $\mathbf{Ad}_{\bar{\mathbf{T}}}\mathbf{P}\mathbf{Ad}_{\bar{\mathbf{T}}}\T$. Both are fine; mixing them is not. When a library hands you "the covariance of a pose", find out which side it is on.
+
+## Summary
+
+- A Gaussian on a group has its mean on the group and its covariance in the tangent space: $\mathbf{T} = \bar{\mathbf{T}}\Exp(\boldsymbol{\tau})$, $\boldsymbol{\tau}\sim\N(\mathbf{0}, \mathbf{P})$.
+- Compounding uncertain moves propagates $\mathbf{P}$ with the adjoint: $\mathbf{P}_k = \mathbf{Ad}\,\mathbf{P}_{k-1}\mathbf{Ad}\T + \mathbf{Q}$. For straight driving, the adjoint is the heading-to-sideways lever, and the sideways spread grows like $N^{3/2}$.
+- A Gaussian over $(x, y, \theta)$ carries the same first-order numbers, but as a straight ellipse; the tangent-space Gaussian, pushed through Exp, bends into the banana that the samples actually form.
+- With large heading noise even the tangent model is approximate: it underestimates the spread along the path, which only higher-order compounding or more measurements fix.

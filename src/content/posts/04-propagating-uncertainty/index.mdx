@@ -159,7 +159,7 @@ Every analytic Jacobian in this series is checked in the unit tests against cent
 
 **Linearizing at the wrong point.** Equation (2) uses the Jacobian at the *mean*. If the mean itself is badly wrong, the tangent is taken at the wrong place and the whole approximation can be off. [Post 15](../extended-kalman-filter/) shows an extended Kalman filter diverging for exactly this reason.
 
-**The summary is not the distribution.** Even a perfect mean and covariance describe a banana poorly: the fitted ellipse in the widget covers empty space inside the arc and misses the ends. Two better tools come later in the series. The unscented transform ([Post 16](../unscented-kalman-filter/)) chooses a handful of sample points cleverly instead of thousands at random. Post 22 shows that describing pose uncertainty in the right coordinates turns the banana back into an ellipse.
+**The summary is not the distribution.** Even a perfect mean and covariance describe a banana poorly: the fitted ellipse in the widget covers empty space inside the arc and misses the ends. Two better tools come later in the series. The unscented transform ([Post 16](../unscented-kalman-filter/)) chooses a handful of sample points cleverly instead of thousands at random. [Post 22](../uncertainty-on-poses/) shows that describing pose uncertainty in the right coordinates turns the banana back into an ellipse.
 
 ## Summary
 
