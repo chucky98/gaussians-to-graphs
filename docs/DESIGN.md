@@ -347,6 +347,8 @@ Typography: scalars are italic ($x$), vectors are bold lowercase ($\mathbf{x}$),
 | $\mathbf{J}$ | stacked Jacobian of the residuals |
 | $\boldsymbol{\Lambda} = \mathbf{J}^\top\boldsymbol{\Omega}\mathbf{J}$, $\boldsymbol{\eta} = -\mathbf{J}^\top\boldsymbol{\Omega}\mathbf{r}$ | Gauss–Newton system $\boldsymbol{\Lambda}\boldsymbol{\delta} = \boldsymbol{\eta}$ |
 | $\boldsymbol{\delta}$ | update step; $\lambda$ the Levenberg–Marquardt damping |
+| $f_x, f_y, c_x, c_y$ | pinhole focal lengths and principal point, pixels (post 31) |
+| $\pi(\cdot)$, $\sigma_{\text{px}}$ | projection to pixels; pixel noise (post 31) |
 | $\rho(\cdot)$ | robust kernel |
 | $s_i = \mathbf{r}_i\T\boldsymbol{\Omega}_i\mathbf{r}_i$, $k_\rho$ | squared Mahalanobis error of factor $i$; robust-kernel scale in units of $\sqrt{s}$ (post 29) |
 | $w_i = \rho'(s_i)$ | IRLS weight (post 29) |

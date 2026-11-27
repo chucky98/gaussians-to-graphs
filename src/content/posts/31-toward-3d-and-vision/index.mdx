@@ -1,0 +1,158 @@
+---
+number: 31
+title: 'Toward 3D and Vision: Bundle Adjustment'
+description: The same machinery in 3D. SE(3) pose graphs, the pinhole camera, reprojection error, bundle adjustment and its Schur-complement trick, and a map of visual SLAM.
+part: 4
+status: published
+date: 2026-11-27
+prerequisites: [sparsity-and-solvers, lie-groups-for-robotics]
+needs3d: true
+objectives:
+  - Extend pose graphs from SE(2) to SE(3), and say what changes and what does not.
+  - Project a 3D point into a pinhole camera, and explain why a single image loses depth.
+  - Write the reprojection error and its Jacobians, and pose bundle adjustment as a factor graph.
+  - Use the Schur complement to eliminate the points first, and explain why this makes bundle adjustment fast.
+  - Place feature-based, direct and visual–inertial SLAM systems on the map built in this series.
+references:
+  - key: triggs2000
+    text: 'Triggs, McLauchlan, Hartley, Fitzgibbon. "Bundle adjustment: a modern synthesis." In *Vision Algorithms: Theory and Practice*, Springer, 2000.'
+  - key: hartley2004
+    text: Hartley, Zisserman. *Multiple View Geometry in Computer Vision*, 2nd ed. Cambridge University Press, 2004. Ch. 6 (camera models) and §18.1 (bundle adjustment).
+  - key: murartal2015
+    text: 'Mur-Artal, Montiel, Tardós. "ORB-SLAM: a versatile and accurate monocular SLAM system." *IEEE Transactions on Robotics* 31(5), 2015.'
+  - key: engel2018
+    text: 'Engel, Koltun, Cremers. "Direct sparse odometry." *IEEE Transactions on Pattern Analysis and Machine Intelligence* 40(3), 2018.'
+  - key: qin2018
+    text: 'Qin, Li, Shen. "VINS-Mono: A robust and versatile monocular visual-inertial state estimator." *IEEE Transactions on Robotics* 34(4), 2018.'
+  - key: strasdat2010
+    text: 'Strasdat, Montiel, Davison. "Scale drift-aware large scale monocular SLAM." *Robotics: Science and Systems*, 2010.'
+widgets: [PinholeProjection, BundleAdjustmentMini]
+symbols:
+  - tex: '\mathbf{T} \in \SE(n),\ \mathbf{T}_{ij}'
+    meaning: camera pose (camera-to-world)
+    match: ['\SE(3)']
+  - tex: '\mathbf{C} \in \SO(n)'
+    meaning: camera orientation
+    match: ['\mathbf{C}\T']
+  - tex: 'f_x, f_y, c_x, c_y'
+    meaning: focal lengths and principal point (pixels)
+    match: ['f_x']
+  - tex: '\pi(\cdot)'
+    meaning: projection to pixels
+    match: ['\pi(']
+---
+
+import PinholeProjection from '../../../components/widgets/PinholeProjection/PinholeProjection.svelte';
+import BundleAdjustmentMini from '../../../components/widgets/BundleAdjustmentMini/BundleAdjustmentMini.svelte';
+
+Everything in this series so far has lived in the plane: robots on floors, a city of streets. Drones, cars on hills, phones doing augmented reality and robot arms move in three dimensions, and their most common sensor is a camera. The good news is that almost nothing new is needed. Poses become elements of SE(3) instead of SE(2), using the toolkit of [Post 21](../lie-groups-for-robotics/). Cameras add one new factor, the reprojection error. The sparse solver of Posts 26 to 28 handles the rest. This post shows the camera, the factor, and **bundle adjustment**, the optimization at the heart of every modern visual SLAM system.
+
+<PinholeProjection client:visible />
+
+A camera turns a 3D point into a pixel. Drag the point in the top view, or change the focal length, and watch where it lands in the image.
+
+## Intuition
+
+A pinhole camera is a dark box with a tiny hole: light from each point of the scene passes through the hole and lands on the back wall at one spot. Everything along a single ray through the hole lands on the same spot, near or far. That is the defining fact of a camera: **one image records directions, not distances**.
+
+Two images taken from different places fix the distance: the two rays to the same point meet only at one place (triangulation). With many images and many points, the cameras' poses and the points' positions can be estimated together. Adjust them until every ray from every camera passes through its point, which is to say until every point projects onto the pixel where it was actually seen. That is bundle adjustment: adjusting the bundles of rays.
+
+## The math
+
+### Pose graphs in 3D
+
+A pose in 3D is $\mathbf{T} = (\mathbf{C}, \mathbf{t}) \in \SE(3)$, six degrees of freedom. A relative-pose constraint has exactly the residual of [Post 27](../pose-graph-optimization/), $\mathbf{r}_{ij} = \Log\big(\mathbf{T}_{ij}^{-1}\mathbf{T}_i^{-1}\mathbf{T}_j\big)$, now in $\R^6$, with Jacobians built from the SE(3) adjoint and right Jacobian of Post 21. The blocks of $\boldsymbol{\Lambda}$ are 6 × 6 instead of 3 × 3; the sparsity, the ordering and the solver are unchanged. The library's between factor is written once for any Lie group and is used for SE(2) and SE(3) alike.
+
+### The pinhole camera
+
+Let a camera have pose $\mathbf{T} = (\mathbf{C}, \mathbf{t})$: its orientation and position in the world, with its own z axis along the optical axis, x to the right and y down. A world point $\mathbf{p}$ has camera coordinates $\mathbf{p}_c = (x, y, z) = \mathbf{C}\T(\mathbf{p} - \mathbf{t})$, and lands at the pixel
+
+$$
+\pi(\mathbf{T}, \mathbf{p}) = \begin{bmatrix} u \\ v \end{bmatrix} = \begin{bmatrix} f_x\,x/z + c_x \\ f_y\,y/z + c_y \end{bmatrix}. \tag{1}
+$$
+
+The focal lengths $f_x, f_y$ (in pixels) say how many pixels one unit of $x/z$ spans; $(c_x, c_y)$ is the principal point, where the optical axis meets the image. Only the ratios $x/z$ and $y/z$ appear: scaling $\mathbf{p}_c$ by any factor gives the same pixel. Real lenses add distortion, a known nonlinear warp applied before (1), which calibration removes.
+
+### Reprojection error
+
+A camera $i$ that observed point $j$ at the pixel $\mathbf{z}_{ij}$ gives the factor
+
+$$
+\mathbf{r}_{ij} = \pi(\mathbf{T}_i, \mathbf{p}_j) - \mathbf{z}_{ij},\qquad \boldsymbol{\Omega}_{ij} = \sigma_{\text{px}}^{-2}\mathbf{I}, \tag{2}
+$$
+
+the **reprojection error** in pixels, weighted by the pixel noise. Its Jacobians come from the chain rule. The projection gives $\partial\pi/\partial\mathbf{p}_c = \begin{bmatrix} f_x/z & 0 & -f_x x/z^2 \\ 0 & f_y/z & -f_y y/z^2\end{bmatrix}$. The camera coordinates move with a right perturbation $\boldsymbol{\delta} = (\boldsymbol{\rho}, \boldsymbol{\theta})$ of the pose as $\partial\mathbf{p}_c/\partial\boldsymbol{\delta} = \begin{bmatrix}-\mathbf{I} & [\mathbf{p}_c]_\times\end{bmatrix}$, and with the point as $\partial\mathbf{p}_c/\partial\mathbf{p} = \mathbf{C}\T$. Both are checked against finite differences in the unit tests.
+
+### Bundle adjustment and the Schur trick
+
+**Bundle adjustment** minimizes the sum of (2) over all observations, with the camera poses and the point positions as unknowns: a factor graph of Post 26 in which every factor links one camera and one point. Order the unknowns cameras first, then points, and the normal equations take the shape
+
+$$
+\begin{bmatrix} \boldsymbol{\Lambda}_{cc} & \boldsymbol{\Lambda}_{cp} \\ \boldsymbol{\Lambda}_{pc} & \boldsymbol{\Lambda}_{pp} \end{bmatrix}
+\begin{bmatrix} \boldsymbol{\delta}_c \\ \boldsymbol{\delta}_p \end{bmatrix} = \begin{bmatrix} \boldsymbol{\eta}_c \\ \boldsymbol{\eta}_p \end{bmatrix}.
+$$
+
+No factor links two points, so $\boldsymbol{\Lambda}_{pp}$ is **block diagonal**: one 3 × 3 block per point, trivial to invert. Eliminating the points first, the marginalization of [Post 28](../sparsity-and-solvers/), leaves the much smaller **reduced camera system**
+
+$$
+\big(\boldsymbol{\Lambda}_{cc} - \boldsymbol{\Lambda}_{cp}\boldsymbol{\Lambda}_{pp}^{-1}\boldsymbol{\Lambda}_{pc}\big)\boldsymbol{\delta}_c = \boldsymbol{\eta}_c - \boldsymbol{\Lambda}_{cp}\boldsymbol{\Lambda}_{pp}^{-1}\boldsymbol{\eta}_p, \tag{3}
+$$
+
+of size $6 \times$ (number of cameras). Solve it, then recover each point's update independently: $\boldsymbol{\delta}_{p_j} = \boldsymbol{\Lambda}_{p_jp_j}^{-1}(\boldsymbol{\eta}_{p_j} - \boldsymbol{\Lambda}_{p_jc}\boldsymbol{\delta}_c)$. A typical problem has tens or hundreds of cameras and tens of thousands of points, so (3) is tiny compared with the full system. This is the **Schur-complement trick** of Triggs and coauthors; in the language of Post 28, it is simply an elimination order with all points first.
+
+### The gauge of monocular vision
+
+A pose graph has three free directions in the plane and six in 3D. Bundle adjustment with a single camera moving around has seven: the whole scene can be moved (3), rotated (3) and **scaled** (1) without changing a single pixel, because images record only directions. The widget fixes the first camera's pose and the second camera's position, which removes all seven. A real system fixes the scale with an extra sensor (stereo, an IMU, wheel odometry) or lets it drift and corrects it at loop closures, which is why monocular SLAM uses the similarity group Sim(3) for its loop closures (Strasdat and coauthors).
+
+<BundleAdjustmentMini client:visible />
+
+## Play with it
+
+<TryThis>
+- In the pinhole widget, the default point sits 0.8 m to the right at a depth of 4 m. With $f = 400$ px it lands at $u = 400 \cdot 0.8/4 + 320 = 400$, and at $v = 400 \cdot (-0.5)/4 + 240 = 190$. The two hollow markers on the ray, at half and twice the distance, land on the same pixel.
+- Drag the point to a depth of 8 m: its offset from the centre halves, from 80 to 40 pixels. Now set the focal length to 800: the offset doubles again. A longer lens spreads the same directions over more pixels.
+- In bundle adjustment, step through the iterations. The reprojection error falls from 52 pixels to 4.4, then 1.11, and then settles at 1.06 pixels after the third iteration, the level of the simulated 1-pixel noise. The points move from 0.60 m to 0.064 m from the truth.
+- Look at the image of camera 0: its residuals shrink too, although its pose is held fixed, because the points move. The problem has 54 unknowns (4 cameras × 6 + 10 points × 3); eliminating the points leaves a reduced camera system of only 24.
+</TryThis>
+
+## Algorithm
+
+<AlgorithmBox title="Bundle adjustment (Levenberg–Marquardt with the Schur complement)" source="src/lib/demos/bundle.ts">
+1. Initialize the cameras (for example by two-view geometry and resection) and triangulate the points.
+2. For every observation, compute the reprojection error (2) and its Jacobians, and accumulate $\boldsymbol{\Lambda}_{cc}$, $\boldsymbol{\Lambda}_{cp}$, the 3 × 3 blocks of $\boldsymbol{\Lambda}_{pp}$, $\boldsymbol{\eta}_c$ and $\boldsymbol{\eta}_p$.
+3. Add the Levenberg–Marquardt damping; invert every point block; form and solve the reduced camera system (3).
+4. Back-substitute every point; update cameras on SE(3) and points by addition; accept or reject the step as in Post 27.
+</AlgorithmBox>
+
+The demo builds the same problem from the library's reprojection factor (`src/lib/graph/factors.ts`) and lets the general sparse solver choose the elimination order. It does almost what the Schur trick prescribes: minimum degree eliminates nine of the ten points first, because each point is linked to only four cameras while each camera starts out linked to ten points. Near the end a camera's degree ties with the last point's, and the tie-break lets the cameras go first.
+
+## When it breaks
+
+### Initialization
+
+The reprojection error is strongly nonlinear: a point behind a camera, or a camera rotated by 90°, sends (1) far from its minimum, and Gauss–Newton cannot recover. Real systems build their initial guess carefully. They compute the relative pose of two views from matched features, triangulate points, then add cameras one at a time by solving for their pose from known points (the perspective-n-point problem). Bundle adjustment refines, it does not discover.
+
+### Outliers
+
+Feature matching produces wrong matches, which are false observations with huge reprojection errors. Every practical bundle adjuster uses a robust kernel, usually Huber, from [Post 29](../robust-optimization/), and removes observations that remain far off.
+
+### Scale drift and degenerate motion
+
+A single camera cannot observe scale, so over a long trajectory the map's scale slowly drifts. And when the camera only rotates without moving, the rays from different views coincide and depth is unobservable altogether.
+
+### A map of visual SLAM
+
+The systems in use today are combinations of the pieces in this series:
+
+- **ORB-SLAM** matches ORB features between frames. It tracks the camera against a local map, refines that map with local bundle adjustment, and closes loops with a pose graph on Sim(3) before a final global bundle adjustment.
+- **DSO** skips features and minimizes photometric error (brightness differences) directly, over a sliding window whose old states are marginalized as in Post 28.
+- **VINS-Mono** adds an inertial measurement unit, whose readings between frames are summarized as one "preintegrated" factor, and estimates scale and gravity in a sliding-window factor graph.
+- Libraries such as **GTSAM**, **g2o** and **Ceres** provide the factor graphs, manifolds, sparse solvers and robust kernels of this series.
+
+## Summary
+
+- 3D pose graphs work exactly like 2D ones, with SE(3) residuals and 6 × 6 blocks.
+- A pinhole camera maps a point to the pixel $(f_x x/z + c_x, f_y y/z + c_y)$; one image records directions, not distances.
+- The reprojection error compares where a point should appear with where it was seen; bundle adjustment minimizes it over all cameras and points together.
+- Eliminating the points first (the Schur complement) reduces bundle adjustment to a small system over the cameras.
+- Monocular vision leaves scale unobservable: seven gauge freedoms, and scale drift over long runs.

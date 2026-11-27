@@ -832,3 +832,23 @@ test.describe('post 30 widgets', () => {
     await expect(w.locator('[data-readout="affected"]')).toHaveText('2');
   });
 });
+
+test.describe('post 31 widgets', () => {
+  test('PinholeProjection and BundleAdjustmentMini', async ({ page }) => {
+    await page.goto('posts/toward-3d-and-vision/');
+    const p = page.locator('[data-widget="PinholeProjection"]');
+    await p.scrollIntoViewIfNeeded();
+    await expect(p.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(p.locator('[data-readout="uv"]')).toHaveText('(400.0, 190.0)');
+    await p.getByRole('slider', { name: 'Point depth z' }).fill('8');
+    await expect(p.locator('[data-readout="offset"]')).toHaveText('40.0 px = f·x/z');
+    const b = page.locator('[data-widget="BundleAdjustmentMini"]');
+    await b.scrollIntoViewIfNeeded();
+    await expect(b.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(b.locator('canvas')).toBeVisible();
+    await expect(b.locator('[data-readout="px"]')).toHaveText('51.99 px');
+    await b.getByRole('slider', { name: 'Iteration' }).fill('3');
+    await expect(b.locator('[data-readout="px"]')).toHaveText('1.06 px');
+    await expect(b.locator('[data-readout="sizes"]')).toHaveText('54 / 24');
+  });
+});

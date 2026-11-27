@@ -12,6 +12,7 @@ import {
   pointPriorFactor,
   priorFactorSE2,
   rangeBearingFactor,
+  reprojectionFactor,
   type Factor,
 } from '../../../src/lib/graph/factors';
 import { readG2o, writeG2o } from '../../../src/lib/graph/io';
@@ -21,6 +22,7 @@ import { graphCost, linearizeGraph, optimizeGraph } from '../../../src/lib/graph
 import {
   ordering,
   point2,
+  point3,
   pose2,
   pose3,
   retractVar,
@@ -85,6 +87,29 @@ describe('factor Jacobians match finite differences', () => {
       checkJacobians(betweenFactorSE3('c', 'd', randPose3(), identity(6)), v);
       checkJacobians(rangeBearingFactor('a', 'l', Float64Array.of(3, 0.4), identity(2)), v);
       checkJacobians(pointPriorFactor('l', Float64Array.of(1, 2), identity(2)), v);
+    }
+  });
+  it('reprojection factor (camera SE(3), point 3D) matches finite differences', () => {
+    const K = { fx: 500, fy: 480, cx: 320, cy: 240 };
+    for (let rep = 0; rep < 20; rep++) {
+      const cam = se3.exp(
+        Float64Array.of(
+          rng.normal(),
+          rng.normal(),
+          rng.normal(),
+          0.3 * rng.normal(),
+          0.3 * rng.normal(),
+          0.3 * rng.normal(),
+        ),
+      );
+      // A point 4–8 m in front of the camera, in world coordinates.
+      const pc = Float64Array.of(rng.uniformRange(-1, 1), rng.uniformRange(-1, 1), rng.uniformRange(4, 8));
+      const pw = se3.act(cam, pc);
+      const v = values([
+        ['c', pose3(cam)],
+        ['p', point3(pw[0]!, pw[1]!, pw[2]!)],
+      ]);
+      checkJacobians(reprojectionFactor('c', 'p', Float64Array.of(300, 200), K, identity(2)), v);
     }
   });
   it('a between factor has zero residual at the measured relative pose', () => {

@@ -260,6 +260,14 @@ export const notationGroups: readonly NotationGroup[] = [
         meaning: 'Gauss–Newton system Λδ = η',
       },
       { tex: '\\boldsymbol{\\delta},\\ \\lambda', meaning: 'update step; Levenberg–Marquardt damping' },
+      {
+        tex: 'f_x, f_y, c_x, c_y',
+        meaning: 'pinhole camera: focal lengths and principal point, in pixels (Post 31)',
+      },
+      {
+        tex: '\\pi(\\cdot),\\ \\sigma_{\\text{px}}',
+        meaning: 'projection of a point to a pixel; pixel noise (Post 31)',
+      },
       { tex: '\\rho(\\cdot)', meaning: 'robust kernel' },
       {
         tex: 's_i = \\mathbf{r}_i\\T\\boldsymbol{\\Omega}_i\\mathbf{r}_i,\\ k_\\rho',
