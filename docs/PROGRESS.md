@@ -2,7 +2,7 @@
 
 ## Current phase: 4 — Part 4 (SLAM) in progress
 
-## Next task: Phase 4 — post 27 `pose-graph-optimization` (PoseGraph2D, solver in a worker)
+## Next task: Phase 4 — post 28 `sparsity-and-solvers` (SparsityExplorer, MarginalizationFill)
 
 ## Posts
 
@@ -34,7 +34,8 @@
 | 24    | ekf-slam                         | published | EKFSLAM                          | ~2,600 words. Three steps and their cost,                                                                                       | ρ   | heat map filling in, loop closure, inconsistency over 50 runs. |
 | 25    | data-association                 | published | AssociationGating (scene, run)   | ~2,600 words. Gating, NN vs JCBB under a shared pose error, clutter, new landmarks; one forced wrong pairing wrecks the map.    |
 | 26    | factor-graphs                    | published | FactorGraphBuilder               | ~2,500 words. Bayes net → factor graph, MAP = NLLS, J and Λ sparsity = the graph, singular Λ and the gauge.                     |
-| 27–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                                |                                                                                                                                 |
+| 27    | pose-graph-optimization          | published | PoseGraph2D (worker)             | ~2,400 words. 1,000-pose Manhattan city, LM/GN iterations streamed from a worker, sparsity and fill, local minima.              |
+| 28–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                                |                                                                                                                                 |
 
 ## Infrastructure checklist
 
@@ -166,6 +167,8 @@
 - 2026-11-27 — **Minimum degree instead of AMD.** DESIGN asks for approximate minimum degree. `minimumDegree` eliminates a node of exactly smallest degree in the elimination graph (AMD approximates these degrees for speed on very large matrices). The orderings are of the same kind; the exact version is simpler to verify and fast enough here (1,000 poses: a full LM iteration of the Manhattan graph takes ~60–90 ms in Node). Tests: valid permutation; never more fill than natural on grid graphs; < 60% of natural fill on a 16 × 16 grid. Also no separate dense fallback: the sparse path handles small problems too.
 - 2026-11-27 — **Manhattan generator:** a robot on a grid of 1 m blocks inside ±8 blocks, turning with probability 0.3; revisits ≥ 20 poses apart are recognized with probability 0.5. With 1,000 poses (seed 3) there are 336 loop closures; dead reckoning is 3.44 m RMS off; LM reaches the optimum in 3 iterations (cost 8.1·10⁵ → 460), 0.35 m RMS.
 - 2026-11-27 — **FactorGraphBuilder (post 26):** five poses and three landmarks; 13 candidate factors (prior, 4 odometry, 8 range–bearing readings within 3.2 m) with seeded measurements; the initial guess offsets every unknown by ~0.4 m / 8°. Factors toggle by clicking their squares (role="switch", keyboard Enter/Space) or a checkbox list. The widget computes J and Λ densely (21 unknowns) and counts "unconstrained directions" as eigenvalues of Λ below 1e-9 of the largest: 3 without the prior (the gauge), 2 without any reading of landmark 2. Solve runs sparse GN from the library.
+- 2026-11-27 — **PoseGraph2D (post 27):** the solver runs in a Web Worker and streams every iterate (positions, cost, RMS error, ms), so the trajectory snaps into place as iterations arrive. Requests are debounced (250 ms) and a request arriving mid-solve replaces the worker, so slider drags never queue stale solves. Seed 18 is the most typical of 20 (351 loop closures; dead reckoning 4.73 m → 0.16 m RMS in 6 LM iterations). The extreme-drift preset (σθ = 0.1 rad per move) gets stuck for 5 of seeds 11–20, including 18: both GN and LM end at cost 13–15 thousand against an expected 527. No real dataset: the synthetic city is enough for the post and avoids licensing questions (DESIGN §5.1 allows it as optional). Phase 4 acceptance: 1,000 poses optimize in ~40 ms per iteration in Chromium (widget readout), animated per iteration.
+- 2026-11-27 — **Λ's sparsity pattern is structural (bug fix found by screenshot).** `linearizeGraph` used to skip entries that came out exactly 0.0, so the pattern (and the fill counts shown in post 27) differed by a few entries between Node and Chromium, whose trigonometric functions round differently. Every entry of a factor's block is now stored; counts are identical everywhere.
 
 ## Follow-ups / known issues
 

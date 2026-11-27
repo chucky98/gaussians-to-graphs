@@ -123,7 +123,7 @@ The factors are in `src/lib/graph/factors.ts`, the sparse matrices and Cholesky 
 
 ### A bad starting point
 
-Gauss–Newton finds the minimum near where it starts. The cost (1) of a SLAM problem is not convex, because rotations are involved, and from a poor initial guess the iterations can settle in a wrong local minimum or diverge. The initial guess usually comes from composing the odometry. That is good enough for short trajectories and risky for long ones with large heading drift; Post 27 shows Levenberg–Marquardt pulling a badly drifted trajectory into place.
+Gauss–Newton finds the minimum near where it starts. The cost (1) of a SLAM problem is not convex, because rotations are involved, and from a poor initial guess the iterations can settle in a wrong local minimum or diverge. The initial guess usually comes from composing the odometry. That is good enough for short trajectories and risky for long ones with large heading drift; [Post 27](../pose-graph-optimization/) shows Levenberg–Marquardt pulling a badly drifted trajectory into place.
 
 ### Outliers
 

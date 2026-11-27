@@ -119,7 +119,7 @@ A reading of landmark $j$ has a measurement Jacobian $\mathbf{H}$ that is zero e
 
 ### Gauge freedom
 
-Nothing in the measurements says where the map is in the world. Shift and rotate the robot's whole trajectory and every landmark together, and every reading stays exactly the same. This freedom is called the **gauge**. A filter must fix it somehow; here, the robot's starting pose is declared known exactly, which makes it the origin of the map. Everything is then estimated relative to where the robot started, and landmark 0, mapped from the start, stays the best-known point of the map. Without such an anchor, the information matrix of the problem is singular (Post 19), and optimizers in Post 27 need a prior on one pose for the same reason.
+Nothing in the measurements says where the map is in the world. Shift and rotate the robot's whole trajectory and every landmark together, and every reading stays exactly the same. This freedom is called the **gauge**. A filter must fix it somehow; here, the robot's starting pose is declared known exactly, which makes it the origin of the map. Everything is then estimated relative to where the robot started, and landmark 0, mapped from the start, stays the best-known point of the map. Without such an anchor, the information matrix of the problem is singular (Post 19), and optimizers in [Post 27](../pose-graph-optimization/) need a prior on one pose for the same reason.
 
 ## Play with it
 

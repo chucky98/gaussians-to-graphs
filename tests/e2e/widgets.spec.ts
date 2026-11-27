@@ -765,3 +765,20 @@ test.describe('post 26 widgets', () => {
     await expect(w.locator('[data-readout="free"]')).toHaveText('0');
   });
 });
+
+test.describe('post 27 widgets', () => {
+  test('PoseGraph2D: the worker optimizes 1,000 poses; loop closures matter', async ({ page }) => {
+    await page.goto('posts/pose-graph-optimization/');
+    const w = page.locator('[data-widget="PoseGraph2D"]');
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="it"]')).toHaveText('6 of 6', { timeout: 30_000 });
+    await expect(w.locator('[data-readout="rms"]')).toHaveText('0.16 m');
+    await expect(w.locator('[data-readout="size"]')).toHaveText('1000 / 999 / 351');
+    await w.getByRole('slider', { name: 'Iteration' }).fill('0');
+    await expect(w.locator('[data-readout="rms"]')).toHaveText('4.73 m');
+    await w.getByRole('switch', { name: 'Use loop closures' }).uncheck();
+    await expect(w.locator('[data-readout="it"]')).toHaveText('1 of 1', { timeout: 30_000 });
+    await expect(w.locator('[data-readout="rms"]')).toHaveText('4.73 m');
+  });
+});
