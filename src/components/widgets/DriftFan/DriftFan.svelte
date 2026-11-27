@@ -11,6 +11,7 @@
   import SeedControl from '../../primitives/SeedControl.svelte';
   import Legend from '../../primitives/Legend.svelte';
   import { createAnimationLoop } from '../../primitives/animation.svelte';
+  import type { Pose2 } from '../../../lib/geometry/se2';
   import type { PlotContext } from '../../primitives/plot';
   import {
     DRIFT_DEFAULTS as D,
@@ -33,13 +34,37 @@
   let k = $state<number>(DRIFT_STEPS);
   let speed = $state(1);
 
-  const runXY = $derived(sim.runs.map(toXY));
+  // ------------------------------------------------------------ closing the loop (Part 4), in a worker
+  let closeLoop = $state(false);
+  let closed = $state<{ key: string; runs: Pose2[][] } | null>(null);
+  let closing = $state(false);
+  const key = $derived(`${noisePct}|${runs}|${seed}`);
+  let worker: Worker | null = null;
+  let reqId = 0;
+  $effect(() => {
+    if (!closeLoop) return;
+    const want = key;
+    if (closed?.key === want) return;
+    worker ??= new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
+    const id = ++reqId;
+    closing = true;
+    worker.onmessage = (e: MessageEvent<{ id: number; runs: Pose2[][] }>) => {
+      if (e.data.id !== reqId) return;
+      closed = { key: want, runs: e.data.runs };
+      closing = false;
+    };
+    worker.postMessage({ id, params: { noisePct, runs, seed } });
+  });
+  $effect(() => () => worker?.terminate());
+  /** What is drawn: dead reckoning, or the loop-closed runs once they are ready. */
+  const view = $derived(closeLoop && closed?.key === key ? { ...sim, runs: closed.runs } : sim);
+  const runXY = $derived(view.runs.map(toXY));
   const truthXY = $derived(toXY(sim.truth));
-  const curve = $derived(rmsCurve(sim));
+  const curve = $derived(rmsCurve(view));
   const curveMax = $derived(Math.max(0.5, ...curve));
-  const spread = $derived(spreadAt(sim, k));
+  const spread = $derived(spreadAt(view, k));
   const rms = $derived(curve[k] ?? 0);
-  const headingDeg = $derived((rmsHeadingError(sim, k) * 180) / Math.PI);
+  const headingDeg = $derived((rmsHeadingError(view, k) * 180) / Math.PI);
   const dist = $derived(sim.distance[k] ?? 0);
   const lap = $derived(k <= sim.lapEnds[0]! ? 1 : 2);
 
@@ -64,6 +89,7 @@
     runs = D.runs;
     seed = D.seed;
     showTruth = D.showTruth;
+    closeLoop = false;
     speed = 1;
     k = DRIFT_STEPS;
   }
@@ -124,7 +150,10 @@
     <Legend
       items={[
         ...(showTruth ? [{ kind: 'truth' as const, label: 'true path' }] : []),
-        { kind: 'odom', label: `${runs} odometry-only run${runs === 1 ? '' : 's'}` },
+        {
+          kind: 'odom',
+          label: `${runs} ${view === sim ? 'odometry-only' : 'loop-closed'} run${runs === 1 ? '' : 's'}`,
+        },
         ...(spread ? [{ kind: 'prior' as const, label: '95% ellipse of the runs' }] : []),
       ]}
     />
@@ -205,6 +234,10 @@
       format={(v) => String(v)}
     />
     <Toggle label="Show the true path" bind:checked={showTruth} />
+    <Toggle label="Close the loop (recognize the start after each lap)" bind:checked={closeLoop} />
+    {#if closeLoop}<p class="closing" data-readout="closing">
+        {closing ? 'Closing the loop…' : 'Loop closed: every run optimized as a pose graph'}
+      </p>{/if}
     <SeedControl bind:seed defaultSeed={D.seed} />
   {/snippet}
 
@@ -214,12 +247,19 @@
     errors; the dashed ellipse holds 95% of a Gaussian fitted to the runs' current positions. Odometry noise sets the
     size of the errors: at 3%, after 1 m of driving the distance error has a standard deviation of 3 cm and the heading
     error 0.03 rad.
-    <strong>What to look for:</strong> the runs fan out as the robot drives, and coming back past the starting point does
-    not shrink the fan: after two laps it is wider than after one.
+    <strong>What to look for:</strong> the runs fan out as the robot drives, and coming back past the starting point
+    does not shrink the fan: after two laps it is wider than after one. Switch on <em>Close the loop</em> to let each run
+    recognize its starting point after every lap, as in Part 4: the whole path is then re-estimated, and the fan pinches shut
+    where the loop closes.
   {/snippet}
 </WidgetFrame>
 
 <style>
+  .closing {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--c-muted);
+  }
   .truth {
     fill: none;
     stroke: var(--c-truth);

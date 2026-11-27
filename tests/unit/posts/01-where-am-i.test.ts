@@ -126,3 +126,18 @@ describe('post 01: error-growth claims', () => {
     expect(Math.abs(mc / formula - 1)).toBeLessThan(0.05);
   });
 });
+
+describe('post 01 follow-up: closing the loop', () => {
+  it('lap ends 1.19 / 1.98 m → almost zero; worst point 2.35 m → 0.55 m', async () => {
+    const D = await import('../../../src/lib/demos/drift-fan');
+    const p = { noisePct: D.DRIFT_DEFAULTS.noisePct, runs: D.DRIFT_DEFAULTS.runs, seed: D.DRIFT_DEFAULTS.seed };
+    const sim = D.simulate(p);
+    const cs = { ...sim, runs: D.closeLoops(p) };
+    const [l1, l2] = sim.lapEnds as [number, number];
+    expect([D.rmsError(sim, l1).toFixed(2), D.rmsError(sim, l2).toFixed(2)]).toEqual(['1.19', '1.98']);
+    expect(D.rmsError(cs, l1)).toBeLessThan(0.01);
+    expect(D.rmsError(cs, l2)).toBeLessThan(0.01);
+    const worst = (s: typeof sim) => Math.max(...Array.from({ length: s.steps + 1 }, (_, k) => D.rmsError(s, k)));
+    expect([worst(sim).toFixed(2), worst(cs).toFixed(2)]).toEqual(['2.35', '0.55']);
+  }, 60_000);
+});
