@@ -1,35 +1,36 @@
 # Progress
 
-## Current phase: 3 — Part 3 (geometry) in progress
+## Current phase: 3 — Part 3 complete (posts 01–22 published)
 
-## Next task: Phase 3 — post 22 `uncertainty-on-poses` (PoseCompounding)
+## Next task: Phase 4 — post 23 `the-slam-problem` (CorrelationsEmerge)
 
 ## Posts
 
-| #     | Slug                             | Status    | Widgets                          | Notes                                                                                                                        |
-| ----- | -------------------------------- | --------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| 01    | where-am-i                       | published | DriftFan                         | ~2,100 words. Embeds the SyllabusMap. Claims pinned in `tests/unit/posts/01-…`. Phase 4 follow-up: "close the loop" toggle.  |
-| 02    | gaussians-and-covariance         | published | Gaussian1D, CovarianceEllipse    | Reference implementation of the post template. ~2,200 words. Claims pinned in `tests/unit/posts/02-…`.                       |
-| 03    | conditioning-and-marginalizing   | published | SliceVsProject                   | ~1,600 words. Covariance/information duality; claims pinned in `tests/unit/posts/03-…`.                                      |
-| 04    | propagating-uncertainty          | published | NonlinearPropagation             | ~1,600 words. Polar banana, x², sin, linear; claims pinned in `tests/unit/posts/04-…`.                                       |
-| 05    | least-squares                    | published | LineFit                          | ~2,300 words. Road from phone GPS fixes; multipath outlier; weights from reported accuracy. Projection figure.               |
-| 06    | mle-and-map                      | published | BayesGrid1D                      | ~2,100 words. Distance to a wall: odometry prior + ultrasonic readings; two-doorway bimodal prior.                           |
-| 07    | estimator-quality                | published | EstimatorShootout                | ~2,200 words. GPS receiver on a benchmark; open sky vs reflections (10% at ±30 m); CRLB by numerical Fisher information.     |
-| 08    | recursive-least-squares          | published | RLSStream                        | ~2,300 words. Online motor calibration; battery sag; forgetting factor sweet spot.                                           |
-| 09    | nonlinear-least-squares          | published | CostLandscape                    | ~2,300 words. UWB indoor positioning; mirror minimum with wall anchors; GN divergence vs LM.                                 |
-| 10    | bayes-filter                     | published | CorridorRobot                    | ~2,400 words. Delivery robot on a 30 m loop corridor, door detector; histogram filter; kidnapping and the ε fix.             |
-| 11    | kalman-filter-1d                 | published | GaussianProduct, Tracker1D       | ~2,500 words. Same robot in a straight corridor: odometry + position fixes; gain as trust ratio; steady state; outage.       |
-| 12    | kalman-filter                    | published | CVTracker2D                      | ~2,700 words. Warehouse forklift from ceiling-camera fixes; constant-velocity model; velocity learned via correlation; turn. |
-| 13    | tuning-and-consistency           | published | TuningLab                        | ~2,500 words. 50 Monte Carlo runs of the forklift tracker; true vs assumed noise; NEES/NIS bounds; NIS blind spot; Joseph.   |
-| 14    | robot-models-2d                  | published | MotionModelSampler, RangeBearing | ~2,600 words. Velocity/odometry models, control vs state noise (V M Vᵀ), range–bearing Jacobians; hospital lobby markers.    |
-| 15    | extended-kalman-filter           | published | EKFLocalization                  | ~2,600 words. Robot in a hall with 8 mapped markers; EKF vs odometry; blind and bad-start presets; overconfident recovery.   |
-| 16    | unscented-kalman-filter          | published | UnscentedTransform, UKFvsEKF     | ~2,700 words. Sigma points, α/β/κ (β = 2 − 2α² exact for x²), UKF with augmented control noise; UKF vs EKF on the hall run.  |
-| 17    | particle-filter                  | published | MCL                              | ~2,900 words. Global localization with identical markers; ESS and resampling schemes; kidnapping and augmented MCL; worker.  |
-| 18    | smoothing                        | published | FilterVsSmoother                 | ~2,500 words. Post 11's outage run: filter vs RTS smoother vs batch vs fixed lag; data arriving after the gap.               |
-| 19    | information-filter               | published | InfoVsCov                        | ~2,300 words. Information filter; trajectory Ω block-tridiagonal vs dense P; conditional independence; marginalization.      |
-| 20    | rotations                        | published | EulerGimbal, QuaternionSlerp     | ~2,800 words. Threlte (3D). Gimbal rings coloured by their axis; Euler-change table for 5° body turns; slerp vs Euler paths. |
-| 21    | lie-groups-for-robotics          | published | TangentSpace, SE2Exp             | ~3,300 words. SO(2) circle and tangent line; SE(2) constant-twist arc vs N steps vs naive sum; Jacobian table; SE(3) brief.  |
-| 22–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                                |                                                                                                                              |
+| #     | Slug                             | Status    | Widgets                          | Notes                                                                                                                           |
+| ----- | -------------------------------- | --------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| 01    | where-am-i                       | published | DriftFan                         | ~2,100 words. Embeds the SyllabusMap. Claims pinned in `tests/unit/posts/01-…`. Phase 4 follow-up: "close the loop" toggle.     |
+| 02    | gaussians-and-covariance         | published | Gaussian1D, CovarianceEllipse    | Reference implementation of the post template. ~2,200 words. Claims pinned in `tests/unit/posts/02-…`.                          |
+| 03    | conditioning-and-marginalizing   | published | SliceVsProject                   | ~1,600 words. Covariance/information duality; claims pinned in `tests/unit/posts/03-…`.                                         |
+| 04    | propagating-uncertainty          | published | NonlinearPropagation             | ~1,600 words. Polar banana, x², sin, linear; claims pinned in `tests/unit/posts/04-…`.                                          |
+| 05    | least-squares                    | published | LineFit                          | ~2,300 words. Road from phone GPS fixes; multipath outlier; weights from reported accuracy. Projection figure.                  |
+| 06    | mle-and-map                      | published | BayesGrid1D                      | ~2,100 words. Distance to a wall: odometry prior + ultrasonic readings; two-doorway bimodal prior.                              |
+| 07    | estimator-quality                | published | EstimatorShootout                | ~2,200 words. GPS receiver on a benchmark; open sky vs reflections (10% at ±30 m); CRLB by numerical Fisher information.        |
+| 08    | recursive-least-squares          | published | RLSStream                        | ~2,300 words. Online motor calibration; battery sag; forgetting factor sweet spot.                                              |
+| 09    | nonlinear-least-squares          | published | CostLandscape                    | ~2,300 words. UWB indoor positioning; mirror minimum with wall anchors; GN divergence vs LM.                                    |
+| 10    | bayes-filter                     | published | CorridorRobot                    | ~2,400 words. Delivery robot on a 30 m loop corridor, door detector; histogram filter; kidnapping and the ε fix.                |
+| 11    | kalman-filter-1d                 | published | GaussianProduct, Tracker1D       | ~2,500 words. Same robot in a straight corridor: odometry + position fixes; gain as trust ratio; steady state; outage.          |
+| 12    | kalman-filter                    | published | CVTracker2D                      | ~2,700 words. Warehouse forklift from ceiling-camera fixes; constant-velocity model; velocity learned via correlation; turn.    |
+| 13    | tuning-and-consistency           | published | TuningLab                        | ~2,500 words. 50 Monte Carlo runs of the forklift tracker; true vs assumed noise; NEES/NIS bounds; NIS blind spot; Joseph.      |
+| 14    | robot-models-2d                  | published | MotionModelSampler, RangeBearing | ~2,600 words. Velocity/odometry models, control vs state noise (V M Vᵀ), range–bearing Jacobians; hospital lobby markers.       |
+| 15    | extended-kalman-filter           | published | EKFLocalization                  | ~2,600 words. Robot in a hall with 8 mapped markers; EKF vs odometry; blind and bad-start presets; overconfident recovery.      |
+| 16    | unscented-kalman-filter          | published | UnscentedTransform, UKFvsEKF     | ~2,700 words. Sigma points, α/β/κ (β = 2 − 2α² exact for x²), UKF with augmented control noise; UKF vs EKF on the hall run.     |
+| 17    | particle-filter                  | published | MCL                              | ~2,900 words. Global localization with identical markers; ESS and resampling schemes; kidnapping and augmented MCL; worker.     |
+| 18    | smoothing                        | published | FilterVsSmoother                 | ~2,500 words. Post 11's outage run: filter vs RTS smoother vs batch vs fixed lag; data arriving after the gap.                  |
+| 19    | information-filter               | published | InfoVsCov                        | ~2,300 words. Information filter; trajectory Ω block-tridiagonal vs dense P; conditional independence; marginalization.         |
+| 20    | rotations                        | published | EulerGimbal, QuaternionSlerp     | ~2,800 words. Threlte (3D). Gimbal rings coloured by their axis; Euler-change table for 5° body turns; slerp vs Euler paths.    |
+| 21    | lie-groups-for-robotics          | published | TangentSpace, SE2Exp             | ~3,300 words. SO(2) circle and tangent line; SE(2) constant-twist arc vs N steps vs naive sum; Jacobian table; SE(3) brief.     |
+| 22    | uncertainty-on-poses             | published | PoseCompounding                  | ~2,700 words. Gaussian on SE(2); compounding with the adjoint; (x, y, θ) ellipse 69% vs tangent region 97%; first-order limits. |
+| 23–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                                |                                                                                                                                 |
 
 ## Infrastructure checklist
 
@@ -145,13 +146,17 @@
 - 2026-11-27 — **Post 21 widgets are 2D (SVG), not Threlte.** DESIGN lists no 3D for post 21, and the circle and the plane say everything; the post's bundle stays free of three.js (checked by validate). TangentSpace contrasts Exp with "step along the tangent line, then normalize" (the angle turned is atan τ instead of τ). SE2Exp shows Exp as the limit of N straight-then-turn steps (error halves as N doubles; N = 1 equals the naive sum at heading 0), and dragging the end point runs Log with the turn held fixed.
 - 2026-11-27 — **Post 21 notation:** X, Y (generic group elements, bold because they are matrices; calligraphic 𝒳 is taken by sigma points), τ = (ρ, θ) for SE(2)/SE(3) twists, V(θ), N (number of steps). Conflict notes: ρ vs bold ρ vs ρ(·); V(θ) vs V_k.
 - 2026-11-27 — **Wide tables in posts are keyboard-scrollable (bug fix).** Markdown tables already scrolled inside their own box on narrow screens, but nothing made them focusable; post 21's Jacobian table was the first wide enough to scroll at 375 px, and axe caught it. `MathScroll.astro` now also handles `.content table`: a table that overflows gets `tabindex="0"` (keeping its table role and caption, unlike equations, which become labelled regions).
+- 2026-11-27 — **PoseCompounding draws the tangent model's true 95% region**, not a sampled outline: the (x, y) marginal of T̄ Exp(τ) is integrated over the heading on a 64 × 64 × 40 grid (with the 1/det J_r change-of-variables factor) and contoured at the density level that encloses 95% (marching squares). The algebra is split so each (x, y) costs ~20 flops per heading node, and the sampler is inlined (tested equal to the generic ⊕/compose): a full recompute is ~12 ms, so no worker is needed. Seed 4 is the most typical of 40 (ellipse 69%, region 97%, 3D 86%; medians 69.6%, 96.8%, 86.5%).
+- 2026-11-27 — **Post 22 states the limits honestly:** the tangent region holds ≈ 97% (slightly generous) and, with 5° per step, first-order compounding underestimates the along-path spread (0.15 m in the runs vs 0.095 m predicted), so only 86% of runs fall in the 3D 95% ellipsoid; Barfoot & Furgale (2014) is cited for higher-order compounding. Also tested: the (x, y, θ) covariance is exactly J P Jᵀ, so the two summaries carry the same first-order numbers.
+- 2026-11-27 — **Post 22 notation:** T̄ (mean of a Gaussian on a group), σ_θ and σ_xy (noise per move); relative moves are T_{k−1,k}, per the table's T_ij. The perturbation is τ (bold ξ is taken by the information vector).
+- 2026-11-27 — **Phase 3 complete:** posts 20–22 published. Acceptance: full `geometry/*` with Jacobian tests against finite differences; Threlte lazy-loaded, and `validate` proves three.js is reachable only from `needs3d` posts.
 
 ## Follow-ups / known issues
 
 - **Owner action (statistics):** GoatCounter site `chucky98` is configured and counting. In GoatCounter → Settings, enable "Allow adding visitor counts on your website"; until then the public counters return 403 and the About section shows "could not be loaded".
 
 - **Owner action:** install the giscus GitHub App on `chucky98/gaussians-to-graphs` (https://github.com/apps/giscus). Then set `giscus.enabled = true` in `src/lib/site/config.ts`.
-- When posts 20–32 are published (several are already mentioned by number, e.g. 22, 23, 24, 25, 26, 27, 28, 29): link the plain-text references to them from earlier posts.
+- When posts 23–32 are published (several are already mentioned by number, e.g. 23, 24, 25, 26, 27, 28, 29, 31): link the plain-text references to them from earlier posts. (References to 20–22 are now linked.)
 - Client-side KaTeX (77 KB gz) still loads for widgets with TeX labels or MatrixView. Consider rendering static TeX at build time and showing live numbers as plain text.
 - `Plot2D` pan/zoom is not implemented yet (no Phase 0 widget needs it). Primitives still to build when first needed: Landmark, Heatmap, Spy.
 - Lighthouse has not been run (optional per §8.4).
@@ -179,5 +184,6 @@
 | MCL island                  | 4.5 KB gz + worker 3.0 KB gz                                                                | Particle filter off the main thread                           |
 | FilterVsSmoother island     | 3.9 KB gz (+ shared primitives and Svelte runtime)                                          | No KaTeX                                                      |
 | InfoVsCov island            | 2.8 KB gz (+ shared primitives and Svelte runtime)                                          | No KaTeX                                                      |
+| PoseCompounding island      | ~4 KB gz (+ shared primitives and Svelte runtime); ~12 ms per recompute                     | No KaTeX, no three.js                                         |
 | Post 20 islands             | EulerGimbal 2.9 KB, QuaternionSlerp 3.6 KB gz + shared 3D chunk (three + Threlte) 195 KB gz | 3D chunk loads only on `needs3d` posts (checked by validate)  |
 | Shared: KaTeX chunk         | 77 KB                                                                                       | Loaded only by Gaussian1D / CovarianceEllipse (post 02)       |

@@ -214,6 +214,11 @@ export const notationGroups: readonly NotationGroup[] = [
         meaning: 'the SE(2) matrix turning ρ into the translation of Exp(τ), t = V(θ) ρ (Post 21)',
       },
       { tex: 'N', meaning: 'number of steps: of data (Post 18), or of a motion split into pieces (Post 21)' },
+      {
+        tex: '\\bar{\\mathbf{T}}',
+        meaning: 'mean of a Gaussian on a group, T = T̄ Exp(τ) with τ ~ N(0, P) (Post 22)',
+      },
+      { tex: '\\sigma_\\theta,\\ \\sigma_{xy}', meaning: 'heading and position noise per move (Post 22)' },
       { tex: '(\\cdot)^\\wedge,\\ (\\cdot)^\\vee', meaning: 'hat and vee' },
       { tex: '\\Exp,\\ \\Log', meaning: 'maps between ℝⁿ and the group (capitalized, as in Solà et al.)' },
       { tex: '\\oplus,\\ \\ominus', meaning: 'right-plus and right-minus on manifolds' },
