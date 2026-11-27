@@ -1,6 +1,6 @@
 # Progress
 
-## Current phase: 2 — Part 2 complete (posts 01–19 published)
+## Current phase: 3 — Part 3 (geometry) in progress
 
 ## Next task: Phase 3 — post 20 `rotations` (EulerGimbal, QuaternionSlerp; Threlte, lazy-loaded)
 
@@ -133,6 +133,8 @@
 - 2026-11-26 — **InfoVsCov** uses post 11's corridor and a 1D constant-velocity forklift (2 numbers per step). The 2D forklift was avoided because its independent x/y problems put exact zeros in P too. Heat maps show |entry| on a 12-decade log scale with exact zeros blank, so "dense but decaying" is visible (first-to-last correlation 3.4e-6 after 40 steps, stated in the post). `Heatmap` gained a `crisp` option for matrix cells.
 - 2026-11-26 — **Phase 2 complete:** posts 10–19 published. Acceptance criteria met: KF = batch, RTS = batch, EKF/UKF = KF on linear models, information filter = KF, and the NEES consistency test all pass.
 - 2026-11-26 — **About page accuracy fix:** it cited "the Kalman filter equals batch least squares" as an existing test; that test arrives with Part 2, so it now cites "recursive least squares equals batch least squares".
+- 2026-11-27 — **Phase 3 started with the full `geometry/*` library** (own PR, ahead of post 20, because posts 20–22 all build on it). `lie.ts` (not in DESIGN §5.1) holds a `LieGroup<G>` interface and, once for every group, ⊕/⊖, interpolation, the Jacobians of compose, inverse, ⊕ and ⊖ (Solà et al. 2018 conventions: right perturbations, τ = (ρ, θ)) and `composeCovariance`. `so2`, `se2`, `so3`, `se3` implement it (hat/vee, Exp/Log, adjoint, J_r, J_l and inverses, Jacobians of act); `quat.ts` has Hamilton quaternions (w first), Shepperd's matrix → quaternion, slerp via Exp/Log, nlerp; `so3.ts` has Z–Y–X Euler angles with an explicit gimbal-lock branch and the Euler-rate matrix E (det E = −cos pitch). SO(3) Log goes through the quaternion, so it is accurate next to π. `series.ts` switches every removable-singularity coefficient to its Taylor series (to θ⁸) below θ = 0.2.
+- 2026-11-27 — **Geometry tests (DESIGN §8.1)** run one generic suite over SO(2), SE(2), SO(3), SE(3): Exp∘Log, Log∘Exp, associativity, inverses, adjoint identity, J_l = Ad J_r = J_r(−τ), and every analytic Jacobian against central finite differences on the manifold at angles from 1e-9 to 3 rad (both sides of the series switch). Checked that the suite fails when a coefficient sign is flipped. `orthonormalize` uses the polar (nearest-rotation) iteration; the first version, a quaternion round trip, was not the nearest rotation for a scaled matrix, and its test caught that.
 
 ## Follow-ups / known issues
 
