@@ -127,7 +127,7 @@ The update avoids the Joseph form of Post 12, which would cost $O(n^3)$; the uni
 
 ### Overconfidence
 
-Inconsistency is not a rare failure; it is the normal behaviour of EKF-SLAM over long runs, and it gets worse with more heading uncertainty, as the numbers above show. Bailey and coauthors found the same in simulation, and Julier and Uhlmann showed early that even a stationary robot repeatedly observing landmarks becomes overconfident. Remedies include linearizing with fixed points (the first-estimates Jacobian of Huang and coauthors), using the robot's own frame for the map (robocentric mapping), or leaving filtering for optimization, which relinearizes the whole problem whenever it improves the estimate (Post 27).
+Inconsistency is not a rare failure; it is the normal behaviour of EKF-SLAM over long runs, and it gets worse with more heading uncertainty, as the numbers above show. Bailey and coauthors found the same in simulation, and Julier and Uhlmann showed early that even a stationary robot repeatedly observing landmarks becomes overconfident. Remedies include linearizing with fixed points (the first-estimates Jacobian of Huang and coauthors), using the robot's own frame for the map (robocentric mapping), or leaving filtering for optimization, which relinearizes the whole problem whenever it improves the estimate ([Post 27](../pose-graph-optimization/)).
 
 ### Quadratic cost
 

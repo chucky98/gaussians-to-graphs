@@ -1,0 +1,134 @@
+---
+number: 27
+title: Pose Graph Optimization
+description: Keep only the robot's poses and the constraints between them, fix the gauge with a prior, and let Gauss–Newton on SE(2) snap a drifted trajectory into place.
+part: 4
+status: published
+date: 2026-11-27
+prerequisites: [factor-graphs, uncertainty-on-poses]
+objectives:
+  - Build a pose graph from odometry and loop closures, and explain where relative-pose measurements come from.
+  - Write the SE(2) relative-pose residual and its Jacobians, and fix the gauge with a prior.
+  - Run Gauss–Newton and Levenberg–Marquardt on a pose graph and read their convergence.
+  - Explain why the problem stays sparse and cheap, and when the optimizer gets stuck in a local minimum.
+references:
+  - key: grisetti2010
+    text: 'Grisetti, Kümmerle, Stachniss, Burgard. "A tutorial on graph-based SLAM." *IEEE Intelligent Transportation Systems Magazine* 2(4), 2010.'
+  - key: lu1997
+    text: 'Lu, Milios. "Globally consistent range scan alignment for environment mapping." *Autonomous Robots* 4(4), 1997.'
+  - key: olson2006
+    text: 'Olson, Leonard, Teller. "Fast iterative alignment of pose graphs with poor initial estimates." *IEEE International Conference on Robotics and Automation (ICRA)*, 2006.'
+  - key: kummerle2011
+    text: 'Kümmerle, Grisetti, Strasdat, Konolige, Burgard. "g2o: A general framework for graph optimization." *IEEE International Conference on Robotics and Automation (ICRA)*, 2011.'
+  - key: dellaert2017
+    text: 'Dellaert, Kaess. "Factor Graphs for Robot Perception." *Foundations and Trends in Robotics* 6(1–2), 2017. Ch. 2 and 7 (pose graphs and their optimization on manifolds).'
+widgets: [PoseGraph2D]
+symbols:
+  - tex: '\mathbf{T} \in \SE(n),\ \mathbf{T}_{ij}'
+    meaning: pose; relative pose of j in i
+    match: ['\mathbf{T}_{ij}']
+  - tex: '\mathbf{r}_i,\ \boldsymbol{\Omega}_i'
+    meaning: residual and information of a constraint
+    match: ['\boldsymbol{\Omega}_{ij}']
+  - tex: '\mathbf{Ad}_{\mathbf{T}},\ \mathbf{J}_r,\ \mathbf{J}_l'
+    meaning: adjoint and right Jacobian (in the Jacobians)
+    match: ['\mathbf{J}_r^{-1}']
+  - tex: '\boldsymbol{\delta},\ \lambda'
+    meaning: update step; LM damping
+    match: ['\lambda']
+---
+
+import PoseGraph2D from '../../../components/widgets/PoseGraph2D/PoseGraph2D.svelte';
+
+A robot has driven a thousand metres through a city. Its odometry has drifted: the route it believes it took is twisted and bent, several metres off. But many times it has come back to a street corner it recognized, and each recognition says "this pose is at the same place as that earlier one". Those constraints contradict the odometry's version of the route. **Pose graph optimization** finds the trajectory that agrees best with all of them at once, and it does so for a thousand poses in a fraction of a second.
+
+<PoseGraph2D client:visible />
+
+Press Play to step through the optimizer's iterations. The green line starts as dead reckoning; every iteration moves all thousand poses at once. Watch the cost below fall, and the route snap onto the streets.
+
+## Intuition
+
+A pose graph is the factor graph of [Post 26](../factor-graphs/) with the landmarks taken out. Its unknowns are only the robot's poses. Its factors are only relative-pose constraints: "pose $j$ is here, as seen from pose $i$, give or take this much". Odometry gives such a constraint between every pair of consecutive poses. A **loop closure** gives one between two poses far apart in time that the robot recognizes as the same place. In practice the robot recognizes a place by matching its laser scans or camera images; the matcher reports the relative pose, and the landmarks themselves are no longer needed.
+
+The odometry alone is perfectly consistent with dead reckoning: compose its measurements and every odometry spring is relaxed. Loop closures stretch the springs. The optimizer spreads the contradiction over the whole chain, bending the route a little everywhere instead of a lot in one place, weighted by how much each measurement is trusted.
+
+## The math
+
+### The pose graph
+
+The unknowns are the poses $\mathbf{T}_0, \ldots, \mathbf{T}_N \in \SE(2)$. Each constraint is a measured relative pose $\mathbf{T}_{ij}$ of pose $j$ in the frame of pose $i$, with information matrix $\boldsymbol{\Omega}_{ij}$. Its residual compares the measurement with the relative pose the estimates imply,
+
+$$
+\mathbf{r}_{ij} = \Log\big(\mathbf{T}_{ij}^{-1}\,\mathbf{T}_i^{-1}\mathbf{T}_j\big) \in \R^3, \tag{1}
+$$
+
+zero when the two agree. The cost is $c = \tfrac12\sum_{(i,j)} \mathbf{r}_{ij}\T\boldsymbol{\Omega}_{ij}\mathbf{r}_{ij}$ plus a prior on $\mathbf{T}_0$, which fixes the gauge: without it, moving and rotating the whole trajectory changes no residual (Posts 23 and 26).
+
+### Jacobians on SE(2)
+
+With right perturbations $\mathbf{T}_i \oplus \boldsymbol{\delta}_i$, the toolkit of [Post 21](../lie-groups-for-robotics/) gives the two Jacobians of (1) in closed form:
+
+$$
+\frac{\partial\mathbf{r}_{ij}}{\partial\boldsymbol{\delta}_j} = \mathbf{J}_r^{-1}(\mathbf{r}_{ij}),\qquad
+\frac{\partial\mathbf{r}_{ij}}{\partial\boldsymbol{\delta}_i} = -\mathbf{J}_r^{-1}(\mathbf{r}_{ij})\,\mathbf{Ad}_{\mathbf{T}_j^{-1}\mathbf{T}_i}.
+$$
+
+Moving pose $j$ in its own frame changes the residual through the inverse right Jacobian; moving pose $i$ does the same, carried into pose $j$'s frame by the adjoint and with the opposite sign. Near the solution the residuals are small and $\mathbf{J}_r^{-1} \approx \mathbf{I}$, which is why many implementations drop it. The code keeps it, and checks both Jacobians against finite differences.
+
+<Derivation title="Where the Jacobians come from">
+Write $\mathbf{E} = \mathbf{T}_{ij}^{-1}\mathbf{T}_i^{-1}\mathbf{T}_j$, so $\mathbf{r} = \Log(\mathbf{E})$. Perturbing $\mathbf{T}_j$ on the right gives $\mathbf{E}\Exp(\boldsymbol{\delta}_j)$, and $\Log(\mathbf{E}\Exp(\boldsymbol{\delta})) \approx \mathbf{r} + \mathbf{J}_r^{-1}(\mathbf{r})\boldsymbol{\delta}$ by the definition of the right Jacobian. Perturbing $\mathbf{T}_i$ gives $\mathbf{T}_i^{-1} \to \Exp(-\boldsymbol{\delta}_i)\mathbf{T}_i^{-1}$, and moving the exponential to the right end with the adjoint identity $\Exp(\boldsymbol{\tau})\mathbf{X} = \mathbf{X}\Exp(\mathbf{Ad}_{\mathbf{X}^{-1}}\boldsymbol{\tau})$ turns it into $\mathbf{E}\Exp(-\mathbf{Ad}_{\mathbf{T}_j^{-1}\mathbf{T}_i}\boldsymbol{\delta}_i)$. The same first-order step then gives the second Jacobian.
+</Derivation>
+
+### Solving
+
+Each iteration is Post 26's step. Linearize every constraint, assemble the sparse $\boldsymbol{\Lambda}\boldsymbol{\delta} = \boldsymbol{\eta}$, solve it by sparse Cholesky, and update every pose with $\mathbf{T}_i \leftarrow \mathbf{T}_i \oplus \boldsymbol{\delta}_i$. Levenberg–Marquardt ([Post 9](../nonlinear-least-squares/)) solves $(\boldsymbol{\Lambda} + \lambda\,\diag(\boldsymbol{\Lambda}))\boldsymbol{\delta} = \boldsymbol{\eta}$ instead. It raises the damping $\lambda$ when a step would increase the cost, which shortens the step towards gradient descent, and lowers it after every success.
+
+For a thousand poses, $\boldsymbol{\Lambda}$ is $3000 \times 3000$, nine million entries, but each pose shares constraints with only a few others: its neighbours in time and the places it recognized. Its nonzeros grow with the number of constraints, and so does the work of each iteration, as long as the Cholesky factor stays sparse too. That depends on the order in which the poses are eliminated (Post 28).
+
+### What the final cost tells you
+
+At the optimum, if the noise model is right, each residual entry contributes about ½ to the cost, except for as many entries as there are unknowns, which the poses can absorb. The expected minimum is about $\tfrac12(\text{residual entries} - \text{unknowns})$. A final cost far above that means the measurements disagree more than their weights admit: wrong weights, a wrong loop closure, or a local minimum.
+
+## Play with it
+
+<TryThis>
+- At the defaults, 1,000 poses with 999 odometry constraints and 351 loop closures. Dead reckoning is 4.73 m off on average (RMS). Levenberg–Marquardt converges in 6 iterations: the cost falls from 1.33 million to under 1,000 within two iterations and ends at 553, and the RMS error at 0.16 m. The expected minimum is $\tfrac12\big(3\times(999 + 351 + 1) - 3000\big) \approx 527$.
+- Look at the sparsity readouts: only 0.37% of $\boldsymbol{\Lambda}$ is nonzero. Factorized in the natural order, its Cholesky factor would have 1,013,370 nonzeros; with the minimum-degree order used here, 64,779.
+- Switch off **Use loop closures**. Nothing moves: dead reckoning already satisfies every odometry constraint exactly, so it is the optimum, cost zero, and stays 4.73 m off. Loop closures are the only information that can correct drift.
+- Switch to **Gauss–Newton**: here it converges in 5 iterations to the same answer. Now choose **Extreme heading drift** (0.1 rad of heading noise per 1 m move): both methods grind for all 40 iterations and stop with a cost between 13,000 and 15,000, far above the 527 a correct solution would have, and a route still 2.5 to 2.8 m off.
+- Try **2,000 poses**: 827 loop closures, still 6 iterations to converge, and $\boldsymbol{\Lambda}$ is now only 0.19% nonzero.
+</TryThis>
+
+## Algorithm
+
+<AlgorithmBox title="Pose graph optimization (Levenberg–Marquardt on SE(2))" source="src/lib/graph/solver.ts">
+1. Initialize the poses by composing the odometry from $\mathbf{T}_0$ (dead reckoning). Add a prior on $\mathbf{T}_0$.
+2. Choose a fill-reducing order for the poses (minimum degree).
+3. **Linearize** every constraint (1): residual and the two Jacobians; add their contributions to the sparse $\boldsymbol{\Lambda}$ and $\boldsymbol{\eta}$.
+4. **Solve** $(\boldsymbol{\Lambda} + \lambda\diag\boldsymbol{\Lambda})\boldsymbol{\delta} = \boldsymbol{\eta}$ by sparse Cholesky, and **update** $\mathbf{T}_i \leftarrow \mathbf{T}_i \oplus \boldsymbol{\delta}_i$.
+5. If the cost fell, accept and divide $\lambda$ by 10; otherwise undo, multiply $\lambda$ by 10 and retry. Stop when the cost stops falling.
+</AlgorithmBox>
+
+The synthetic city is generated by `src/lib/sim/manhattan.ts`, and the widget runs the whole optimization in a Web Worker so the page stays responsive. The unit tests check that a noise-free pose graph is solved exactly from a perturbed start, recovering the truth up to the fixed gauge, and that Levenberg–Marquardt never increases the cost. They also check that the graph can be written to and read back from the g2o text format used by most SLAM tools.
+
+## When it breaks
+
+### Poor initial estimates
+
+The cost is not convex: rotations wrap around, and an estimate whose headings are far off can be pulled into a twisted configuration that is a local minimum. Gauss–Newton and Levenberg–Marquardt only go downhill from where they start. In the extreme-drift preset, 5 of the 10 seeds from 11 to 20 end stuck like this. Remedies focus on the start: first estimate the rotations alone, a much easier problem, then the positions; or use a method designed for poor starts, such as the stochastic gradient descent of Olson and coauthors. Incremental solvers (Post 30) avoid the problem by adding constraints as they arrive, so the estimate never drifts far.
+
+### Wrong loop closures
+
+A loop closure is a claim that two places are the same. Place recognition makes mistakes, especially in repetitive environments, and a wrong loop closure is a huge residual that squared costs try hard to satisfy: the optimizer will fold the map to make it fit. Post 29 replaces squared costs with robust kernels that let the optimizer give up on constraints that cannot be satisfied.
+
+### Covariances are not free
+
+The optimizer returns the most likely trajectory, not its uncertainty. The covariance of a pose is the matching block of $\boldsymbol{\Lambda}^{-1}$, which is dense. Computing a few blocks from the sparse Cholesky factor is cheap; computing all of them is not.
+
+## Summary
+
+- A pose graph has the robot's poses as unknowns and relative-pose measurements (odometry and loop closures) as factors, plus a prior that fixes the gauge.
+- The residual is $\Log(\mathbf{T}_{ij}^{-1}\mathbf{T}_i^{-1}\mathbf{T}_j)$; its Jacobians come from the Lie toolkit of Post 21.
+- Gauss–Newton or Levenberg–Marquardt with a sparse Cholesky solve optimizes a thousand poses in a handful of iterations.
+- Without loop closures, dead reckoning is already optimal; loop closures are what corrects drift.
+- From a badly drifted start the optimizer can get stuck in a local minimum, and a single wrong loop closure can fold the map.

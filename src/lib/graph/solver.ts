@@ -218,7 +218,7 @@ export function linearizeGraph(
           for (let cb = 0; cb < Jb.cols; cb++) {
             let s = 0;
             for (let i = 0; i < d; i++) s += Ja.data[i * Ja.cols + ra]! * OJ[b]![i * Jb.cols + cb]!;
-            if (s !== 0) addTriplet(t, oa + ra, ob + cb, s);
+            addTriplet(t, oa + ra, ob + cb, s); // structural: keep exact zeros, so the pattern never depends on rounding
           }
       }
     }
