@@ -119,7 +119,7 @@ The cost is not convex: rotations wrap around, and an estimate whose headings ar
 
 ### Wrong loop closures
 
-A loop closure is a claim that two places are the same. Place recognition makes mistakes, especially in repetitive environments, and a wrong loop closure is a huge residual that squared costs try hard to satisfy: the optimizer will fold the map to make it fit. Post 29 replaces squared costs with robust kernels that let the optimizer give up on constraints that cannot be satisfied.
+A loop closure is a claim that two places are the same. Place recognition makes mistakes, especially in repetitive environments, and a wrong loop closure is a huge residual that squared costs try hard to satisfy: the optimizer will fold the map to make it fit. [Post 29](../robust-optimization/) replaces squared costs with robust kernels that let the optimizer give up on constraints that cannot be satisfied.
 
 ### Covariances are not free
 
