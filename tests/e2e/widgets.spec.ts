@@ -782,3 +782,25 @@ test.describe('post 27 widgets', () => {
     await expect(w.locator('[data-readout="rms"]')).toHaveText('4.73 m');
   });
 });
+
+test.describe('post 28 widgets', () => {
+  test('SparsityExplorer and MarginalizationFill', async ({ page }) => {
+    await page.goto('posts/sparsity-and-solvers/');
+    const w = page.locator('[data-widget="SparsityExplorer"]');
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="fill"]')).toHaveText('476');
+    await w.getByLabel('Ordering of the poses').selectOption('mindegree');
+    await expect(w.locator('[data-readout="fill"]')).toHaveText('117');
+    const m = page.locator('[data-widget="MarginalizationFill"]');
+    await m.scrollIntoViewIfNeeded();
+    await expect(m.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await m.locator('[data-pose="2"]').click();
+    await m.locator('[data-pose="9"]').click();
+    await expect(m.locator('[data-readout="induced"]')).toHaveText('6');
+    await m.locator('[data-action="reset"]').click();
+    for (let i = 0; i < 8; i++) await m.locator('[data-action="slide"]').click();
+    await expect(m.locator('[data-readout="kept"]')).toHaveText('4 of 12');
+    await expect(m.locator('[data-readout="pairs"]')).toHaveText('5');
+  });
+});

@@ -7,6 +7,8 @@ import {
   cholesky,
   etree,
   factorNnz,
+  factorPattern,
+  reverseCuthillMcKee,
   fromDense,
   minimumDegree,
   mulVec,
@@ -159,5 +161,39 @@ describe('sparse', () => {
         ),
       ),
     ).toThrow();
+  });
+});
+
+describe('factorPattern and reverse Cuthill–McKee', () => {
+  it('factorPattern lists exactly the nonzeros of the numeric factor', () => {
+    const a = grid(5);
+    const perm = minimumDegree(adjacency(a));
+    const L = cholesky(permute(a, perm)).L;
+    const fromNumeric = new Set<string>();
+    for (let j = 0; j < L.n; j++)
+      for (let p = L.colPtr[j]!; p < L.colPtr[j + 1]!; p++) fromNumeric.add(`${L.rowIdx[p]},${j}`);
+    const pat = factorPattern(a, perm).map(([i, j]) => `${i},${j}`);
+    expect(new Set(pat)).toEqual(fromNumeric);
+    expect(pat).toHaveLength(factorNnz(a, perm));
+  });
+  it('RCM is a valid permutation and keeps a shuffled path graph banded', () => {
+    // A path whose nodes are numbered at random: natural order has wide fill, RCM recovers the band.
+    const n = 40;
+    const label = Array.from({ length: n }, (_, i) => i);
+    for (let i = n - 1; i > 0; i--) {
+      const j = Math.floor(rng.uniform() * (i + 1));
+      [label[i], label[j]] = [label[j]!, label[i]!];
+    }
+    const t = triplets(n);
+    for (let i = 0; i < n; i++) addTriplet(t, label[i]!, label[i]!, 3);
+    for (let i = 0; i + 1 < n; i++) {
+      addTriplet(t, label[i]!, label[i + 1]!, -1);
+      addTriplet(t, label[i + 1]!, label[i]!, -1);
+    }
+    const a = toCsc(t);
+    const perm = reverseCuthillMcKee(adjacency(a));
+    expect([...perm].sort((x, y) => x - y)).toEqual(label.slice().sort((x, y) => x - y));
+    expect(factorNnz(a, perm)).toBe(2 * n - 1); // a path factors with no fill at all
+    expect(factorNnz(a)).toBeGreaterThan(2 * n - 1);
   });
 });
