@@ -804,3 +804,16 @@ test.describe('post 28 widgets', () => {
     await expect(m.locator('[data-readout="pairs"]')).toHaveText('5');
   });
 });
+
+test.describe('post 29 widgets', () => {
+  test('OutlierLoopClosures: L2 breaks, Cauchy recovers', async ({ page }) => {
+    await page.goto('posts/robust-optimization/');
+    const w = page.locator('[data-widget="OutlierLoopClosures"]');
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="rms"]')).toHaveText('6.75 m', { timeout: 30_000 });
+    await w.getByRole('combobox', { name: 'Kernel', exact: true }).selectOption('cauchy');
+    await expect(w.locator('[data-readout="false-rej"]')).toHaveText('10 of 10', { timeout: 30_000 });
+    await expect(w.locator('[data-readout="rms"]')).toHaveText('0.23 m');
+  });
+});

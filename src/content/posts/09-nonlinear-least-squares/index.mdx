@@ -157,7 +157,7 @@ The unit tests check that Gauss–Newton solves a linear problem in a single ste
 
 **Bad geometry.** Even with a unique minimum, anchors that see the tag from similar directions constrain it poorly across those directions. Surveyors call this *dilution of precision*. The inverse of $\boldsymbol{\Lambda}$ at the solution reports it: with the wall anchors, the east standard deviation is 8.8 cm against 6.5 cm with the corner anchors, for the same 10 cm of range noise.
 
-**Ranges that are not Gaussian.** When a UWB signal is blocked by a person or a shelf, it reaches the tag by a longer path, so the measured range is too long, never too short. Squared errors take such *non-line-of-sight* ranges at face value and pull the estimate away. Post 29 shows how robust kernels down-weight them.
+**Ranges that are not Gaussian.** When a UWB signal is blocked by a person or a shelf, it reaches the tag by a longer path, so the measured range is too long, never too short. Squared errors take such *non-line-of-sight* ranges at face value and pull the estimate away. [Post 29](../robust-optimization/) shows how robust kernels down-weight them.
 
 **A wrong Jacobian.** A sign error in $\mathbf{J}$ does not crash anything: Gauss–Newton simply converges slowly, to the wrong place, or not at all. Always check analytic Jacobians against finite differences, as the tests here do.
 

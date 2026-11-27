@@ -2,7 +2,7 @@
 
 ## Current phase: 4 — Part 4 (SLAM) in progress
 
-## Next task: Phase 4 — post 29 `robust-optimization` (OutlierLoopClosures; graph/robust)
+## Next task: Phase 4 — post 30 `incremental-smoothing` (IncrementalVsBatch)
 
 ## Posts
 
@@ -36,7 +36,8 @@
 | 26    | factor-graphs                    | published | FactorGraphBuilder                    | ~2,500 words. Bayes net → factor graph, MAP = NLLS, J and Λ sparsity = the graph, singular Λ and the gauge.                     |
 | 27    | pose-graph-optimization          | published | PoseGraph2D (worker)                  | ~2,400 words. 1,000-pose Manhattan city, LM/GN iterations streamed from a worker, sparsity and fill, local minima.              |
 | 28    | sparsity-and-solvers             | published | SparsityExplorer, MarginalizationFill | ~2,300 words. Elimination = Cholesky, fill-in, natural/random/RCM/min-degree orderings, marginalization fill, sliding windows.  |
-| 29–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                                     |                                                                                                                                 |
+| 29    | robust-optimization              | published | OutlierLoopClosures (worker)          | ~2,300 words. Influence, Huber/Cauchy/Geman–McClure, IRLS, GNC, switchable constraints; false closures fold the map.            |
+| 30–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                                     |                                                                                                                                 |
 
 ## Infrastructure checklist
 
@@ -171,6 +172,8 @@
 - 2026-11-27 — **PoseGraph2D (post 27):** the solver runs in a Web Worker and streams every iterate (positions, cost, RMS error, ms), so the trajectory snaps into place as iterations arrive. Requests are debounced (250 ms) and a request arriving mid-solve replaces the worker, so slider drags never queue stale solves. Seed 18 is the most typical of 20 (351 loop closures; dead reckoning 4.73 m → 0.16 m RMS in 6 LM iterations). The extreme-drift preset (σθ = 0.1 rad per move) gets stuck for 5 of seeds 11–20, including 18: both GN and LM end at cost 13–15 thousand against an expected 527. No real dataset: the synthetic city is enough for the post and avoids licensing questions (DESIGN §5.1 allows it as optional). Phase 4 acceptance: 1,000 poses optimize in ~40 ms per iteration in Chromium (widget readout), animated per iteration.
 - 2026-11-27 — **Λ's sparsity pattern is structural (bug fix found by screenshot).** `linearizeGraph` used to skip entries that came out exactly 0.0, so the pattern (and the fill counts shown in post 27) differed by a few entries between Node and Chromium, whose trigonometric functions round differently. Every entry of a factor's block is now stored; counts are identical everywhere.
 - 2026-11-27 — **Post 28:** `sparse.ts` gained `factorPattern` (symbolic factor pattern) and `reverseCuthillMcKee` (tested: a randomly numbered path factors with zero fill after RCM). SparsityExplorer works at pose-block level (120 poses, seed 18) and shows Λ and L as crisp heat maps; fill: natural 476, random 240, RCM 149, minimum degree 117. MarginalizationFill is a 12-pose loop with three loop closures; the remaining information is computed with `graph/marginalize` (dense, 36 × 36) and "linked" means a block above 1e-9. No solve times in the text: they depend on the machine.
+- 2026-11-27 — **`graph/robust.ts` (post 29):** kernels on the squared Mahalanobis error s (ρ(s), w = ρ′(s)): L2, Huber, Cauchy, Geman–McClure; solver hooks that apply a kernel to chosen factors (loop closures only: odometry stays quadratic); GNC with Geman–McClure (μ from 10⁴, ÷1.4 per stage, 3 GN/IRLS iterations each). Tests: ρ against the definitions and w against a numerical derivative; GNC recovers the clean solution with 30 false closures (all rejected).
+- 2026-11-27 — **OutlierLoopClosures:** 500-pose city (seed 18, 104 true closures) plus k false closures between distant poses (fixed draws per candidate, so the first m outliers are the same for every count). "Rejected" means final weight below 0.1; with 0.5, Geman–McClure counted ordinary inliers as rejected. Results: L2 6.75 m (dead reckoning 2.32, clean 0.24); Huber 1.02; Cauchy 0.23 (60 false: 0.24); GM at scale 1 rejects 100 of 104 true closures (1.85 m) while GNC at scale 1 reaches 0.29. The kernel scale is written k_ρ (k is the time index).
 
 ## Follow-ups / known issues
 

@@ -1,0 +1,132 @@
+---
+number: 29
+title: 'When Loop Closures Lie: Robust Optimization'
+description: A few false loop closures can fold a map. Robust kernels, iteratively reweighted least squares and graduated non-convexity let the optimizer ignore them.
+part: 4
+status: published
+date: 2026-11-27
+prerequisites: [pose-graph-optimization]
+objectives:
+  - Explain why squared errors give a single wrong measurement unlimited influence.
+  - Write the Huber, Cauchy and Geman–McClure kernels and their weights, and minimize them by iteratively reweighted least squares.
+  - Explain the trade-off between convex and non-convex kernels, and how graduated non-convexity avoids bad local minima.
+  - Relate robust kernels to switchable constraints, and know their limits.
+references:
+  - key: sunderhauf2012
+    text: 'Sünderhauf, Protzel. "Switchable constraints for robust pose graph SLAM." *IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)*, 2012.'
+  - key: yang2020
+    text: 'Yang, Antonante, Tzoumas, Carlone. "Graduated non-convexity for robust spatial perception: from non-minimal solvers to global outlier rejection." *IEEE Robotics and Automation Letters* 5(2), 2020.'
+  - key: agarwal2013
+    text: 'Agarwal, Tipaldi, Spinello, Stachniss, Burgard. "Robust map optimization using dynamic covariance scaling." *IEEE International Conference on Robotics and Automation (ICRA)*, 2013.'
+  - key: huber1964
+    text: 'Huber. "Robust estimation of a location parameter." *The Annals of Mathematical Statistics* 35(1), 1964.'
+  - key: black1996
+    text: 'Black, Rangarajan. "On the unification of line processes, outlier rejection, and robust statistics with applications in early vision." *International Journal of Computer Vision* 19(1), 1996.'
+widgets: [OutlierLoopClosures]
+symbols:
+  - tex: '\rho(\cdot)'
+    meaning: robust kernel
+    match: ['\rho(s']
+  - tex: 's_i = \mathbf{r}_i\T\boldsymbol{\Omega}_i\mathbf{r}_i,\ k_\rho'
+    meaning: squared error of a factor; kernel scale
+    match: ['k_\rho']
+  - tex: "w_i = \\rho'(s_i)"
+    meaning: IRLS weight
+    match: ['w_i']
+  - tex: '\mu'
+    meaning: GNC control parameter
+---
+
+import OutlierLoopClosures from '../../../components/widgets/OutlierLoopClosures/OutlierLoopClosures.svelte';
+
+Loop closures are what correct drift in [Post 27](../pose-graph-optimization/), and they come from place recognition: "this camera image looks like one I saw an hour ago". Place recognition makes mistakes. Two corridors look alike, two street corners look alike. A false loop closure says that two places far apart are the same. Hand it to a least-squares optimizer, which takes every measurement at its word, and the optimizer will bend the whole map to make two distant places meet.
+
+<OutlierLoopClosures client:visible />
+
+The widget starts with the city of Post 27 (500 poses here) and ten false loop closures in red, optimized with plain squared errors. The result is worse than not optimizing at all. Switch the kernel and watch the map recover.
+
+## Intuition
+
+A squared error grows without limit. A residual ten times larger costs a hundred times more, so the optimizer will happily move a thousand good constraints a little to reduce one outrageous one. Nothing in least squares says "this measurement disagrees so badly with everything else that it is probably wrong".
+
+A **robust kernel** says exactly that. It replaces the squared error with a function that grows like the square for small residuals, where measurements are trustworthy, but grows more slowly, or levels off, for large ones. A measurement that disagrees a little is still heard; one that disagrees enormously stops pulling. The price is that the cost is no longer a nice bowl. A kernel that levels off completely has many valleys, and an optimizer started in the wrong one stays there.
+
+## The math
+
+### Influence
+
+Write $s_i = \mathbf{r}_i\T\boldsymbol{\Omega}_i\mathbf{r}_i$ for the squared Mahalanobis error of factor $i$. Least squares minimizes $\tfrac12\sum_i s_i$, and factor $i$ pulls on the solution with a force proportional to its gradient, $\mathbf{J}_i\T\boldsymbol{\Omega}_i\mathbf{r}_i$: proportional to the residual itself, without bound. A robust cost replaces $s_i$ by a kernel $\rho(s_i)$:
+
+$$
+c(\mathbf{x}) = \tfrac12\sum_i \rho\big(s_i(\mathbf{x})\big),\qquad
+\nabla c = \sum_i \rho'(s_i)\,\mathbf{J}_i\T\boldsymbol{\Omega}_i\mathbf{r}_i. \tag{1}
+$$
+
+The pull of each factor is now scaled by $w_i = \rho'(s_i)$, which shrinks as the error grows.
+
+### Kernels
+
+With a scale $k_\rho$ in units of $\sqrt{s}$ (the error in standard deviations), the common kernels are:
+
+| Kernel | $\rho(s)$ | weight $w = \rho'(s)$ | for large errors |
+|---|---|---|---|
+| squared (L2) | $s$ | $1$ | pulls harder and harder |
+| Huber | $s$ if $s \le k_\rho^2$, else $2k_\rho\sqrt{s} - k_\rho^2$ | $1$ or $k_\rho/\sqrt{s}$ | pulls with a constant force |
+| Cauchy | $k_\rho^2\ln(1 + s/k_\rho^2)$ | $1/(1 + s/k_\rho^2)$ | pull fades like $1/\sqrt{s}$ |
+| Geman–McClure | $k_\rho^2 s/(k_\rho^2 + s)$ | $k_\rho^4/(k_\rho^2 + s)^2$ | pull fades like $1/s^{3/2}$ |
+
+All four agree with the squared error when $s$ is small. Huber (1964) is convex: it keeps one valley, but its constant pull never lets go. Cauchy and Geman–McClure are **redescending**: a residual far enough out stops pulling almost entirely, at the price of non-convexity.
+
+### Iteratively reweighted least squares
+
+Equation (1) is the gradient of a weighted least-squares problem whose information matrices are $w_i\boldsymbol{\Omega}_i$, with the weights frozen. That suggests **iteratively reweighted least squares** (IRLS). Compute every $w_i$ from the current residuals, take one Gauss–Newton or Levenberg–Marquardt step of Post 26 with the reweighted information, and repeat. The solver of Post 27 needs only two changes: it scales each factor's contribution to $\boldsymbol{\Lambda}$ and $\boldsymbol{\eta}$ by $w_i$, and it measures progress with the robust cost (1).
+
+### Graduated non-convexity
+
+The most aggressive kernels reject outliers best but have the most valleys. **Graduated non-convexity** (GNC; Yang, Antonante, Tzoumas and Carlone, 2020) gets the benefits without the valleys. It starts with a stretched version of Geman–McClure, scale $\sqrt{\mu}\,k_\rho$ with a very large $\mu$, which is nearly the squared error and so nearly convex. It solves that problem, then shrinks $\mu$ step by step (here by a factor of 1.4) to 1, each stage starting from the previous solution. The optimizer follows the minimum as the landscape slowly grows its valleys, and usually ends in the right one without any good initial guess.
+
+### Switchable constraints
+
+Sünderhauf and Protzel added a switch variable to every loop closure: a number between 0 and 1 that scales the closure's information, with a prior pulling it towards 1. The optimizer can then switch a closure off at a price. Black and Rangarajan had shown long before that such "line processes" are equivalent to robust kernels, and dynamic covariance scaling (Agarwal and coauthors) makes the link explicit: optimizing the switches is the same as using a particular kernel.
+
+## Play with it
+
+<TryThis>
+- With **squared errors** and 10 false loop closures, the map ends 6.75 m off on average, far worse than the 2.32 m of dead reckoning. Set the false closures to 0: the same optimizer gives 0.24 m. Ten bad constraints among 104 good ones ruin everything.
+- Back at 10, choose **Huber**. All ten false closures end with less than a tenth of their weight, yet the map is still 1.02 m off: Huber's constant pull never lets go, and ten small pulls still bend the route.
+- Choose **Cauchy**: the map recovers to 0.23 m, every false closure is rejected and no true one. Raise the false closures to 60, more than a third of all loop closures: Cauchy still gives 0.24 m, while Huber is 5.82 m off.
+- Choose **Geman–McClure** and lower the scale $k_\rho$ to 1. The optimizer starts from dead reckoning, where even the true loop closures have large errors, and the aggressive kernel rejects 100 of the 104 true ones: the map stays 1.85 m off. Now choose **GNC** with the same scale: it starts nearly convex, keeps enough true closures, and ends 0.29 m off.
+</TryThis>
+
+## Algorithm
+
+<AlgorithmBox title="Robust pose graph optimization (IRLS, with optional GNC)" source="src/lib/graph/robust.ts">
+1. Choose a kernel $\rho$ and its scale $k_\rho$ (in standard deviations); apply it to the factors that can be wrong (here the loop closures), not to odometry.
+2. **IRLS step:** for every factor compute $s_i$ and $w_i = \rho'(s_i)$; assemble $\boldsymbol{\Lambda}$ and $\boldsymbol{\eta}$ with $w_i\boldsymbol{\Omega}_i$; solve and update as in Post 27; accept the step if the robust cost (1) fell.
+3. **GNC:** run step 2 with the Geman–McClure scale $\sqrt{\mu}\,k_\rho$, starting at $\mu = 10^4$; after a few iterations set $\mu \leftarrow \max(1, \mu/1.4)$ and continue from the current solution; stop after the stage with $\mu = 1$.
+4. Report the closures whose final weight is small as rejected.
+</AlgorithmBox>
+
+The unit tests check every kernel against its definition and its weight against a numerical derivative of $\rho$. They also check that GNC recovers the clean solution with 30 false loop closures injected into the seeded city, rejecting all of them. The widget runs the optimization in a Web Worker.
+
+## When it breaks
+
+### Outliers that agree with each other
+
+Robust kernels reject measurements that disagree with the majority. If many false closures agree with each other, as with a robot that repeatedly confuses the same two similar corridors, they can outvote the truth. The front end must catch these, for example by checking that loop closures are consistent with each other in pairs (pairwise consistency maximization) before the back end sees them.
+
+### Choosing the scale
+
+The scale $k_\rho$ says how many standard deviations of error a good measurement may have. Too large, and outliers keep pulling; too small, and good measurements are thrown away, as the Geman–McClure example showed. If the noise model itself is wrong, no scale is right. A common choice is the square root of a chi-square quantile, which a correct inlier exceeds only rarely.
+
+### Non-convexity
+
+Redescending kernels make the problem non-convex. From a poor start they can reject good measurements and settle in the wrong valley. GNC reduces this risk but does not remove it, and it costs more iterations: 87 here against Cauchy's 18.
+
+## Summary
+
+- Squared errors give every measurement unbounded influence, so a few false loop closures can fold a whole map.
+- Robust kernels replace $s_i$ by $\rho(s_i)$: Huber limits the pull to a constant; Cauchy and Geman–McClure let outliers stop pulling.
+- Iteratively reweighted least squares minimizes a robust cost with the ordinary solver, scaling each factor's information by $w_i = \rho'(s_i)$.
+- Aggressive kernels are non-convex; graduated non-convexity starts nearly convex and tightens the kernel step by step.
+- Switchable constraints are a robust kernel in disguise; no kernel can reject outliers that agree with each other.

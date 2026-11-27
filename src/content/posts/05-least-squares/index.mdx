@@ -123,7 +123,7 @@ The widget starts with ten fixes on a clear day. The least-squares line is $y = 
 4. Turn on *least absolute deviations*, which minimizes $\sum_i |r_i|$ instead of the squares. With the bounced fix it does not move at all: it gives exactly the same line, $y = 21.19 + 0.120\,t$, with or without the outlier. But switch back to the clear-day data and notice that it is now *worse* than least squares, up to 1.83 m from the road against 0.51 m.
 </TryThis>
 
-The last two prompts show the central trade-off of this whole series. Squared errors are optimal when the noise really is Gaussian, and fragile when it is not. Robust alternatives shrug off outliers but waste information on clean data. Post 29 returns to this with robust kernels, which try to get the best of both.
+The last two prompts show the central trade-off of this whole series. Squared errors are optimal when the noise really is Gaussian, and fragile when it is not. Robust alternatives shrug off outliers but waste information on clean data. [Post 29](../robust-optimization/) returns to this with robust kernels, which try to get the best of both.
 
 Drag any fix and watch its square, and the line, respond. Arrow keys move the selected fix by half a metre.
 

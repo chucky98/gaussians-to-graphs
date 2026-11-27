@@ -261,6 +261,12 @@ export const notationGroups: readonly NotationGroup[] = [
       },
       { tex: '\\boldsymbol{\\delta},\\ \\lambda', meaning: 'update step; Levenberg–Marquardt damping' },
       { tex: '\\rho(\\cdot)', meaning: 'robust kernel' },
+      {
+        tex: 's_i = \\mathbf{r}_i\\T\\boldsymbol{\\Omega}_i\\mathbf{r}_i,\\ k_\\rho',
+        meaning: 'squared Mahalanobis error of factor i; scale of a robust kernel, in units of √s (Post 29)',
+      },
+      { tex: "w_i = \\rho'(s_i)", meaning: 'IRLS weight of factor i (Post 29)' },
+      { tex: '\\mu', meaning: 'GNC control parameter, shrunk from large to 1 (Post 29; not the mean of Part 0)' },
     ],
   },
 ];

@@ -127,7 +127,7 @@ Gauss–Newton finds the minimum near where it starts. The cost (1) of a SLAM pr
 
 ### Outliers
 
-Squared residuals give a wrong measurement, such as a false loop closure, an enormous say: its cost grows quadratically with its error, so the optimizer bends everything else to accommodate it. Post 29 replaces the squares with robust kernels that stop listening to measurements that disagree too much.
+Squared residuals give a wrong measurement, such as a false loop closure, an enormous say: its cost grows quadratically with its error, so the optimizer bends everything else to accommodate it. [Post 29](../robust-optimization/) replaces the squares with robust kernels that stop listening to measurements that disagree too much.
 
 ### Overconfident or underconfident factors
 

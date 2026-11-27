@@ -169,7 +169,7 @@ Repeating a random experiment many times to see the spread of the outcomes is ca
 
 **Systematic errors.** The widget's errors are random with zero mean, so they are as likely to be positive as negative. Real odometry also has *biases*: a wheel that is really 1% smaller than the robot assumes makes every distance reading 1% too large, every time. Biases do not partly cancel the way random errors do, and a model that only allows for random noise will underestimate the spread. Calibration removes most bias; what is left must be part of the noise model.
 
-**Non-Gaussian surprises.** A wheel spinning on a wet patch is not a small Gaussian error. It is a rare, large one. Estimators built on Gaussian assumptions can be badly misled by such outliers. Post 29 deals with them in the setting where they hurt most.
+**Non-Gaussian surprises.** A wheel spinning on a wet patch is not a small Gaussian error. It is a rare, large one. Estimators built on Gaussian assumptions can be badly misled by such outliers. [Post 29](../robust-optimization/) deals with them in the setting where they hurt most.
 
 **Coming home does not help on its own.** The robot in the widget passes its starting point after one lap, but nothing in odometry tells it so. Only when it *recognizes* a place it has seen before, a loop closure, can it use that fact to pull the whole estimate back into shape. [Post 27](../pose-graph-optimization/) shows how.
 
