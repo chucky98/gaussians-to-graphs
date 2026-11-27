@@ -121,7 +121,7 @@ Each prediction in (1) inverts the information matrix. For a single robot pose t
 
 ### Getting the estimate back
 
-The information form does not store the mean. Recovering $\hat{\mathbf{x}}$ means solving $\boldsymbol{\Omega}\hat{\mathbf{x}} = \boldsymbol{\xi}$, and recovering a covariance means (partly) inverting $\boldsymbol{\Omega}$. With sparse matrices both are cheap if done carefully; Post 28 shows how the order in which the variables are eliminated decides how much fill-in a factorization creates.
+The information form does not store the mean. Recovering $\hat{\mathbf{x}}$ means solving $\boldsymbol{\Omega}\hat{\mathbf{x}} = \boldsymbol{\xi}$, and recovering a covariance means (partly) inverting $\boldsymbol{\Omega}$. With sparse matrices both are cheap if done carefully; [Post 28](../sparsity-and-solvers/) shows how the order in which the variables are eliminated decides how much fill-in a factorization creates.
 
 ### No information means no inverse
 

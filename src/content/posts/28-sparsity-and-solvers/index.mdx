@@ -1,0 +1,130 @@
+---
+number: 28
+title: Sparsity, Ordering, and Marginalization
+description: Why the order of elimination decides the cost of a sparse solve, and why marginalizing old states destroys the sparsity that makes SLAM cheap.
+part: 4
+status: published
+date: 2026-11-27
+prerequisites: [pose-graph-optimization, information-filter]
+objectives:
+  - Explain Cholesky factorization as eliminating variables from a graph, and predict the fill-in it creates.
+  - Compare orderings (natural, bandwidth-reducing, minimum degree) by the fill they cause, and know why the best ordering is not computed exactly.
+  - Write marginalization as a Schur complement and predict which variables become linked by it.
+  - Explain the trade-off of sliding-window estimators between bounded cost and growing density.
+references:
+  - key: davis2006
+    text: Davis. *Direct Methods for Sparse Linear Systems.* SIAM, 2006. Ch. 4 (Cholesky factorization, the elimination tree) and Ch. 7 (fill-reducing orderings).
+  - key: amestoy1996
+    text: 'Amestoy, Davis, Duff. "An approximate minimum degree ordering algorithm." *SIAM Journal on Matrix Analysis and Applications* 17(4), 1996.'
+  - key: yannakakis1981
+    text: 'Yannakakis. "Computing the minimum fill-in is NP-complete." *SIAM Journal on Algebraic and Discrete Methods* 2(1), 1981.'
+  - key: dellaert2017
+    text: 'Dellaert, Kaess. "Factor Graphs for Robot Perception." *Foundations and Trends in Robotics* 6(1–2), 2017. Ch. 3 (elimination, variable ordering and fill-in) and Ch. 5 (marginalization).'
+  - key: sibley2010
+    text: 'Sibley, Matthies, Sukhatme. "Sliding window filter with application to planetary landing." *Journal of Field Robotics* 27(5), 2010.'
+widgets: [SparsityExplorer, MarginalizationFill]
+symbols:
+  - tex: '\boldsymbol{\Lambda} = \mathbf{J}\T\boldsymbol{\Omega}\mathbf{J},\ \boldsymbol{\eta} = -\mathbf{J}\T\boldsymbol{\Omega}\mathbf{r}'
+    meaning: information matrix and vector
+    match: ['\boldsymbol{\Lambda}']
+  - tex: '\mathbf{L}'
+    meaning: Cholesky factor, Λ = L Lᵀ
+    match: ['\mathbf{L}\mathbf{L}']
+---
+
+import SparsityExplorer from '../../../components/widgets/SparsityExplorer/SparsityExplorer.svelte';
+import MarginalizationFill from '../../../components/widgets/MarginalizationFill/MarginalizationFill.svelte';
+
+[Post 27](../pose-graph-optimization/) solved a thousand-pose problem, a system of 3,000 equations, a handful of times in well under a second. Two facts made that possible. The information matrix $\boldsymbol{\Lambda}$ is sparse, and the solver eliminated the variables in a good order. A bad order would have created about sixteen times as many nonzeros. This post looks at both facts, and at the operation that undoes them: marginalizing variables away, which is what every filter does at every step.
+
+<SparsityExplorer client:visible />
+
+Each panel shows a 120-pose pose graph, one cell per pair of poses: on the left the information matrix, on the right its Cholesky factor. Change the ordering and watch the factor.
+
+## Intuition
+
+Solving $\boldsymbol{\Lambda}\boldsymbol{\delta} = \boldsymbol{\eta}$ by Cholesky factorization is the same as eliminating the unknowns one at a time, as in school algebra. Eliminating an unknown means expressing it through the unknowns it is linked to and substituting it away. After the substitution, all of those neighbours appear together in the same equations: they have become linked to each other. Links that did not exist before are **fill-in**: new nonzeros in the factor, extra memory and extra work.
+
+So the order matters. Eliminate a pose in the middle of a long chain and only its two neighbours become linked, a link that is nearly there anyway. Eliminate a well-connected pose first and all its neighbours become linked at once. The best orders eliminate the least connected unknowns first and keep the clusters small.
+
+Marginalization is the same substitution with a different purpose. When a filter drops an old pose from its state, it does not throw away what that pose knew. It folds that knowledge into a new factor that links all of the pose's neighbours. Do that again and again, and the remaining unknowns become linked all to all: this is why the EKF-SLAM covariance of [Post 24](../ekf-slam/) is dense.
+
+## The math
+
+### Cholesky factorization is elimination
+
+Partition the unknowns into the first one, $a$, and the rest, $b$. Eliminating $a$ from $\boldsymbol{\Lambda}\boldsymbol{\delta} = \boldsymbol{\eta}$ leaves a system for $b$ alone, with matrix
+
+$$
+\boldsymbol{\Lambda}_{bb} - \boldsymbol{\Lambda}_{ba}\boldsymbol{\Lambda}_{aa}^{-1}\boldsymbol{\Lambda}_{ab}, \tag{1}
+$$
+
+the **Schur complement** of [Post 3](../conditioning-and-marginalizing/). Its second term is nonzero for every pair of unknowns that were both linked to $a$: the neighbours of $a$ become a clique. Cholesky factorization $\boldsymbol{\Lambda} = \mathbf{L}\mathbf{L}\T$ repeats this for every unknown in turn, and the nonzeros of column $k$ of $\mathbf{L}$ are exactly the links of unknown $k$ at the moment it is eliminated, original or filled in. The work grows with the square of those column counts, so fill costs time as well as memory.
+
+Eliminating in a different order is factorizing a permuted matrix $\mathbf{P}\boldsymbol{\Lambda}\mathbf{P}\T$. The solution is the same; the factor is not.
+
+### Orderings
+
+Finding the ordering with the least fill is NP-complete (Yannakakis, 1981), so solvers use heuristics:
+
+- **Natural order**, the order in which the unknowns were created. For a pure chain it is perfect. With loop closures, every pose linked to a much older one drags that link through all the poses eliminated in between.
+- **Bandwidth reduction** (reverse Cuthill–McKee): renumber the unknowns by a breadth-first search so that links stay close to the diagonal. All fill then stays inside the band.
+- **Minimum degree**: always eliminate an unknown with the fewest current links, so each clique created is small. Its approximate form, AMD (Amestoy, Davis and Duff), and the column version COLAMD are what most SLAM solvers use. The code here uses the exact version, which is simple and fast enough at this size.
+
+Real solvers order whole variables, here poses, rather than single numbers, because a pose's three numbers are always linked to each other.
+
+### Marginalization is elimination without coming back
+
+To solve a system, the factorization eliminates every unknown and then substitutes back. To **marginalize** unknowns $m$ out of a Gaussian in information form, eliminate them and stop. What remains is the information form of the marginal of the kept unknowns $k$:
+
+$$
+\boldsymbol{\Lambda}' = \boldsymbol{\Lambda}_{kk} - \boldsymbol{\Lambda}_{km}\boldsymbol{\Lambda}_{mm}^{-1}\boldsymbol{\Lambda}_{mk},\qquad
+\boldsymbol{\eta}' = \boldsymbol{\eta}_k - \boldsymbol{\Lambda}_{km}\boldsymbol{\Lambda}_{mm}^{-1}\boldsymbol{\eta}_m. \tag{2}
+$$
+
+The correction term is a dense factor on every kept unknown that was linked to a removed one: the removed unknowns' **Markov blanket**. Its inverse is exactly the covariance-form marginal, the matching block of $\boldsymbol{\Lambda}^{-1}$; the tests check this.
+
+<MarginalizationFill client:visible />
+
+## Play with it
+
+<TryThis>
+- In the ordering explorer, the 120 poses have 249 nonzero blocks in the lower triangle of $\boldsymbol{\Lambda}$; a dense factor would have 7,260. With the **natural** order, the factor has 725 nonzero blocks: 476 of them are fill-in.
+- Choose **Random**: 240 fill blocks, fewer than the natural order. With loop closures to poses created long ago, the order of creation is no special advantage.
+- Choose **Reverse Cuthill–McKee**: the nonzeros of $\boldsymbol{\Lambda}$ gather into a band, and the fill drops to 149. **Minimum degree** does best, with 117 fill blocks, less than a quarter of the natural order's.
+- In the loop of twelve poses, click pose **5**. Its two neighbours, poses 4 and 6, become linked by a new factor. Now restore it and click poses **2** and **9**, both ends of a loop closure: their four other neighbours, 1, 3, 8 and 10, become linked all to all, six new links at once.
+- Press **Marginalize the oldest pose** repeatedly, as a sliding-window estimator does. With 7 poses left, 12 of their 21 possible pairs are linked; with 4 left, 5 of 6. The window stays small, but its information matrix becomes dense.
+</TryThis>
+
+## Algorithm
+
+<AlgorithmBox title="Minimum-degree ordering, then sparse Cholesky" source="src/lib/graph/sparse.ts">
+1. Build the graph of the unknowns: one node per variable (pose), an edge for every factor that links two of them.
+2. **Order:** repeatedly pick a node of smallest current degree, record it, remove it and link its neighbours into a clique.
+3. **Symbolic factorization:** from the permuted pattern, compute the elimination tree (each column's first off-diagonal nonzero in $\mathbf{L}$) and the pattern of every row of $\mathbf{L}$.
+4. **Numeric factorization:** compute $\mathbf{L}$ row by row with sparse triangular solves; then solve $\mathbf{L}\mathbf{L}\T\boldsymbol{\delta} = \boldsymbol{\eta}$ by forward and back substitution.
+</AlgorithmBox>
+
+The unit tests check that the sparse factorization equals the dense one, that the elimination tree matches the dense factor, and that minimum degree is a valid permutation that never causes more fill than the natural order on grid graphs. Marginalization (2) is in `src/lib/graph/marginalize.ts`.
+
+## When it breaks
+
+### Density from marginalization
+
+A sliding-window estimator keeps the last few poses and marginalizes older ones into a prior on the window. The window's size is bounded, but its information matrix becomes dense, and with it every solve. Landmarks make it worse: marginalizing a pose links every landmark it saw. Practical systems marginalize carefully. They drop landmarks seen only by the pose being removed instead of marginalizing them, or approximate the dense prior by a sparser one.
+
+### Linearization points frozen in a prior
+
+The factor created by (2) is linear: it was computed at the estimate the removed unknowns had at that moment and can never be relinearized. If the kept unknowns move later, the prior still describes the old linearization, and the estimator can become inconsistent, the same disease as in Post 24. Sliding-window estimators therefore evaluate the Jacobians of the kept unknowns at fixed "first estimates" when they combine them with the prior.
+
+### The ordering costs too
+
+An ordering is computed once per pattern, but for very large problems the ordering algorithm itself takes time, which is why AMD approximates the degrees. When the problem grows one variable at a time, recomputing the ordering at every step is wasteful; incremental solvers reuse and repair it, the subject of Post 30.
+
+## Summary
+
+- Cholesky factorization eliminates unknowns one at a time; each elimination links the unknown's neighbours, creating fill-in.
+- The ordering does not change the solution but changes the fill and the cost. The optimal ordering is NP-hard to find; minimum degree and its approximation AMD work well in practice.
+- On a 120-pose city, minimum degree causes less than a quarter of the fill of the natural order.
+- Marginalization is elimination without back-substitution: the Schur complement leaves a dense factor on the removed unknowns' neighbours.
+- Marginalizing old states keeps the state small but makes it dense; filters are the extreme case, and keeping the past (smoothing) is what keeps SLAM sparse.

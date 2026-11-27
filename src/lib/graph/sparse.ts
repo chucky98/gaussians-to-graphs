@@ -297,3 +297,43 @@ export function factorNnz(a: Csc, perm?: ArrayLike<number>): number {
   for (let k = 0; k < b.n; k++) count += ereach(b, k, parent, mark).length;
   return count;
 }
+
+/** Nonzero pattern of the Cholesky factor (lower triangle, with the diagonal) under an ordering, as (row, col). */
+export function factorPattern(a: Csc, perm?: ArrayLike<number>): [number, number][] {
+  const b = perm ? permute(a, perm) : a;
+  const parent = etree(b);
+  const mark = new Int32Array(b.n).fill(-1);
+  const out: [number, number][] = [];
+  for (let k = 0; k < b.n; k++) {
+    out.push([k, k]);
+    for (const j of ereach(b, k, parent, mark)) out.push([k, j]);
+  }
+  return out;
+}
+
+/**
+ * Reverse Cuthill–McKee ordering: breadth-first search from a node of smallest degree, visiting neighbours in
+ * order of increasing degree, then reversed. It keeps the nonzeros near the diagonal (small bandwidth), so the
+ * factor's fill stays inside the band. Restarts for each connected component.
+ */
+export function reverseCuthillMcKee(adj: readonly Set<number>[]): Int32Array {
+  const n = adj.length;
+  const seen = new Uint8Array(n);
+  const order: number[] = [];
+  const byDegree = Array.from({ length: n }, (_, i) => i).sort((a, b) => adj[a]!.size - adj[b]!.size || a - b);
+  for (const start of byDegree) {
+    if (seen[start]) continue;
+    seen[start] = 1;
+    const queue = [start];
+    for (let q = 0; q < queue.length; q++) {
+      const v = queue[q]!;
+      order.push(v);
+      const nb = [...adj[v]!].filter((u) => !seen[u]).sort((a, b) => adj[a]!.size - adj[b]!.size || a - b);
+      for (const u of nb) {
+        seen[u] = 1;
+        queue.push(u);
+      }
+    }
+  }
+  return Int32Array.from(order.reverse());
+}

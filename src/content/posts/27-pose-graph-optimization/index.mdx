@@ -83,7 +83,7 @@ Write $\mathbf{E} = \mathbf{T}_{ij}^{-1}\mathbf{T}_i^{-1}\mathbf{T}_j$, so $\mat
 
 Each iteration is Post 26's step. Linearize every constraint, assemble the sparse $\boldsymbol{\Lambda}\boldsymbol{\delta} = \boldsymbol{\eta}$, solve it by sparse Cholesky, and update every pose with $\mathbf{T}_i \leftarrow \mathbf{T}_i \oplus \boldsymbol{\delta}_i$. Levenberg–Marquardt ([Post 9](../nonlinear-least-squares/)) solves $(\boldsymbol{\Lambda} + \lambda\,\diag(\boldsymbol{\Lambda}))\boldsymbol{\delta} = \boldsymbol{\eta}$ instead. It raises the damping $\lambda$ when a step would increase the cost, which shortens the step towards gradient descent, and lowers it after every success.
 
-For a thousand poses, $\boldsymbol{\Lambda}$ is $3000 \times 3000$, nine million entries, but each pose shares constraints with only a few others: its neighbours in time and the places it recognized. Its nonzeros grow with the number of constraints, and so does the work of each iteration, as long as the Cholesky factor stays sparse too. That depends on the order in which the poses are eliminated (Post 28).
+For a thousand poses, $\boldsymbol{\Lambda}$ is $3000 \times 3000$, nine million entries, but each pose shares constraints with only a few others: its neighbours in time and the places it recognized. Its nonzeros grow with the number of constraints, and so does the work of each iteration, as long as the Cholesky factor stays sparse too. That depends on the order in which the poses are eliminated ([Post 28](../sparsity-and-solvers/)).
 
 ### What the final cost tells you
 
