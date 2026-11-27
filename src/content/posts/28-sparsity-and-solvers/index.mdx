@@ -119,7 +119,7 @@ The factor created by (2) is linear: it was computed at the estimate the removed
 
 ### The ordering costs too
 
-An ordering is computed once per pattern, but for very large problems the ordering algorithm itself takes time, which is why AMD approximates the degrees. When the problem grows one variable at a time, recomputing the ordering at every step is wasteful; incremental solvers reuse and repair it, the subject of Post 30.
+An ordering is computed once per pattern, but for very large problems the ordering algorithm itself takes time, which is why AMD approximates the degrees. When the problem grows one variable at a time, recomputing the ordering at every step is wasteful; incremental solvers reuse and repair it, the subject of [Post 30](../incremental-smoothing/).
 
 ## Summary
 

@@ -1,0 +1,114 @@
+---
+number: 30
+title: 'Incremental Smoothing: The Idea Behind iSAM'
+description: A new measurement changes only part of the factorization. The elimination tree tells which part, and that is the idea that makes online smoothing cheap.
+part: 4
+status: published
+date: 2026-11-27
+prerequisites: [sparsity-and-solvers]
+objectives:
+  - Explain why re-solving the whole problem at every step is wasteful for a robot that keeps adding measurements.
+  - Use the elimination tree to find which part of a Cholesky factor a new factor changes.
+  - Describe the ideas of iSAM and iSAM2 (incremental factorization, the Bayes tree, fluid relinearization) at an intuitive level.
+  - Explain why loop closures cause bursts of work, and what an incremental solver does about them.
+references:
+  - key: kaess2008
+    text: 'Kaess, Ranganathan, Dellaert. "iSAM: Incremental smoothing and mapping." *IEEE Transactions on Robotics* 24(6), 2008.'
+  - key: kaess2012
+    text: 'Kaess, Johannsson, Roberts, Ila, Leonard, Dellaert. "iSAM2: Incremental smoothing and mapping using the Bayes tree." *International Journal of Robotics Research* 31(2), 2012.'
+  - key: dellaert2017
+    text: 'Dellaert, Kaess. "Factor Graphs for Robot Perception." *Foundations and Trends in Robotics* 6(1–2), 2017. Ch. 6 (incremental smoothing and the Bayes tree).'
+  - key: davis2006
+    text: Davis. *Direct Methods for Sparse Linear Systems.* SIAM, 2006. Ch. 4 (the elimination tree and the nonzero pattern of the factor).
+widgets: [IncrementalVsBatch]
+symbols:
+  - tex: '\boldsymbol{\Lambda} = \mathbf{J}\T\boldsymbol{\Omega}\mathbf{J},\ \boldsymbol{\eta} = -\mathbf{J}\T\boldsymbol{\Omega}\mathbf{r}'
+    meaning: information matrix
+    match: ['\boldsymbol{\Lambda}']
+  - tex: '\mathbf{L}'
+    meaning: Cholesky factor
+    match: ['\mathbf{L}']
+---
+
+import IncrementalVsBatch from '../../../components/widgets/IncrementalVsBatch/IncrementalVsBatch.svelte';
+
+The optimizer of [Post 27](../pose-graph-optimization/) solved a finished pose graph in a fraction of a second. A robot does not have a finished graph: it adds a pose and a few measurements several times a second, and it wants the best estimate after every one of them. Re-solving from scratch each time repeats almost all of the previous work, because almost all of the answer has not changed. **Incremental smoothing** keeps the previous factorization and updates only the part a new measurement touches. This post shows how to find that part.
+
+<IncrementalVsBatch client:visible />
+
+The robot drives through the city of Post 27, one pose per step. Highlighted poses are those whose share of the factorization had to be recomputed at the current step. Play from the start and watch the chart: the work of refactoring everything keeps growing, the work of the incremental update stays tiny, except at loop closures.
+
+## Intuition
+
+Recall from [Post 28](../sparsity-and-solvers/) that a Cholesky factorization eliminates the unknowns one by one, and that each elimination passes information to the unknowns linked to it that come later in the order. If the poses are eliminated in the order they were created, a new pose comes last. Odometry links it only to the previous pose. Its arrival changes how the previous pose is eliminated, and nothing before that: all the older work is still valid.
+
+A loop closure is different. It links the new pose to one created long ago, and the change ripples forward from that old pose through everything eliminated after it that depends on it. That is a burst of work, but usually still much less than starting over.
+
+## The math
+
+### The elimination tree
+
+The **elimination tree** of [Post 28](../sparsity-and-solvers/) records, for each unknown $j$, its parent: the first unknown after $j$ in the elimination order that is linked to $j$ at the moment $j$ is eliminated. Equivalently, the row of the first nonzero below the diagonal in column $j$ of $\mathbf{L}$. Column $j$ of $\mathbf{L}$ is computed from the columns of $j$'s descendants in this tree, and from nothing else.
+
+So consider adding a factor that involves a set of unknowns $V$. It changes the entries of $\boldsymbol{\Lambda}$ in the rows and columns of $V$. Column $j$ of $\mathbf{L}$ can change only if column $j$ of $\boldsymbol{\Lambda}$ changed, or if a column it is computed from changed. By induction, **the columns that change are exactly those of $V$ and of all their ancestors** in the (new) elimination tree. Every other column of the new factor is identical to the old one, digit for digit; the unit tests check this on the real numerical factor.
+
+With poses in time order, a new pose is the last unknown and the root of the tree. Its odometry factor touches only it and the previous pose, which is its child, so the affected set is those two. A loop closure to an old pose $j$ adds the whole path from $j$ to the root.
+
+### iSAM and iSAM2
+
+**iSAM** (Kaess, Ranganathan and Dellaert, 2008) keeps the square-root information matrix (a QR factor) and folds each new measurement in as new rows, using Givens rotations to restore the triangular shape. It touches only the affected part. Because the order of elimination is never revised and the linearization point is frozen, iSAM periodically reorders the variables and relinearizes everything in a batch step.
+
+**iSAM2** (Kaess and coauthors, 2012) replaces the matrix with a **Bayes tree**: the elimination tree with its nodes grouped into cliques, each holding a small conditional density. A new factor marks its cliques and all their ancestors; iSAM2 removes that top part of the tree, turns it back into a small factor graph, reorders it with a constrained minimum-degree heuristic (so that recently touched variables are eliminated last), and re-eliminates it. The rest of the tree is untouched. Two more ideas complete it:
+
+- **Fluid relinearization:** only variables whose estimated change exceeds a threshold are relinearized, and only their part of the tree is redone.
+- **Partial state updates:** after re-elimination, back-substitution stops descending a branch of the tree as soon as the changes it carries become negligible.
+
+### Counting work
+
+The cost of computing column $j$ of $\mathbf{L}$ grows with the square of its number of nonzeros $c_j$. The widget counts work as $\sum_j c_j^2$: over all columns for a full refactorization, over the affected columns for an incremental one. These are counts at the level of 3 × 3 pose blocks, not timings.
+
+<Callout type="note">
+**What the widget simplifies.** It keeps the creation order of the poses fixed and never relinearizes, so it shows only the incremental *factorization* at the heart of iSAM2, not the full algorithm. Its loop closures therefore cost more than they would in iSAM2, which reorders the affected part to keep it small. The affected sets and work counts are exact for what is modelled.
+</Callout>
+
+## Play with it
+
+<TryThis>
+- At the last step (299), a loop closure to pose 277 arrives: 23 poses are re-eliminated, at a work of 2,198 against 129,427 for refactoring all 300 poses.
+- Press **Go to the first loop closure** (step 32). The new pose is recognized as pose 0, the start: the path from pose 0 to the root is every pose, so all 33 are re-eliminated. Step on: the next steps re-eliminate only the newest two poses again.
+- Play from step 1 and watch the chart. On all 247 steps without a loop closure, exactly 2 poses are affected. The 52 steps with a loop closure produce the spikes; the largest, at step 222, re-eliminates 219 poses.
+- At the end, the total work of the incremental updates is 7.4 times smaller than refactoring at every step. Without the loop-closure spikes, which iSAM2's reordering shrinks, the gap would be far larger.
+</TryThis>
+
+## Algorithm
+
+<AlgorithmBox title="Incremental update of a sparse factorization (the core of iSAM2)" source="src/lib/demos/incremental.ts">
+1. Add the new variables (here one pose) at the end of the elimination order, and add the new factors to $\boldsymbol{\Lambda}$.
+2. Mark the variables involved in the new factors, then walk up the elimination tree from each, marking every ancestor: this is the affected set.
+3. Recompute the columns of $\mathbf{L}$ for the affected variables only, using the unchanged columns of their descendants.
+4. Solve by forward and back substitution; in iSAM2 the back substitution also stops early in branches whose changes are negligible.
+</AlgorithmBox>
+
+The demo works on the block pattern: `etree` and `factorPattern` from `src/lib/graph/sparse.ts` give the tree and the column counts. The unit tests rebuild the real numerical factor at consecutive steps, before, at and after a loop closure, and check that every column outside the affected set is unchanged.
+
+## When it breaks
+
+### Big loop closures
+
+A loop closure to the very beginning affects the path to the root, which in creation order can be everything. iSAM2 limits the damage by reordering the affected part so that the variables touched by the new factor come last, which shortens the path for the next closure; but a robot that closes a huge loop pays for a large re-elimination once.
+
+### Stale linearization
+
+An incremental solver reuses old factorizations, which were computed at old linearization points. When the estimate moves a lot, as it does after a big loop closure, those factors are out of date. Fluid relinearization redoes the parts that moved; iSAM's periodic batch steps do the same thing crudely. Neglecting it gives slowly growing errors, much like the EKF's inconsistency in [Post 24](../ekf-slam/).
+
+### Covariances
+
+Like the batch solver, an incremental solver returns the most likely estimate. Recovering the covariance of the latest pose, needed for data association gates in [Post 25](../data-association/), takes extra work. The Bayes tree makes the marginal of a variable near the root cheap to compute, which is the most recent pose.
+
+## Summary
+
+- A robot adds measurements continually; re-solving from scratch at every step repeats work whose result has not changed.
+- A new factor changes only the columns of the Cholesky factor for the variables it touches and their ancestors in the elimination tree.
+- With poses in time order, odometry affects two poses; a loop closure affects the whole path back to the pose it closes on.
+- iSAM folds new rows into a QR factor; iSAM2 re-eliminates the affected top of a Bayes tree, with local reordering and fluid relinearization.
+- On the 300-pose city, refactoring only the affected part takes 7.4 times less work in total than refactoring everything at every step.
