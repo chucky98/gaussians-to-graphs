@@ -112,7 +112,8 @@ pre {
   padding: 0.25em 0;
   margin: 1em 0;
 }
-.katex-display[tabindex]:focus-visible {
+.katex-display[tabindex]:focus-visible,
+.content table[tabindex]:focus-visible {
   outline: 2px solid var(--c-link);
   outline-offset: 2px;
 }

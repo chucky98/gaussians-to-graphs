@@ -1,26 +1,32 @@
 ---
 /**
- * Display equations that are wider than the column scroll horizontally (DESIGN §6.4). A scrolling
- * region must be reachable by keyboard (WCAG 2.1.1; axe "scrollable-region-focusable"), so every
- * display that actually overflows becomes a focusable, labelled region; the others stay out of the
- * tab order. Re-checked whenever a display changes size.
+ * Display equations and tables that are wider than the column scroll horizontally (DESIGN §6.4). A
+ * scrolling region must be reachable by keyboard (WCAG 2.1.1; axe "scrollable-region-focusable"), so
+ * every one that actually overflows becomes a focusable, labelled region; the others stay out of the
+ * tab order. Re-checked whenever one changes size.
  */
 ---
 
 <script>
   function sync(el: HTMLElement) {
     const scrolls = el.scrollWidth > el.clientWidth + 1;
+    // A table keeps its own role (and its caption as its name); an equation becomes a labelled region.
+    const isTable = el.tagName === 'TABLE';
     if (scrolls) {
       el.setAttribute('tabindex', '0');
-      el.setAttribute('role', 'region');
-      el.setAttribute('aria-label', 'Equation (scrolls horizontally)');
+      if (!isTable) {
+        el.setAttribute('role', 'region');
+        el.setAttribute('aria-label', 'Equation (scrolls horizontally)');
+      }
     } else if (el.hasAttribute('tabindex')) {
       el.removeAttribute('tabindex');
-      el.removeAttribute('role');
-      el.removeAttribute('aria-label');
+      if (!isTable) {
+        el.removeAttribute('role');
+        el.removeAttribute('aria-label');
+      }
     }
   }
-  const displays = [...document.querySelectorAll<HTMLElement>('.katex-display')];
+  const displays = [...document.querySelectorAll<HTMLElement>('.katex-display, .content table')];
   const all = () => displays.forEach(sync);
   // Observe the display (column width changes) and its content (late-loading fonts change its width).
   const ro = new ResizeObserver(all);

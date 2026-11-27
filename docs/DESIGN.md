@@ -325,7 +325,11 @@ Typography: scalars are italic ($x$), vectors are bold lowercase ($\mathbf{x}$),
 | $[\mathbf{v}]_\times$ | skew-symmetric matrix, $[\mathbf{v}]_\times\mathbf{w} = \mathbf{v}\times\mathbf{w}$ (also $\mathbf{v}^\wedge$) |
 | $\mathbf{q} = (q_w, \mathbf{q}_v)$, $\mathbf{q}^*$, $\otimes$ | unit quaternion (Hamilton, scalar first), conjugate, quaternion product |
 | $t$ | interpolation parameter in $[0, 1]$ (post 20) |
+| $\mathbf{X}, \mathbf{Y}$ | elements of a generic (matrix) Lie group (post 21) |
 | $\boldsymbol{\tau}$ | tangent-space (Lie algebra) vector |
+| $\boldsymbol{\tau} = (\boldsymbol{\rho}, \theta)$ | SE(2) tangent vector (twist): body-frame translation part, then the turn; SE(3): $(\boldsymbol{\rho}, \boldsymbol{\theta})$ |
+| $\mathbf{V}(\theta)$ | SE(2) matrix with $\mathbf{t} = \mathbf{V}(\theta)\boldsymbol{\rho}$ in $\Exp$ (post 21) |
+| $N$ | number of steps: of data (post 18), of a motion split into pieces (post 21) |
 | $(\cdot)^\wedge$, $(\cdot)^\vee$ | hat and vee |
 | $\operatorname{Exp}$, $\operatorname{Log}$ | maps between $\mathbb{R}^n$ and the group (capitalized, Solà et al.) |
 | $\oplus$, $\ominus$ | right-plus and right-minus on manifolds |
@@ -340,7 +344,7 @@ Typography: scalars are italic ($x$), vectors are bold lowercase ($\mathbf{x}$),
 | $\rho(\cdot)$ | robust kernel |
 | $\mathbb{E}$, $\operatorname{Cov}$, $(\cdot)^\top$, $\mathbf{I}$ | expectation, covariance, transpose, identity |
 
-Conflict notes, to be explained on the `/notation` page: $\mathbf{C}_k$ (smoother gain) vs $\mathbf{C}$ (rotation); $L$ (lag) vs $\mathbf{L}$ (Cholesky factor); $\beta, \kappa, \lambda$ in post 16 (UT parameters) vs forgetting factor, prior weight and LM damping; $\theta$ (heading, from post 14) vs $\theta$ (bearing in post 4) vs $\theta$ (pitch, post 20 only; otherwise a rotation angle); $\phi$ (bearing) vs $\phi$ (roll, post 20 only); $t$ (interpolation) vs $t_i$ (fit inputs) vs $\mathbf{t}$ (translation); $v$ (speed) vs $\mathbf{v}_k$ (measurement noise); $M$ (Monte Carlo runs) vs $\mathbf{M}_k$ (control noise); $\eta$ (belief normalizer) vs $\boldsymbol{\eta}$ (Gauss–Newton); $\varepsilon$ (kidnapping probability) vs $\epsilon_k$ (NEES); $w^{[i]}$ (particle weight, scalar, superscript) vs $\mathbf{w}_k$ (process noise, bold); $\lambda$ for LM damping vs eigenvalues; $\rho$ (correlation, Part 0) vs $\rho(\cdot)$ (robust kernel); $\mathbf{z}$ (whitened vector, Part 0) vs $\mathbf{z}_k$ (measurement). Eigenvalues are written $\lambda_1, \lambda_2$ and appear only in Part 0, so context makes the meaning clear.
+Conflict notes, to be explained on the `/notation` page: $\mathbf{C}_k$ (smoother gain) vs $\mathbf{C}$ (rotation); $L$ (lag) vs $\mathbf{L}$ (Cholesky factor); $\beta, \kappa, \lambda$ in post 16 (UT parameters) vs forgetting factor, prior weight and LM damping; $\theta$ (heading, from post 14) vs $\theta$ (bearing in post 4) vs $\theta$ (pitch, post 20 only; otherwise a rotation angle); $\phi$ (bearing) vs $\phi$ (roll, post 20 only); $t$ (interpolation) vs $t_i$ (fit inputs) vs $\mathbf{t}$ (translation); $\boldsymbol{\rho}$ (tangent translation) vs $\rho$ and $\rho(\cdot)$; $\mathbf{V}(\theta)$ (SE(2) Exp) vs $\mathbf{V}_k$ (control Jacobian); $v$ (speed) vs $\mathbf{v}_k$ (measurement noise); $M$ (Monte Carlo runs) vs $\mathbf{M}_k$ (control noise); $\eta$ (belief normalizer) vs $\boldsymbol{\eta}$ (Gauss–Newton); $\varepsilon$ (kidnapping probability) vs $\epsilon_k$ (NEES); $w^{[i]}$ (particle weight, scalar, superscript) vs $\mathbf{w}_k$ (process noise, bold); $\lambda$ for LM damping vs eigenvalues; $\rho$ (correlation, Part 0) vs $\rho(\cdot)$ (robust kernel); $\mathbf{z}$ (whitened vector, Part 0) vs $\mathbf{z}_k$ (measurement). Eigenvalues are written $\lambda_1, \lambda_2$ and appear only in Part 0, so context makes the meaning clear.
 
 ### 6.2 Colors and line styles (semantic tokens)
 

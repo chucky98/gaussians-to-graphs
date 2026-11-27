@@ -202,7 +202,18 @@ export const notationGroups: readonly NotationGroup[] = [
         meaning: 'unit quaternion (scalar part first), its conjugate, and the Hamilton product',
       },
       { tex: 't', meaning: 'interpolation parameter, from 0 to 1 (Post 20)' },
+      { tex: '\\mathbf{X},\\ \\mathbf{Y}', meaning: 'elements of a (matrix) Lie group, generic (Post 21)' },
       { tex: '\\boldsymbol{\\tau}', meaning: 'tangent-space (Lie algebra) vector' },
+      {
+        tex: '\\boldsymbol{\\tau} = (\\boldsymbol{\\rho}, \\theta)',
+        meaning:
+          'a tangent vector (twist) of SE(2): translation part ρ in the body frame, then the turn θ; on SE(3), (ρ, θ) with θ a rotation vector',
+      },
+      {
+        tex: '\\mathbf{V}(\\theta)',
+        meaning: 'the SE(2) matrix turning ρ into the translation of Exp(τ), t = V(θ) ρ (Post 21)',
+      },
+      { tex: 'N', meaning: 'number of steps: of data (Post 18), or of a motion split into pieces (Post 21)' },
       { tex: '(\\cdot)^\\wedge,\\ (\\cdot)^\\vee', meaning: 'hat and vee' },
       { tex: '\\Exp,\\ \\Log', meaning: 'maps between ℝⁿ and the group (capitalized, as in Solà et al.)' },
       { tex: '\\oplus,\\ \\ominus', meaning: 'right-plus and right-minus on manifolds' },
@@ -241,6 +252,14 @@ export const notationConflicts: readonly { tex: string; note: string }[] = [
   {
     tex: '\\phi\\ \\text{(bearing vs. roll)}',
     note: 'φ is the bearing of a landmark (Part 2 on); in Post 20’s Euler-angle formulas it is the roll.',
+  },
+  {
+    tex: '\\rho\\ \\text{vs.}\\ \\boldsymbol{\\rho}\\ \\text{vs.}\\ \\rho(\\cdot)',
+    note: 'An italic ρ is a correlation coefficient (Part 0); the bold ρ is the translation part of a tangent vector (Part 3); ρ(·) is a robust kernel (Part 4).',
+  },
+  {
+    tex: '\\mathbf{V}(\\theta)\\ \\text{vs.}\\ \\mathbf{V}_k',
+    note: 'With an angle argument, V(θ) is the SE(2) translation matrix of Exp (Post 21); with a time index, V_k is the control Jacobian of a motion model (Post 14).',
   },
   {
     tex: 't\\ \\text{vs.}\\ t_i\\ \\text{vs.}\\ \\mathbf{t}',

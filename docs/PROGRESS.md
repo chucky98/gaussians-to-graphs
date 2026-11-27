@@ -2,7 +2,7 @@
 
 ## Current phase: 3 — Part 3 (geometry) in progress
 
-## Next task: Phase 3 — post 21 `lie-groups-for-robotics` (TangentSpace, SE2Exp)
+## Next task: Phase 3 — post 22 `uncertainty-on-poses` (PoseCompounding)
 
 ## Posts
 
@@ -28,7 +28,8 @@
 | 18    | smoothing                        | published | FilterVsSmoother                 | ~2,500 words. Post 11's outage run: filter vs RTS smoother vs batch vs fixed lag; data arriving after the gap.               |
 | 19    | information-filter               | published | InfoVsCov                        | ~2,300 words. Information filter; trajectory Ω block-tridiagonal vs dense P; conditional independence; marginalization.      |
 | 20    | rotations                        | published | EulerGimbal, QuaternionSlerp     | ~2,800 words. Threlte (3D). Gimbal rings coloured by their axis; Euler-change table for 5° body turns; slerp vs Euler paths. |
-| 21–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                                |                                                                                                                              |
+| 21    | lie-groups-for-robotics          | published | TangentSpace, SE2Exp             | ~3,300 words. SO(2) circle and tangent line; SE(2) constant-twist arc vs N steps vs naive sum; Jacobian table; SE(3) brief.  |
+| 22–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                                |                                                                                                                              |
 
 ## Infrastructure checklist
 
@@ -141,6 +142,9 @@
 - 2026-11-27 — **Axis colour tokens `--c-rot-x/y/z`** (vermillion, green, blue; the robotics RGB = xyz order with Okabe–Ito hues), added to DESIGN §6.2 and the /notation style key. Gimbal rings are coloured by the axis they turn about and are also told apart by size.
 - 2026-11-27 — **Post 20 notation:** C(θ), C_x/C_y/C_z (elementary rotations: R is reserved for noise), ψ/θ/φ as yaw/pitch/roll in post 20 only, ω (body angular velocity), E (Euler-rate matrix), u/θ/θu (axis, angle, rotation vector), [v]×, q = (q_w, q_v), q*, ⊗, and t (interpolation). Conflict notes added for θ (heading/pitch/angle), φ (bearing/roll) and t. Body axes: x forward, y left, z up (so a positive pitch tips the nose down, stated in the post).
 - 2026-11-27 — **EulerGimbal shows a "5° turn" table** instead of only animating the lock: for each body axis, the change in yaw/pitch/roll needed (exact, via the matrix, not the linearized E⁻¹). At pitch 80° a 5° turn about the wing needs ≈ 18° of yaw and roll; at 90° it needs 160°. At exact lock, a change that stays at lock is reported as roll only (the representation is not unique there). `quat.slerp` gained `{ shortest: false }` for the "long way" demonstration.
+- 2026-11-27 — **Post 21 widgets are 2D (SVG), not Threlte.** DESIGN lists no 3D for post 21, and the circle and the plane say everything; the post's bundle stays free of three.js (checked by validate). TangentSpace contrasts Exp with "step along the tangent line, then normalize" (the angle turned is atan τ instead of τ). SE2Exp shows Exp as the limit of N straight-then-turn steps (error halves as N doubles; N = 1 equals the naive sum at heading 0), and dragging the end point runs Log with the turn held fixed.
+- 2026-11-27 — **Post 21 notation:** X, Y (generic group elements, bold because they are matrices; calligraphic 𝒳 is taken by sigma points), τ = (ρ, θ) for SE(2)/SE(3) twists, V(θ), N (number of steps). Conflict notes: ρ vs bold ρ vs ρ(·); V(θ) vs V_k.
+- 2026-11-27 — **Wide tables in posts are keyboard-scrollable (bug fix).** Markdown tables already scrolled inside their own box on narrow screens, but nothing made them focusable; post 21's Jacobian table was the first wide enough to scroll at 375 px, and axe caught it. `MathScroll.astro` now also handles `.content table`: a table that overflows gets `tabindex="0"` (keeping its table role and caption, unlike equations, which become labelled regions).
 
 ## Follow-ups / known issues
 
