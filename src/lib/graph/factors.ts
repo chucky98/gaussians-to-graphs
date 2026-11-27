@@ -10,6 +10,7 @@ import { wrapAngle } from '../geometry/so2';
 import { fromArrays, mul, scale, type Mat, type Vec } from '../math/matrix';
 import { getPoint, getPose2, getPose3, type Key, type Values } from './values';
 import { rangeBearing, rangeBearingJacobians } from '../models/range-bearing';
+import { project, projectJacobians, type Intrinsics } from '../models/pinhole';
 
 export interface Factor {
   /** Short type name, for drawing and I/O. */
@@ -135,6 +136,25 @@ export function rangeBearingFactor(kx: Key, kl: Key, z: Vec, information: Mat): 
         [0, 0, 1],
       ]);
       return { r: res(v), J: [mul(Hx, R), Hm] };
+    },
+  };
+}
+
+/** Reprojection factor (Post 31): pixel z of point l (3D) seen by camera x (SE(3), camera-to-world): r = π(x, l) − z. */
+export function reprojectionFactor(kx: Key, kl: Key, z: Vec, K: Intrinsics, information: Mat): Factor {
+  const res = (v: Values) => {
+    const uv = project(K, getPose3(v, kx), getPoint(v, kl));
+    return Float64Array.of(uv[0]! - z[0]!, uv[1]! - z[1]!);
+  };
+  return {
+    type: 'reprojection',
+    keys: [kx, kl],
+    dim: 2,
+    information,
+    residual: res,
+    linearize(v) {
+      const { dPose, dPoint } = projectJacobians(K, getPose3(v, kx), getPoint(v, kl));
+      return { r: res(v), J: [dPose, dPoint] };
     },
   };
 }
