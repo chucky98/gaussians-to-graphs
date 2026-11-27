@@ -2,7 +2,7 @@
 
 ## Current phase: 4 — Part 4 (SLAM) in progress
 
-## Next task: Phase 4 — post 25 `data-association` (AssociationGating)
+## Next task: Phase 4 — post 26 `factor-graphs` (FactorGraphBuilder; graph/factors, values, sparse, solver on manifolds)
 
 ## Posts
 
@@ -32,7 +32,8 @@
 | 22    | uncertainty-on-poses             | published | PoseCompounding                  | ~1,800 words. Gaussian on SE(2); compounding with the adjoint; (x, y, θ) ellipse 69% vs tangent region 97%; first-order limits. |
 | 23    | the-slam-problem                 | published | CorrelationsEmerge               | ~2,500 words. Full/online SLAM, Bayes-net figure, correlations born at initialization, a loop closure shrinks every ellipse.    |
 | 24    | ekf-slam                         | published | EKFSLAM                          | ~2,600 words. Three steps and their cost,                                                                                       | ρ   | heat map filling in, loop closure, inconsistency over 50 runs. |
-| 25–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                                |                                                                                                                                 |
+| 25    | data-association                 | published | AssociationGating (scene, run)   | ~2,600 words. Gating, NN vs JCBB under a shared pose error, clutter, new landmarks; one forced wrong pairing wrecks the map.    |
+| 26–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                                |                                                                                                                                 |
 
 ## Infrastructure checklist
 
@@ -157,6 +158,9 @@
 - 2026-11-27 — **Post 23 notation:** the map m with n landmarks; P_rr, P_rm, P_mm; g, G_r, G_z (landmark initialization); ρ_ab (canonical correlation).
 - 2026-11-27 — **EKF-SLAM update in O(n²)** (post 24): K = P Hᵀ S⁻¹ from H's five nonzero columns, P ← P − K S Kᵀ, returning ν, S and the NIS (post 25 gates on them). Tested equal to the generic Joseph-form `ekfUpdate` within 1e-12; the Joseph form would cost O(n³) here. One run of post 24's scenario (240 steps, 16 landmarks) takes ~70 ms; 50-run consistency studies run in the unit tests.
 - 2026-11-27 — **EKFSLAM scenario:** 16 landmarks frozen from a seeded layout around a 6 m circle, range 3.5 m, 240 steps (1.6 laps); seed 18 most typical of 40. The loop closure is defined as the largest one-step drop of the robot's uncertainty after the first quarter (step 131, re-reading landmark 15). Inconsistency shown with 50-run averaged NEES: in band during lap 1, above it at 68 of 110 steps after the closure (×2 heading noise: all 110). Heat map: |correlation| of the full state, padded to the final 35 × 35 so it visibly grows.
+- 2026-11-27 — **`filters/association.ts` (post 25):** Mahalanobis gating, nearest neighbour (closest pairs first, each landmark once), and JCBB (depth-first with joint-compatibility pruning and a pairing-count bound, ties by smaller D²). Tests: a single pair's joint distance = its d²; JCBB's answers are jointly compatible and never reuse a landmark; JCBB returns the truth when it is compatible and complete.
+- 2026-11-27 — **AssociationGating has two modes** (one widget, `mode` prop, like MCL's presets): a snapshot ("fence" of landmarks 1 m apart, the robot's estimate off sideways with a matching covariance; gates drawn in the plane as Hm⁻¹ S Hm⁻ᵀ at the gate probability) and an unlabelled EKF-SLAM run on post 24's world (no clutter there: new landmarks only from readings outside every χ²₂(0.9999) gate, ambiguous readings dropped). The forced error pairs landmark 15's reading with 14 at the loop closure: 19 more wrong pairings and 13 duplicates follow. The scene's gate slider matters only when the error exceeds ~2σ, so the offset slider goes to 2 m.
+- 2026-11-27 — **Post 25 notation:** 𝓗 (hypothesis) and D²_𝓗 (joint Mahalanobis distance); calligraphic because bold H is the measurement Jacobian.
 
 ## Follow-ups / known issues
 

@@ -241,6 +241,10 @@ export const notationGroups: readonly NotationGroup[] = [
         meaning: 'landmark position from its first reading, and its Jacobians with respect to the pose and the reading',
       },
       {
+        tex: '\\mathcal{H},\\ D^2_{\\mathcal{H}}',
+        meaning: 'a data-association hypothesis, and its joint Mahalanobis distance (Post 25)',
+      },
+      {
         tex: '\\rho_{ab}',
         meaning: 'largest canonical correlation between two estimates a and b (Post 23)',
       },

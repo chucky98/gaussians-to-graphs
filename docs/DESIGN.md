@@ -340,6 +340,7 @@ Typography: scalars are italic ($x$), vectors are bold lowercase ($\mathbf{x}$),
 | $\mathbf{P}_{rr}, \mathbf{P}_{rm}, \mathbf{P}_{mm}$ | robot, robot–map and map blocks of the SLAM covariance (posts 23–24) |
 | $g(\cdot)$, $\mathbf{G}_r, \mathbf{G}_z$ | landmark initialization from a first reading; its Jacobians (posts 23–24) |
 | $\rho_{ab}$ | largest canonical correlation between two estimates (post 23) |
+| $\mathcal{H}$, $D^2_{\mathcal{H}}$ | data-association hypothesis; its joint Mahalanobis distance (post 25) |
 | $\phi_i$ | factor $i$ |
 | $\mathbf{r}_i$, $\boldsymbol{\Omega}_i$ | residual of factor $i$ and its information matrix |
 | $c(\mathbf{x}) = \tfrac12\sum_i \lVert \mathbf{r}_i \rVert^2_{\boldsymbol{\Omega}_i}$ | total cost |
