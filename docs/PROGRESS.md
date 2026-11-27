@@ -1,8 +1,8 @@
 # Progress
 
-## Current phase: 3 — Part 3 complete (posts 01–22 published)
+## Current phase: 4 — Part 4 (SLAM) in progress
 
-## Next task: Phase 4 — post 23 `the-slam-problem` (CorrelationsEmerge)
+## Next task: Phase 4 — post 24 `ekf-slam` (EKFSLAM)
 
 ## Posts
 
@@ -30,7 +30,8 @@
 | 20    | rotations                        | published | EulerGimbal, QuaternionSlerp     | ~2,900 words. Threlte (3D). Gimbal rings coloured by their axis; Euler-change table for 5° body turns; slerp vs Euler paths.    |
 | 21    | lie-groups-for-robotics          | published | TangentSpace, SE2Exp             | ~2,700 words. SO(2) circle and tangent line; SE(2) constant-twist arc vs N steps vs naive sum; Jacobian table; SE(3) brief.     |
 | 22    | uncertainty-on-poses             | published | PoseCompounding                  | ~1,800 words. Gaussian on SE(2); compounding with the adjoint; (x, y, θ) ellipse 69% vs tangent region 97%; first-order limits. |
-| 23–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                                |                                                                                                                                 |
+| 23    | the-slam-problem                 | published | CorrelationsEmerge               | ~2,500 words. Full/online SLAM, Bayes-net figure, correlations born at initialization, a loop closure shrinks every ellipse.    |
+| 24–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                                |                                                                                                                                 |
 
 ## Infrastructure checklist
 
@@ -150,6 +151,9 @@
 - 2026-11-27 — **Post 22 states the limits honestly:** the tangent region holds ≈ 97% (slightly generous) and, with 5° per step, first-order compounding underestimates the along-path spread (0.15 m in the runs vs 0.095 m predicted), so only 86% of runs fall in the 3D 95% ellipsoid; Barfoot & Furgale (2014) is cited for higher-order compounding. Also tested: the (x, y, θ) covariance is exactly J P Jᵀ, so the two summaries carry the same first-order numbers.
 - 2026-11-27 — **Post 22 notation:** T̄ (mean of a Gaussian on a group), σ_θ and σ_xy (noise per move); relative moves are T_{k−1,k}, per the table's T_ij. The perturbation is τ (bold ξ is taken by the information vector).
 - 2026-11-27 — **Phase 3 complete:** posts 20–22 published. Acceptance: full `geometry/*` with Jacobian tests against finite differences; Threlte lazy-loaded, and `validate` proves three.js is reachable only from `needs3d` posts.
+- 2026-11-27 — **Phase 4 started with post 23.** `filters/ekf-slam.ts`: state [pose, m₁, …], prediction touching only the pose block and cross blocks (O(n)), landmark augmentation by the linearized inverse sensor model, updates through the generic `ekfUpdate`, and `canonicalCorrelation` (largest canonical correlation of two 2D blocks) as the "link strength". Tests: augmentation = linear transform of the joint Gaussian; prediction = full F P Fᵀ + Q with the map block untouched; Jacobians vs finite differences; Dissanayake et al.'s monotone landmark determinants on the widget's run.
+- 2026-11-27 — **SLAM worlds (`demos/slam-world.ts`):** the robot follows its planned circle exactly and its odometry reports noisy controls (as in MCL, post 17), so which landmark is seen when does not depend on the seed. CorrelationsEmerge: six landmarks on alternating radii, range 2.5 m; seed 20 is the most typical of 40 (robot and landmark uncertainty before/after the closure, error). Known data association until post 25. Post 23 also adds a static Bayes-network figure (`figures/SlamBayesNet.astro`).
+- 2026-11-27 — **Post 23 notation:** the map m with n landmarks; P_rr, P_rm, P_mm; g, G_r, G_z (landmark initialization); ρ_ab (canonical correlation).
 
 ## Follow-ups / known issues
 

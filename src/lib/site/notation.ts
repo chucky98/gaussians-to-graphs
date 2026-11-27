@@ -231,7 +231,19 @@ export const notationGroups: readonly NotationGroup[] = [
   {
     title: 'Part 4: SLAM and optimization',
     rows: [
-      { tex: '\\mathbf{m}_j', meaning: 'landmark j' },
+      { tex: '\\mathbf{m}_j', meaning: 'landmark j; the map is m = (m₁, …, mₙ) with n landmarks' },
+      {
+        tex: '\\mathbf{P}_{rr},\\ \\mathbf{P}_{rm},\\ \\mathbf{P}_{mm}',
+        meaning: 'robot, robot–map and map blocks of the SLAM covariance (Posts 23–24)',
+      },
+      {
+        tex: 'g(\\cdot),\\ \\mathbf{G}_r,\\ \\mathbf{G}_z',
+        meaning: 'landmark position from its first reading, and its Jacobians with respect to the pose and the reading',
+      },
+      {
+        tex: '\\rho_{ab}',
+        meaning: 'largest canonical correlation between two estimates a and b (Post 23)',
+      },
       { tex: '\\phi_i', meaning: 'factor i' },
       { tex: '\\mathbf{r}_i,\\ \\boldsymbol{\\Omega}_i', meaning: 'residual of factor i and its information matrix' },
       {
