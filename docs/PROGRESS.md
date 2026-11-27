@@ -2,7 +2,7 @@
 
 ## Current phase: 4 — Part 4 (SLAM) in progress
 
-## Next task: Phase 4 — post 26 `factor-graphs` (FactorGraphBuilder; graph/factors, values, sparse, solver on manifolds)
+## Next task: Phase 4 — post 26 `factor-graphs` (FactorGraphBuilder)
 
 ## Posts
 
@@ -161,6 +161,9 @@
 - 2026-11-27 — **`filters/association.ts` (post 25):** Mahalanobis gating, nearest neighbour (closest pairs first, each landmark once), and JCBB (depth-first with joint-compatibility pruning and a pairing-count bound, ties by smaller D²). Tests: a single pair's joint distance = its d²; JCBB's answers are jointly compatible and never reuse a landmark; JCBB returns the truth when it is compatible and complete.
 - 2026-11-27 — **AssociationGating has two modes** (one widget, `mode` prop, like MCL's presets): a snapshot ("fence" of landmarks 1 m apart, the robot's estimate off sideways with a matching covariance; gates drawn in the plane as Hm⁻¹ S Hm⁻ᵀ at the gate probability) and an unlabelled EKF-SLAM run on post 24's world (no clutter there: new landmarks only from readings outside every χ²₂(0.9999) gate, ambiguous readings dropped). The forced error pairs landmark 15's reading with 14 at the loop closure: 19 more wrong pairings and 13 duplicates follow. The scene's gate slider matters only when the error exceeds ~2σ, so the offset slider goes to 2 m.
 - 2026-11-27 — **Post 25 notation:** 𝓗 (hypothesis) and D²_𝓗 (joint Mahalanobis distance); calligraphic because bold H is the measurement Jacobian.
+- 2026-11-27 — **Graph library core (`infra/graph-core`, ahead of post 26):** `graph/values.ts` (immutable typed store: SE(2), SE(3), 2D/3D points; retract X ⊕ δ; orderings), `graph/factors.ts` (generic prior and between factors on any Lie group with right-perturbation Jacobians; range–bearing; point prior), `graph/sparse.ts` (triplets → CSC, elimination tree, up-looking sparse Cholesky after Davis 2006 §4.2, fill count, minimum-degree ordering, block orderings, spy pattern), sparse GN/LM on factor graphs in `graph/solver.ts` (Marquardt damping, IRLS hooks for post 29), `graph/marginalize.ts`, `graph/io.ts` (g2o SE(2)), `graph/pose-graph.ts`, `sim/manhattan.ts`. All DESIGN §8.1 invariants for sparse, solver, marginalize and io are tested; flipping a sign in the between-factor Jacobian makes three tests fail.
+- 2026-11-27 — **Minimum degree instead of AMD.** DESIGN asks for approximate minimum degree. `minimumDegree` eliminates a node of exactly smallest degree in the elimination graph (AMD approximates these degrees for speed on very large matrices). The orderings are of the same kind; the exact version is simpler to verify and fast enough here (1,000 poses: a full LM iteration of the Manhattan graph takes ~60–90 ms in Node). Tests: valid permutation; never more fill than natural on grid graphs; < 60% of natural fill on a 16 × 16 grid. Also no separate dense fallback: the sparse path handles small problems too.
+- 2026-11-27 — **Manhattan generator:** a robot on a grid of 1 m blocks inside ±8 blocks, turning with probability 0.3; revisits ≥ 20 poses apart are recognized with probability 0.5. With 1,000 poses (seed 3) there are 336 loop closures; dead reckoning is 3.44 m RMS off; LM reaches the optimum in 3 iterations (cost 8.1·10⁵ → 460), 0.35 m RMS.
 
 ## Follow-ups / known issues
 
