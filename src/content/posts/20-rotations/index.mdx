@@ -1,0 +1,231 @@
+---
+number: 20
+title: Rotations Without Tears
+description: Rotation matrices, Euler angles and gimbal lock, axis–angle and unit quaternions, and why slerp is the right way to interpolate orientations.
+part: 3
+status: published
+date: 2026-11-27
+prerequisites: [gaussians-and-covariance]
+needs3d: true
+objectives:
+  - Write a rotation in 2D and in 3D as a matrix, and check whether a matrix is a rotation.
+  - Explain yaw, pitch and roll, and show where and why Euler angles break down (gimbal lock).
+  - Convert between axis–angle, rotation vectors and unit quaternions, and compose rotations with quaternions.
+  - Interpolate between two orientations with slerp, and explain what goes wrong when Euler angles are interpolated instead.
+references:
+  - key: barfoot2024
+    text: Barfoot. *State Estimation for Robotics*, 2nd ed. Cambridge University Press, 2024. The chapter "Primer on Three-Dimensional Geometry" (rotation matrices, Euler angles and their singularity, the rotation vector).
+  - key: sola2017
+    text: 'Solà. "Quaternion kinematics for the error-state Kalman filter." arXiv:1711.02508, 2017. §1–2 (quaternion algebra, the Hamilton and JPL conventions, rotations and slerp).'
+  - key: diebel2006
+    text: 'Diebel. "Representing attitude: Euler angles, unit quaternions, and rotation vectors." Technical report, Stanford University, 2006.'
+  - key: shoemake1985
+    text: 'Shoemake. "Animating rotation with quaternion curves." *Computer Graphics* (Proc. SIGGRAPH) 19(3), 1985.'
+  - key: stuelpnagel1964
+    text: 'Stuelpnagel. "On the parametrization of the three-dimensional rotation group." *SIAM Review* 6(4), 1964.'
+  - key: sola2018
+    text: 'Solà, Deray, Atchuthan. "A micro Lie theory for state estimation in robotics." arXiv:1812.01537, 2018. Appendix on SO(3) and unit quaternions.'
+widgets: [EulerGimbal, QuaternionSlerp]
+symbols:
+  - tex: '\mathbf{C} \in \SO(n)'
+    meaning: rotation matrix
+    match: ['\mathbf{C}']
+  - tex: '\psi,\ \theta,\ \phi'
+    meaning: yaw, pitch, roll (Euler angles)
+    match: ['\psi']
+  - tex: '\boldsymbol{\omega}'
+    meaning: angular velocity in the body frame
+  - tex: '\mathbf{E}'
+    meaning: Euler-rate matrix
+  - tex: '\mathbf{u},\ \theta,\ \boldsymbol{\theta} = \theta\mathbf{u}'
+    meaning: rotation axis, angle, rotation vector
+    match: ['\mathbf{u}']
+  - tex: '\mathbf{q} = (q_w, \mathbf{q}_v),\ \mathbf{q}^*,\ \otimes'
+    meaning: unit quaternion, conjugate, product
+    match: ['\mathbf{q}']
+---
+
+import EulerGimbal from '../../../components/widgets/EulerGimbal/EulerGimbal.svelte';
+import QuaternionSlerp from '../../../components/widgets/QuaternionSlerp/QuaternionSlerp.svelte';
+
+A drone's flight controller reports which way the drone is facing as three angles: **yaw**, the compass direction of its nose; **pitch**, how far the nose is tipped; and **roll**, how far it is banked. Three numbers for three ways of turning sounds like a perfect fit. It is not. Tip the nose straight down and two of the three numbers start to mean the same thing, and the third way of turning has no number left to describe it.
+
+<EulerGimbal client:visible />
+
+The model is a **gimbal**: three rings, each turning inside the previous one, the way yaw, pitch and roll are defined. Drag the pitch slider towards 90° and watch the outer and middle rings swing into one plane. This post explains what is happening, and then meets the representations that do not suffer from it: rotation matrices, the rotation vector and unit quaternions.
+
+## Intuition
+
+An **orientation** is which way something faces; a **rotation** is a change of orientation. Turning a body by one rotation and then another gives a third rotation, and in 3D the order matters. Hold a book flat in front of you. Turn it a quarter turn about the vertical, then a quarter turn about the line pointing away from you; then start again and do the same two turns in the opposite order. The book ends up facing two different ways. In the plane this cannot happen: two turns add up to the same total in either order.
+
+There are several ways to write a rotation down, and each one has a cost:
+
+- A **rotation matrix** uses 9 numbers that must satisfy 6 constraints. It never has a special case, and composing two rotations is a matrix product.
+- **Euler angles** use 3 numbers, one per ring of the gimbal. They are easy to read, but break down at one pitch.
+- The **rotation vector** uses 3 numbers: a turn about one axis, by one angle. It is the natural choice for small rotations and errors, but it wraps around at a half turn.
+- A **unit quaternion** uses 4 numbers with one constraint. It never has a special case and interpolates beautifully, but every rotation has two quaternions.
+
+The pattern is no accident. Rotations have three degrees of freedom, yet no description by exactly three numbers can be smooth everywhere and one-to-one: every three-number description has a trouble spot somewhere.<Sidenote>Stuelpnagel (1964) proved this: SO(3) cannot be covered by a single three-parameter chart without singularities. The way round it is a fourth number (quaternions) or more (matrices).</Sidenote> Gimbal lock is where the trouble spot of Euler angles lies.
+
+## The math
+
+### Rotations in the plane
+
+A rotation in the plane by angle $\theta$ is the matrix
+
+$$
+\mathbf{C}(\theta) = \begin{bmatrix} \cos\theta & -\sin\theta \\ \sin\theta & \cos\theta \end{bmatrix}.
+$$
+
+It turns a vector by $\theta$ counter-clockwise. As in [Post 14](../robot-models-2d/) and [Post 15](../extended-kalman-filter/), we use it to take the coordinates of a point in a robot's own frame (the **body frame**) to its coordinates in the world: $\mathbf{p}_w = \mathbf{C}(\theta)\,\mathbf{p}_b$, with $\theta$ the robot's heading. Turns add, $\mathbf{C}(a)\,\mathbf{C}(b) = \mathbf{C}(a + b)$, so in the plane order does not matter. Two properties define a rotation and survive in 3D: $\mathbf{C}\T\mathbf{C} = \mathbf{I}$ (lengths and angles are preserved) and $\det\mathbf{C} = 1$ (no mirror image).
+
+### Rotation matrices in 3D
+
+The 3D rotations form the **special orthogonal group**
+
+$$
+\SO(3) = \{\mathbf{C} \in \R^{3\times 3} : \mathbf{C}\T\mathbf{C} = \mathbf{I},\ \det\mathbf{C} = 1\}.
+$$
+
+The columns of $\mathbf{C}$ are the body's own x, y and z axes written in world coordinates. Here the body's x axis points forward (the nose), y to the left and z up, the usual convention in robotics. The condition $\mathbf{C}\T\mathbf{C} = \mathbf{I}$ says that the columns have unit length (3 equations) and are perpendicular to each other (3 more), which leaves $9 - 6 = 3$ degrees of freedom. The elementary rotations about the coordinate axes are
+
+$$
+\mathbf{C}_x(a) = \begin{bmatrix} 1 & 0 & 0 \\ 0 & \cos a & -\sin a \\ 0 & \sin a & \cos a \end{bmatrix},\quad
+\mathbf{C}_y(a) = \begin{bmatrix} \cos a & 0 & \sin a \\ 0 & 1 & 0 \\ -\sin a & 0 & \cos a \end{bmatrix},\quad
+\mathbf{C}_z(a) = \begin{bmatrix} \cos a & -\sin a & 0 \\ \sin a & \cos a & 0 \\ 0 & 0 & 1 \end{bmatrix}.
+$$
+
+Rotations compose by matrix multiplication, and the order matters. The book experiment in numbers: a quarter turn about z followed by a quarter turn about the body's new x axis is $\mathbf{C}_z(90°)\,\mathbf{C}_x(90°)$. It sends the nose $\mathbf{e}_x = (1, 0, 0)$ to $(0, 1, 0)$. The opposite order, $\mathbf{C}_x(90°)\,\mathbf{C}_z(90°)$, sends it to $(0, 0, 1)$.
+
+### Euler angles: yaw, pitch and roll
+
+Any rotation can be built from three turns about coordinate axes. The sequence most used for vehicles is yaw $\psi$ about z, then pitch $\theta$ about the new y axis, then roll $\phi$ about the newest x axis, the nose:
+
+$$
+\mathbf{C} = \mathbf{C}_z(\psi)\,\mathbf{C}_y(\theta)\,\mathbf{C}_x(\phi). \tag{1}
+$$
+
+Each factor is one ring of the gimbal: the outer ring yaws, the middle ring, mounted on it, pitches, and the inner ring rolls. With z up and y to the left, a positive pitch tips the nose down. Yaw and roll run over a full circle, pitch only from −90° to 90°; that is enough to reach every orientation.
+
+Now set the pitch to exactly 90°. Multiplying out (1) gives
+
+$$
+\mathbf{C}(\psi, 90°, \phi) = \begin{bmatrix} 0 & \sin(\phi - \psi) & \cos(\phi - \psi) \\ 0 & \cos(\phi - \psi) & -\sin(\phi - \psi) \\ -1 & 0 & 0 \end{bmatrix}.
+$$
+
+Yaw and roll appear only through their difference $\phi - \psi$: increasing yaw by 10° does exactly what decreasing roll by 10° does, and raising both by 10° does nothing at all. With the nose pointing straight down, the roll axis lies along the yaw axis, so the outer and inner rings turn the body about the same line. Two numbers now control one motion, and one direction of turning (about the body's z axis, which now points horizontally) has no ring of its own. This is **gimbal lock**.
+
+The breakdown does not wait until exactly 90°. The body's angular velocity $\boldsymbol{\omega}$, written in its own frame, depends on how fast the three angles change through a matrix $\mathbf{E}$:
+
+$$
+\boldsymbol{\omega} = \mathbf{E}\begin{bmatrix} \dot\psi \\ \dot\theta \\ \dot\phi \end{bmatrix},\qquad
+\mathbf{E} = \begin{bmatrix} -\sin\theta & 0 & 1 \\ \sin\phi\cos\theta & \cos\phi & 0 \\ \cos\phi\cos\theta & -\sin\phi & 0 \end{bmatrix},\qquad
+\det\mathbf{E} = -\cos\theta.
+$$
+
+At pitch ±90° the determinant vanishes and some angular velocity cannot be produced by any rates of the three angles. Near ±90° it can, but only with very large rates. The singular values of $\mathbf{E}$ measure this: they are $\sqrt{1 + |\sin\theta|}$, $1$ and $\sqrt{1 - |\sin\theta|}$. The smallest is 0.71 at a pitch of 30°, 0.12 at 80° and 0 at 90°. The widget shows it as the "weakest direction".
+
+<Derivation title="Where E comes from">
+Differentiate (1): $\dot{\mathbf{C}} = \dot\psi\,\mathbf{C}_z'\mathbf{C}_y\mathbf{C}_x + \dot\theta\,\mathbf{C}_z\mathbf{C}_y'\mathbf{C}_x + \dot\phi\,\mathbf{C}_z\mathbf{C}_y\mathbf{C}_x'$. The body-frame angular velocity is defined by $[\boldsymbol{\omega}]_\times = \mathbf{C}\T\dot{\mathbf{C}}$, where $[\mathbf{v}]_\times$ is the skew-symmetric matrix with $[\mathbf{v}]_\times\mathbf{w} = \mathbf{v}\times\mathbf{w}$. With $\mathbf{e}_x, \mathbf{e}_y, \mathbf{e}_z$ the unit vectors along the axes, each term contributes the rate of one ring, about that ring's axis, carried into the body frame by the rings inside it: $\boldsymbol{\omega} = \dot\psi\,\mathbf{C}_x\T\mathbf{C}_y\T\mathbf{e}_z + \dot\theta\,\mathbf{C}_x\T\mathbf{e}_y + \dot\phi\,\mathbf{e}_x$. Writing out the three vectors gives the three columns of $\mathbf{E}$. Its columns all have unit length, the first is perpendicular to the second, and the first and third have dot product $-\sin\theta$; so $\mathbf{E}\T\mathbf{E}$ has eigenvalues $1$ and $1 \pm \sin\theta$, whose square roots are the singular values above.
+</Derivation>
+
+### One axis, one angle
+
+Euler's rotation theorem says that every rotation, however it was built, is a single turn by some angle $\theta$ about some fixed unit axis $\mathbf{u}$. (From here on, and for the rest of the series, $\theta$ is the angle of one rotation again, as in the plane; it meant pitch only in the formulas above.) Rodrigues' formula gives its matrix:
+
+$$
+\mathbf{C} = \mathbf{I} + \sin\theta\,[\mathbf{u}]_\times + (1 - \cos\theta)\,[\mathbf{u}]_\times^2,\qquad
+[\mathbf{u}]_\times = \begin{bmatrix} 0 & -u_3 & u_2 \\ u_3 & 0 & -u_1 \\ -u_2 & u_1 & 0 \end{bmatrix}. \tag{2}
+$$
+
+The points on the axis stay put; everything else circles around it. Going back is easy too: the trace (sum of the diagonal) of (2) is $1 + 2\cos\theta$, so $\cos\theta = (\tr\mathbf{C} - 1)/2$, and the axis can be read off the skew-symmetric part $\mathbf{C} - \mathbf{C}\T = 2\sin\theta\,[\mathbf{u}]_\times$.
+
+Packing the two into one vector gives the **rotation vector** $\boldsymbol{\theta} = \theta\mathbf{u}$: three numbers, its direction the axis and its length the angle. It is excellent for small rotations, where it is nearly the three small angles about x, y and z, and it is the language of the next post, where (2) turns out to be the exponential map. Its trouble spot is a half turn: $\pi\mathbf{u}$ and $-\pi\mathbf{u}$ are the same rotation.
+
+### Unit quaternions
+
+A **unit quaternion** stores the same axis and angle as four numbers,
+
+$$
+\mathbf{q} = (q_w, \mathbf{q}_v) = \left(\cos\tfrac{\theta}{2},\ \mathbf{u}\sin\tfrac{\theta}{2}\right),\qquad \lVert\mathbf{q}\rVert = 1,
+$$
+
+a scalar part $q_w$ followed by a vector part $\mathbf{q}_v$. Quaternions are numbers $q_w + q_x i + q_y j + q_z k$ with $i^2 = j^2 = k^2 = ijk = -1$,<Sidenote>Hamilton found these rules in 1843 while walking along the Royal Canal in Dublin, and carved them into the stone of Broom Bridge.</Sidenote> and their product, written as pairs, is
+
+$$
+\mathbf{p}\otimes\mathbf{q} = \big(p_w q_w - \mathbf{p}_v\cdot\mathbf{q}_v,\ \ p_w\mathbf{q}_v + q_w\mathbf{p}_v + \mathbf{p}_v\times\mathbf{q}_v\big).
+$$
+
+Composing rotations is this product: if $\mathbf{p}$ and $\mathbf{q}$ have matrices $\mathbf{C}_p$ and $\mathbf{C}_q$, then $\mathbf{p}\otimes\mathbf{q}$ has matrix $\mathbf{C}_p\mathbf{C}_q$. To rotate a vector $\mathbf{v}$, treat it as the quaternion $(0, \mathbf{v})$ and compute $\mathbf{q}\otimes(0, \mathbf{v})\otimes\mathbf{q}^*$, where the conjugate $\mathbf{q}^* = (q_w, -\mathbf{q}_v)$ is the inverse rotation.
+
+Two facts set quaternions apart. They have no trouble spot at all: every unit quaternion is a valid rotation and nearby rotations have nearby quaternions. And there are two of them per rotation: $\mathbf{q}$ and $-\mathbf{q}$ give the same matrix, because adding a full turn, $2\pi$, to $\theta$ adds $\pi$ to $\theta/2$ and flips the sign of all four numbers. Keep this **double cover** in mind; it causes the main pitfall below.
+
+### Interpolating between orientations: slerp
+
+Animations, smoothing camera paths and averaging attitude estimates all need the orientation "a fraction $t$ of the way" from $\mathbf{q}_0$ to $\mathbf{q}_1$. The natural answer is to find the single rotation that takes one to the other, $\mathbf{q}_0^*\otimes\mathbf{q}_1$, and do a fraction $t$ of it. That is **slerp**, spherical linear interpolation:<Sidenote>The name and its use for animation come from Shoemake (1985).</Sidenote>
+
+$$
+\operatorname{slerp}(\mathbf{q}_0, \mathbf{q}_1, t) = \frac{\sin\big((1 - t)\Omega\big)}{\sin\Omega}\,\mathbf{q}_0 + \frac{\sin(t\Omega)}{\sin\Omega}\,\mathbf{q}_1,\qquad \cos\Omega = \mathbf{q}_0\cdot\mathbf{q}_1. \tag{3}
+$$
+
+It walks along the great circle between the two quaternions on the unit sphere in four dimensions, at a constant rate. In terms of the body, it turns about one fixed axis at a constant angular speed, through the angle of the direct rotation, $2\Omega$, which is the least turning that can get from one orientation to the other. Before using (3), check the sign: if $\mathbf{q}_0\cdot\mathbf{q}_1 \lt 0$, replace $\mathbf{q}_1$ by $-\mathbf{q}_1$, so that slerp takes the short way round.
+
+The tempting alternative is to interpolate the three Euler angles, one by one. It starts and ends in the right place, but the path in between depends on how the angles happen to be defined, not on the rotation itself.
+
+<QuaternionSlerp client:visible />
+
+## Play with it
+
+The gimbal first.
+
+<TryThis>
+- Choose **Pitch 90° (gimbal lock)**. The outer and middle rings now lie in one plane, and the yaw and roll axes are 0° apart. Move the yaw slider up, then move the roll slider down: the aircraft turns the same way about the same axis.
+- Choose **Pitch 80° (close to lock)**. The table shows that a 5° turn about the aircraft's wing needs yaw and roll to change by about 18° each, and a 5° turn about its top about 22° each. At the default pitch of 30°, no angle changes by much more than 5°.
+- At exactly 90° the table is even stranger: a 5° turn about the wing makes yaw and roll jump by 160°. A real gimbal would have to whip its outer and inner rings half way round to follow a small motion of the aircraft. Turning about the nose, by contrast, is just a change of roll.
+</TryThis>
+
+Now the interpolation. The widget starts with a half turn: from level, to yaw 180° and roll 180°, which is the same orientation as a pitch of 180°.
+
+<TryThis>
+- With the **Half turn** preset, press Play. Slerp turns about the wing axis: the nose dips through the bottom of the sphere and comes up behind, 180° in all. Interpolating Euler angles yaws and rolls at the same time: the nose swings round the equator while the aircraft rolls over, 255° of turning to reach the same end.
+- Choose **Yaw from 170° to −170°**. The two orientations are only 20° apart, and slerp turns 20°. Interpolating the yaw angle from 170 down to −170 goes the long way: 340°.
+- In the same preset, switch on **Slerp the long way**. Using the end quaternion with the wrong sign makes slerp itself turn 340°: the double cover at work.
+- Choose **A small turn**. Both methods turn about 36°, and the Euler path's rate varies only between 35° and 37° per unit of $t$. For small changes, the naive way is nearly as good.
+</TryThis>
+
+## Algorithm
+
+<AlgorithmBox title="Slerp between two orientations" source="src/lib/geometry/quat.ts">
+1. Convert both orientations to unit quaternions $\mathbf{q}_0, \mathbf{q}_1$ (for Euler angles, multiply the three elementary quaternions in the order of (1)).
+2. If $\mathbf{q}_0\cdot\mathbf{q}_1 \lt 0$, replace $\mathbf{q}_1$ by $-\mathbf{q}_1$.
+3. Compute the relative rotation $\mathbf{r} = \mathbf{q}_0^*\otimes\mathbf{q}_1$ and its rotation vector $\boldsymbol{\theta} = \theta\mathbf{u}$, with $\theta = 2\operatorname{atan2}(\lVert\mathbf{r}_v\rVert, r_w)$ and $\mathbf{u} = \mathbf{r}_v / \lVert\mathbf{r}_v\rVert$.
+4. For each $t$, return $\mathbf{q}_0\otimes\big(\cos\tfrac{t\theta}{2},\ \mathbf{u}\sin\tfrac{t\theta}{2}\big)$, renormalized.
+</AlgorithmBox>
+
+Step 3 and 4 are (3) written with the rotation vector, which stays accurate when the two orientations are almost equal (where $\sin\Omega$ in (3) is nearly zero). The same file holds the conversions between quaternions, matrices and rotation vectors; Euler angles, with an explicit branch for gimbal lock, are in `src/lib/geometry/so3.ts`. The unit tests check the round trip between quaternions and matrices, that the quaternion product matches the matrix product, that slerp equals (3) and turns at a constant rate, and that the matrix $\mathbf{E}$ matches finite differences of (1).
+
+## When it breaks
+
+### Twelve kinds of Euler angles
+
+Yaw–pitch–roll is one of twelve possible sequences (z–y–x, z–x–z, x–y–z, …), and each can be read about the body's moving axes or about the fixed world axes. A z–y–x sequence about the moving axes is the same rotation as x–y–z about the fixed axes. Every sequence has a gimbal lock somewhere. When reading someone else's data, find out the sequence first; three angles without one are meaningless.
+
+### Euler angles inside an estimator
+
+A filter whose state contains yaw, pitch and roll inherits the singularity: near ±90° pitch its motion-model Jacobian involves $\mathbf{E}^{-1}$, whose entries grow like $1/\cos\theta$, and the linearization of [Post 15](../extended-kalman-filter/) falls apart. Attitude estimators therefore keep the orientation as a quaternion or a rotation matrix, and estimate a small rotation vector as the error. That is exactly the tangent-space approach of the next post.
+
+### The sign of a quaternion
+
+Because $\mathbf{q}$ and $-\mathbf{q}$ are the same rotation, a simple average of quaternions can be nonsense: the average of $\mathbf{q}$ and $-\mathbf{q}$ is zero. Before interpolating or averaging, flip signs so that all the quaternions lie in the same half of the sphere ($\mathbf{q}_0\cdot\mathbf{q}_i \ge 0$). Forgetting this is the long way round from the widget.
+
+### Drift and conventions
+
+Repeated products slowly break the constraints: a matrix drifts away from $\mathbf{C}\T\mathbf{C} = \mathbf{I}$ and a quaternion away from unit length. Renormalize the quaternion, or replace the matrix by the nearest rotation. Finally, conventions vary between books and libraries: some write the scalar part of a quaternion last, some use the JPL product, which composes in the opposite order, and some let $\mathbf{C}$ map world coordinates to body coordinates instead.<Sidenote>Solà (2017) lays out these choices side by side. This series uses Hamilton quaternions, scalar first, and $\mathbf{C}$ maps body to world.</Sidenote> Check before copying a formula.
+
+## Summary
+
+- A 3D rotation is a matrix $\mathbf{C}$ with $\mathbf{C}\T\mathbf{C} = \mathbf{I}$ and $\det\mathbf{C} = 1$: 9 numbers, 6 constraints, 3 degrees of freedom. Rotations compose by multiplication, and in 3D the order matters.
+- Euler angles are three turns about coordinate axes. At pitch ±90° yaw and roll become the same motion (gimbal lock), and near it small turns need large changes of the angles.
+- Every rotation is one turn about one axis; the rotation vector $\theta\mathbf{u}$ stores it in three numbers, and Rodrigues' formula turns it into a matrix.
+- A unit quaternion stores the same turn in four numbers without any singularity; $\mathbf{q}$ and $-\mathbf{q}$ are the same rotation.
+- Slerp turns about a fixed axis at a constant rate through the direct angle. Interpolating Euler angles reaches the same end by a longer, uneven path.

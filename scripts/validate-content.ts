@@ -226,6 +226,54 @@ if (!existsSync(join(dist, 'index.html'))) {
   }
 }
 
+// ------------------------------------------------------------------ Three.js only where needed (DESIGN §12 Phase 3)
+// Follow every script a built page can load (island components and renderers, module scripts, preloads)
+// through their static and dynamic imports; three.js must be reachable only from posts with needs3d.
+if (existsSync(join(dist, 'index.html'))) {
+  const base = `${basePath}/`;
+  const astroDir = join(dist, '_astro');
+  const isThree = new Map<string, boolean>();
+  const hasThree = (f: string) => {
+    let v = isThree.get(f);
+    if (v === undefined) isThree.set(f, (v = readFileSync(f, 'utf8').includes('THREE.WebGLRenderer')));
+    return v;
+  };
+  const importsOf = (f: string) =>
+    [...readFileSync(f, 'utf8').matchAll(/(?:from|import)\s*\(?\s*["'](\.\/[^"']+\.js)["']/g)].map((x) =>
+      join(dirname(f), x[1]!),
+    );
+  const reachesThree = (entries: string[]) => {
+    const seen = new Set<string>();
+    const stack = [...entries];
+    while (stack.length) {
+      const f = stack.pop()!;
+      if (seen.has(f) || !existsSync(f)) continue;
+      seen.add(f);
+      if (hasThree(f)) return true;
+      stack.push(...importsOf(f));
+    }
+    return false;
+  };
+  const needs3d = new Set(syllabus.filter((e) => e.needs3d).map((e) => e.slug));
+  let threeSeen = false;
+  for (const file of walk(dist, (p) => p.endsWith('.html'))) {
+    const html = readFileSync(file, 'utf8');
+    const urls = [...html.matchAll(/(?:component-url|renderer-url|src|href)="([^"]+\.js)"/g)].map((x) => x[1]!);
+    const entries = urls
+      .filter((u) => u.startsWith(base + '_astro/'))
+      .map((u) => join(astroDir, u.slice((base + '_astro/').length)));
+    const m = /^posts\/([^/]+)\/index\.html$/.exec(relative(dist, file).replace(/\\/g, '/'));
+    const reaches = reachesThree(entries);
+    threeSeen ||= reaches;
+    if (m && needs3d.has(m[1]!) && published.has(m[1]!) && !reaches)
+      err(`dist/${relative(dist, file)}`, 'post has needs3d but its widgets do not load three.js (check the detector)');
+    if (reaches && !(m && needs3d.has(m[1]!)))
+      err(`dist/${relative(dist, file)}`, 'three.js is reachable from a page without needs3d');
+  }
+  if (!threeSeen && syllabus.some((e) => e.needs3d && published.has(e.slug)))
+    err('dist', 'no page loads three.js although a needs3d post is published');
+}
+
 // ------------------------------------------------------------------ report
 if (errors.length > 0) {
   console.error(`Content validation failed with ${errors.length} problem(s):`);

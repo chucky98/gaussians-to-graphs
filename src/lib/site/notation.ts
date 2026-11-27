@@ -182,6 +182,26 @@ export const notationGroups: readonly NotationGroup[] = [
         meaning: 'pose / rigid transform; relative pose of j in frame i',
       },
       { tex: '\\mathbf{t}', meaning: 'translation' },
+      {
+        tex: '\\mathbf{C}(\\theta),\\ \\mathbf{C}_x,\\ \\mathbf{C}_y,\\ \\mathbf{C}_z',
+        meaning: 'rotation by θ in the plane; elementary 3D rotations about the x, y and z axes (Post 20)',
+      },
+      {
+        tex: '\\psi,\\ \\theta,\\ \\phi',
+        meaning: 'yaw, pitch, roll: Z–Y–X Euler angles, C = C_z(ψ) C_y(θ) C_x(φ) (Post 20 only)',
+      },
+      { tex: '\\boldsymbol{\\omega}', meaning: 'angular velocity, in the body frame (Post 20)' },
+      { tex: '\\mathbf{E}', meaning: 'Euler-rate matrix: ω = E (ψ̇, θ̇, φ̇) (Post 20)' },
+      {
+        tex: '\\mathbf{u},\\ \\theta,\\ \\boldsymbol{\\theta} = \\theta\\mathbf{u}',
+        meaning: 'unit rotation axis, rotation angle, and the rotation vector (axis times angle)',
+      },
+      { tex: '[\\mathbf{v}]_\\times', meaning: 'skew-symmetric matrix with [v]× w = v × w (also written v^)' },
+      {
+        tex: '\\mathbf{q} = (q_w, \\mathbf{q}_v),\\ \\mathbf{q}^*,\\ \\otimes',
+        meaning: 'unit quaternion (scalar part first), its conjugate, and the Hamilton product',
+      },
+      { tex: 't', meaning: 'interpolation parameter, from 0 to 1 (Post 20)' },
       { tex: '\\boldsymbol{\\tau}', meaning: 'tangent-space (Lie algebra) vector' },
       { tex: '(\\cdot)^\\wedge,\\ (\\cdot)^\\vee', meaning: 'hat and vee' },
       { tex: '\\Exp,\\ \\Log', meaning: 'maps between ℝⁿ and the group (capitalized, as in Solà et al.)' },
@@ -214,6 +234,18 @@ export const notationGroups: readonly NotationGroup[] = [
 ];
 
 export const notationConflicts: readonly { tex: string; note: string }[] = [
+  {
+    tex: '\\theta\\ \\text{(heading, pitch, rotation angle)}',
+    note: 'θ is the heading of a planar pose (Post 14 on) and, in Part 3, the angle of a single rotation; in the plane these are the same thing. In Post 20’s Euler-angle formulas only, θ is the pitch.',
+  },
+  {
+    tex: '\\phi\\ \\text{(bearing vs. roll)}',
+    note: 'φ is the bearing of a landmark (Part 2 on); in Post 20’s Euler-angle formulas it is the roll.',
+  },
+  {
+    tex: 't\\ \\text{vs.}\\ t_i\\ \\text{vs.}\\ \\mathbf{t}',
+    note: 'An italic t without a subscript is an interpolation parameter (Post 20); t_i is an input in a curve fit (Part 1); the bold t is a translation.',
+  },
   {
     tex: 'w^{[i]}\\ \\text{vs.}\\ \\mathbf{w}_k',
     note: 'A particle weight is a scalar with a bracketed superscript; process noise is a bold vector with a time subscript.',

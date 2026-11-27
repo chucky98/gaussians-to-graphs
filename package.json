@@ -30,12 +30,14 @@
     "@fontsource/inter": "^5.3.0",
     "@fontsource/jetbrains-mono": "^5.3.0",
     "@fontsource/source-serif-4": "^5.3.1",
+    "@threlte/core": "^8.7.0",
     "astro": "^7.4.13",
     "d3-scale": "^4.0.3",
     "katex": "^0.19.1",
     "rehype-katex": "^7.0.1",
     "remark-math": "^6.0.0",
     "svelte": "^5.59.2",
+    "three": "^0.187.0",
     "typescript": "^6.0.3"
   },
   "devDependencies": {
@@ -44,6 +46,7 @@
     "@playwright/test": "^1.65.1",
     "@types/d3-scale": "^4.0.9",
     "@types/node": "^26.6.11",
+    "@types/three": "^0.187.0",
     "eslint": "^10.15.0",
     "eslint-plugin-astro": "^3.2.2",
     "eslint-plugin-svelte": "^3.24.1",

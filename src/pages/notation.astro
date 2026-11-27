@@ -94,6 +94,11 @@ const tex = (s: string) => katex.renderToString(s, { macros: { ...katexMacros },
         </table>
       </div>
       <p>Covariance ellipses show the 95% region unless a caption says otherwise.</p>
+      <p>
+        In 3D figures (Part 3), the x, y and z axes of a frame, and rotations about them, are
+        <span class="axis x">vermillion</span>, <span class="axis y">green</span> and <span class="axis z">blue</span>,
+        the usual robotics order. They are always labelled or told apart by size as well.
+      </p>
     </section>
   </div>
 </BaseLayout>
@@ -140,6 +145,24 @@ const tex = (s: string) => katex.renderToString(s, { macros: { ...katexMacros },
   .sw.odom line {
     stroke: var(--c-odom);
     stroke-dasharray: var(--dash-odom);
+  }
+  .axis::before {
+    content: '';
+    display: inline-block;
+    width: 0.7em;
+    height: 0.7em;
+    margin-right: 0.25em;
+    border-radius: 50%;
+    vertical-align: baseline;
+  }
+  .axis.x::before {
+    background: var(--c-rot-x);
+  }
+  .axis.y::before {
+    background: var(--c-rot-y);
+  }
+  .axis.z::before {
+    background: var(--c-rot-z);
   }
   .sw.sample circle {
     fill: var(--c-sample);

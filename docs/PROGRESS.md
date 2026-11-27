@@ -2,7 +2,7 @@
 
 ## Current phase: 3 — Part 3 (geometry) in progress
 
-## Next task: Phase 3 — post 20 `rotations` (EulerGimbal, QuaternionSlerp; Threlte, lazy-loaded)
+## Next task: Phase 3 — post 21 `lie-groups-for-robotics` (TangentSpace, SE2Exp)
 
 ## Posts
 
@@ -27,7 +27,8 @@
 | 17    | particle-filter                  | published | MCL                              | ~2,900 words. Global localization with identical markers; ESS and resampling schemes; kidnapping and augmented MCL; worker.  |
 | 18    | smoothing                        | published | FilterVsSmoother                 | ~2,500 words. Post 11's outage run: filter vs RTS smoother vs batch vs fixed lag; data arriving after the gap.               |
 | 19    | information-filter               | published | InfoVsCov                        | ~2,300 words. Information filter; trajectory Ω block-tridiagonal vs dense P; conditional independence; marginalization.      |
-| 20–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                                |                                                                                                                              |
+| 20    | rotations                        | published | EulerGimbal, QuaternionSlerp     | ~2,800 words. Threlte (3D). Gimbal rings coloured by their axis; Euler-change table for 5° body turns; slerp vs Euler paths. |
+| 21–32 | (see `src/lib/site/syllabus.ts`) | todo      | —                                |                                                                                                                              |
 
 ## Infrastructure checklist
 
@@ -135,6 +136,11 @@
 - 2026-11-26 — **About page accuracy fix:** it cited "the Kalman filter equals batch least squares" as an existing test; that test arrives with Part 2, so it now cites "recursive least squares equals batch least squares".
 - 2026-11-27 — **Phase 3 started with the full `geometry/*` library** (own PR, ahead of post 20, because posts 20–22 all build on it). `lie.ts` (not in DESIGN §5.1) holds a `LieGroup<G>` interface and, once for every group, ⊕/⊖, interpolation, the Jacobians of compose, inverse, ⊕ and ⊖ (Solà et al. 2018 conventions: right perturbations, τ = (ρ, θ)) and `composeCovariance`. `so2`, `se2`, `so3`, `se3` implement it (hat/vee, Exp/Log, adjoint, J_r, J_l and inverses, Jacobians of act); `quat.ts` has Hamilton quaternions (w first), Shepperd's matrix → quaternion, slerp via Exp/Log, nlerp; `so3.ts` has Z–Y–X Euler angles with an explicit gimbal-lock branch and the Euler-rate matrix E (det E = −cos pitch). SO(3) Log goes through the quaternion, so it is accurate next to π. `series.ts` switches every removable-singularity coefficient to its Taylor series (to θ⁸) below θ = 0.2.
 - 2026-11-27 — **Geometry tests (DESIGN §8.1)** run one generic suite over SO(2), SE(2), SO(3), SE(3): Exp∘Log, Log∘Exp, associativity, inverses, adjoint identity, J_l = Ad J_r = J_r(−τ), and every analytic Jacobian against central finite differences on the manifold at angles from 1e-9 to 3 rad (both sides of the series switch). Checked that the suite fails when a coefficient sign is flipped. `orthonormalize` uses the polar (nearest-rotation) iteration; the first version, a quaternion round trip, was not the nearest rotation for a scaled matrix, and its test caught that.
+- 2026-11-27 — **3D stack (post 20): `three` 0.187 + `@threlte/core` 8.7** (DESIGN §3; `@types/three` for types). Only `@threlte/core`: no `@threlte/extras`, because the one thing it would add (orbit controls) captures vertical touch drags and blocks page scrolling. `primitives/three/Scene3D.svelte` (+ `Stage.svelte`) renders on demand (nothing redraws unless a prop changes, so nothing runs off-screen), z-up, no tone mapping (token colours stay exact), drag to turn the view (`touch-action: pan-y` keeps vertical scrolling on phones) plus a "View" slider for keyboard users, theme colours resolved from tokens, and a notice instead of a crash without WebGL. SSR renders the frame and controls; the canvas mounts on hydration.
+- 2026-11-27 — **Three.js only where needed (Phase 3 acceptance).** `npm run validate` follows every script each built page can load (island components and renderers, module scripts, preloads) through static and dynamic imports, and fails if three.js (detected by its `THREE.WebGLRenderer` strings) is reachable from a page without `needs3d`, or unreachable from a published `needs3d` post. Checked by planting an EulerGimbal island on post 18's built page. Threlte's `T` imports the whole three namespace, so the shared 3D chunk is 195 KB gz; the two islands are 2.9 and 3.6 KB.
+- 2026-11-27 — **Axis colour tokens `--c-rot-x/y/z`** (vermillion, green, blue; the robotics RGB = xyz order with Okabe–Ito hues), added to DESIGN §6.2 and the /notation style key. Gimbal rings are coloured by the axis they turn about and are also told apart by size.
+- 2026-11-27 — **Post 20 notation:** C(θ), C_x/C_y/C_z (elementary rotations: R is reserved for noise), ψ/θ/φ as yaw/pitch/roll in post 20 only, ω (body angular velocity), E (Euler-rate matrix), u/θ/θu (axis, angle, rotation vector), [v]×, q = (q_w, q_v), q*, ⊗, and t (interpolation). Conflict notes added for θ (heading/pitch/angle), φ (bearing/roll) and t. Body axes: x forward, y left, z up (so a positive pitch tips the nose down, stated in the post).
+- 2026-11-27 — **EulerGimbal shows a "5° turn" table** instead of only animating the lock: for each body axis, the change in yaw/pitch/roll needed (exact, via the matrix, not the linearized E⁻¹). At pitch 80° a 5° turn about the wing needs ≈ 18° of yaw and roll; at 90° it needs 160°. At exact lock, a change that stays at lock is reported as roll only (the representation is not unique there). `quat.slerp` gained `{ shortest: false }` for the "long way" demonstration.
 
 ## Follow-ups / known issues
 
@@ -169,4 +175,5 @@
 | MCL island                  | 4.5 KB gz + worker 3.0 KB gz                                                                | Particle filter off the main thread                           |
 | FilterVsSmoother island     | 3.9 KB gz (+ shared primitives and Svelte runtime)                                          | No KaTeX                                                      |
 | InfoVsCov island            | 2.8 KB gz (+ shared primitives and Svelte runtime)                                          | No KaTeX                                                      |
+| Post 20 islands             | EulerGimbal 2.9 KB, QuaternionSlerp 3.6 KB gz + shared 3D chunk (three + Threlte) 195 KB gz | 3D chunk loads only on `needs3d` posts (checked by validate)  |
 | Shared: KaTeX chunk         | 77 KB                                                                                       | Loaded only by Gaussian1D / CovarianceEllipse (post 02)       |
