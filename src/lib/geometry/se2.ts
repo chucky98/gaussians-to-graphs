@@ -113,7 +113,7 @@ export function adjoint(T: Pose2): Mat {
   ]);
 }
 
-/** Right Jacobian J_r(τ) of SE(2) (Solà et al. 2018, eq. 163). */
+/** Right Jacobian J_r(τ) of SE(2) (Solà et al. 2018, appendix on SE(2); checked against finite differences). */
 export function jr(tau: Vec): Mat {
   const [r1, r2, th] = [tau[0]!, tau[1]!, tau[2]!];
   const a = sinc(th);
@@ -127,7 +127,7 @@ export function jr(tau: Vec): Mat {
   ]);
 }
 
-/** Left Jacobian J_l(τ) of SE(2) (Solà et al. 2018, eq. 164). */
+/** Left Jacobian J_l(τ) of SE(2) (Solà et al. 2018, appendix on SE(2); checked against finite differences). */
 export function jl(tau: Vec): Mat {
   const [r1, r2, th] = [tau[0]!, tau[1]!, tau[2]!];
   const a = sinc(th);

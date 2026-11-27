@@ -578,3 +578,44 @@ test.describe('post 19 widgets', () => {
     await expect(w.locator('[data-readout="omega"]')).toHaveText('304 of 2704 nonzero (11%)');
   });
 });
+
+test.describe('post 20 widgets', () => {
+  test('EulerGimbal: default angles, close to lock, gimbal lock', async ({ page }) => {
+    await page.goto('posts/rotations/');
+    const w = page.locator('[data-widget="EulerGimbal"]');
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('canvas')).toBeVisible();
+    await expect(w.locator('[data-readout="gap"]')).toHaveText('60°');
+    await expect(w.locator('[data-readout="sigma"]')).toHaveText('0.71');
+    await expect(w.locator('[data-readout="turn-x"]')).toHaveText(/nose \(x\)\s*0°\s*0°\s*\+5°/);
+    await w.getByLabel('Preset').selectOption('near');
+    await expect(w.locator('[data-readout="sigma"]')).toHaveText('0.12');
+    await expect(w.locator('[data-readout="turn-y"]')).toHaveText(/\+18°\s*\+4°\s*\+18°/);
+    await w.getByLabel('Preset').selectOption('lock');
+    await expect(w.locator('[data-readout="gap"]')).toHaveText('0°');
+    await expect(w.locator('[data-readout="status"]')).toHaveText(/Gimbal lock/);
+    await expect(w.locator('[data-readout="turn-y"]')).toHaveText(/\+160°\s*−5°\s*\+160°/);
+    await w.getByRole('slider', { name: 'Pitch θ' }).fill('45');
+    await expect(w.locator('[data-readout="gap"]')).toHaveText('45°');
+    await w.locator('[data-action="reset"]').click();
+    await expect(w.locator('[data-readout="gap"]')).toHaveText('60°');
+  });
+  test('QuaternionSlerp: half turn, the ±180° seam, the long way', async ({ page }) => {
+    await page.goto('posts/rotations/');
+    const w = page.locator('[data-widget="QuaternionSlerp"]');
+    await w.scrollIntoViewIfNeeded();
+    await expect(w.locator('xpath=ancestor::astro-island[1]')).not.toHaveAttribute('ssr');
+    await expect(w.locator('[data-readout="total-slerp"]')).toHaveText('180°');
+    await expect(w.locator('[data-readout="total-euler"]')).toHaveText('255°');
+    await w.getByLabel('Preset').selectOption('wrap');
+    await expect(w.locator('[data-readout="direct"]')).toHaveText('20°');
+    await expect(w.locator('[data-readout="total-euler"]')).toHaveText('340°');
+    await w.getByRole('switch', { name: /long way/ }).check();
+    await expect(w.locator('[data-readout="total-slerp"]')).toHaveText('340°');
+    await w.getByLabel('Preset').selectOption('small');
+    await expect(w.locator('[data-readout="rate-euler"]')).toHaveText('35° – 37°');
+    await w.getByRole('slider', { name: 'Progress t' }).fill('1');
+    await expect(w.locator('[data-readout="sofar"]')).toHaveText('36° / 36°');
+  });
+});

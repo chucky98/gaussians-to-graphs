@@ -109,13 +109,20 @@ export function rotate(q: Quat, v: readonly [number, number, number]): [number, 
 }
 
 /**
- * Spherical linear interpolation along the shortest arc: q₀ ⊗ Exp(t · Log(q₀* ⊗ q₁)). The rotation turns
- * at a constant rate about a fixed axis. If q₀ · q₁ < 0, q₁ is replaced by −q₁ (the same rotation) so the
- * path is the short way round.
+ * Spherical linear interpolation: q₀ ⊗ Exp(t · Log(q₀* ⊗ q₁)). The rotation turns at a constant rate about
+ * a fixed axis. By default it takes the shorter way round: q₁ and −q₁ are the same rotation, and the one
+ * with q₀ · q₁ ≥ 0 is used. With `shortest: false` the quaternions are used as given, so when q₀ · q₁ < 0
+ * the path turns the long way, through an angle 2π − θ.
  */
-export function slerp(q0: Quat, q1: Quat, t: number): Quat {
-  const rel = toRotationVector(mul(conj(q0), q1)); // canonical → angle ≤ π, the shorter way
-  return normalize(mul(q0, fromRotationVector(rel.map((v) => v * t))));
+export function slerp(q0: Quat, q1: Quat, t: number, opts: { shortest?: boolean } = {}): Quat {
+  const rel = mul(conj(q0), q1);
+  let phi: Vec;
+  if (opts.shortest === false) {
+    const n = Math.hypot(rel[1], rel[2], rel[3]);
+    const k = n < 1e-12 ? (rel[0] > 0 ? 2 : 0) : (2 * Math.atan2(n, rel[0])) / n; // angle in [0, 2π]
+    phi = Float64Array.of(k * rel[1], k * rel[2], k * rel[3]);
+  } else phi = toRotationVector(rel);
+  return normalize(mul(q0, fromRotationVector(phi.map((v) => v * t))));
 }
 
 /** Normalized linear interpolation: blend the four numbers, then normalize (not constant speed). */

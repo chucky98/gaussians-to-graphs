@@ -318,6 +318,13 @@ Typography: scalars are italic ($x$), vectors are bold lowercase ($\mathbf{x}$),
 | $\mathbf{C} \in SO(n)$ | **rotation matrix** (Barfoot convention; $\mathbf{R}$ is reserved for measurement noise) |
 | $\mathbf{T} \in SE(n)$ | pose / rigid transform; $\mathbf{T}_{ij}$ relative pose of $j$ in frame $i$ |
 | $\mathbf{t}$ | translation |
+| $\mathbf{C}(\theta)$; $\mathbf{C}_x, \mathbf{C}_y, \mathbf{C}_z$ | rotation by $\theta$ in the plane; elementary 3D rotations about the x, y, z axes (post 20) |
+| $\psi, \theta, \phi$ | yaw, pitch, roll: Z–Y–X Euler angles, $\mathbf{C} = \mathbf{C}_z(\psi)\mathbf{C}_y(\theta)\mathbf{C}_x(\phi)$ (post 20 only) |
+| $\boldsymbol{\omega}$, $\mathbf{E}$ | angular velocity in the body frame; Euler-rate matrix, $\boldsymbol{\omega} = \mathbf{E}(\dot\psi, \dot\theta, \dot\phi)$ (post 20) |
+| $\mathbf{u}, \theta$, $\boldsymbol{\theta} = \theta\mathbf{u}$ | unit rotation axis, rotation angle, rotation vector |
+| $[\mathbf{v}]_\times$ | skew-symmetric matrix, $[\mathbf{v}]_\times\mathbf{w} = \mathbf{v}\times\mathbf{w}$ (also $\mathbf{v}^\wedge$) |
+| $\mathbf{q} = (q_w, \mathbf{q}_v)$, $\mathbf{q}^*$, $\otimes$ | unit quaternion (Hamilton, scalar first), conjugate, quaternion product |
+| $t$ | interpolation parameter in $[0, 1]$ (post 20) |
 | $\boldsymbol{\tau}$ | tangent-space (Lie algebra) vector |
 | $(\cdot)^\wedge$, $(\cdot)^\vee$ | hat and vee |
 | $\operatorname{Exp}$, $\operatorname{Log}$ | maps between $\mathbb{R}^n$ and the group (capitalized, Solà et al.) |
@@ -333,7 +340,7 @@ Typography: scalars are italic ($x$), vectors are bold lowercase ($\mathbf{x}$),
 | $\rho(\cdot)$ | robust kernel |
 | $\mathbb{E}$, $\operatorname{Cov}$, $(\cdot)^\top$, $\mathbf{I}$ | expectation, covariance, transpose, identity |
 
-Conflict notes, to be explained on the `/notation` page: $\mathbf{C}_k$ (smoother gain) vs $\mathbf{C}$ (rotation); $L$ (lag) vs $\mathbf{L}$ (Cholesky factor); $\beta, \kappa, \lambda$ in post 16 (UT parameters) vs forgetting factor, prior weight and LM damping; $\theta$ (heading, from post 14) vs $\theta$ (bearing in post 4); $v$ (speed) vs $\mathbf{v}_k$ (measurement noise); $M$ (Monte Carlo runs) vs $\mathbf{M}_k$ (control noise); $\eta$ (belief normalizer) vs $\boldsymbol{\eta}$ (Gauss–Newton); $\varepsilon$ (kidnapping probability) vs $\epsilon_k$ (NEES); $w^{[i]}$ (particle weight, scalar, superscript) vs $\mathbf{w}_k$ (process noise, bold); $\lambda$ for LM damping vs eigenvalues; $\rho$ (correlation, Part 0) vs $\rho(\cdot)$ (robust kernel); $\mathbf{z}$ (whitened vector, Part 0) vs $\mathbf{z}_k$ (measurement). Eigenvalues are written $\lambda_1, \lambda_2$ and appear only in Part 0, so context makes the meaning clear.
+Conflict notes, to be explained on the `/notation` page: $\mathbf{C}_k$ (smoother gain) vs $\mathbf{C}$ (rotation); $L$ (lag) vs $\mathbf{L}$ (Cholesky factor); $\beta, \kappa, \lambda$ in post 16 (UT parameters) vs forgetting factor, prior weight and LM damping; $\theta$ (heading, from post 14) vs $\theta$ (bearing in post 4) vs $\theta$ (pitch, post 20 only; otherwise a rotation angle); $\phi$ (bearing) vs $\phi$ (roll, post 20 only); $t$ (interpolation) vs $t_i$ (fit inputs) vs $\mathbf{t}$ (translation); $v$ (speed) vs $\mathbf{v}_k$ (measurement noise); $M$ (Monte Carlo runs) vs $\mathbf{M}_k$ (control noise); $\eta$ (belief normalizer) vs $\boldsymbol{\eta}$ (Gauss–Newton); $\varepsilon$ (kidnapping probability) vs $\epsilon_k$ (NEES); $w^{[i]}$ (particle weight, scalar, superscript) vs $\mathbf{w}_k$ (process noise, bold); $\lambda$ for LM damping vs eigenvalues; $\rho$ (correlation, Part 0) vs $\rho(\cdot)$ (robust kernel); $\mathbf{z}$ (whitened vector, Part 0) vs $\mathbf{z}_k$ (measurement). Eigenvalues are written $\lambda_1, \lambda_2$ and appear only in Part 0, so context makes the meaning clear.
 
 ### 6.2 Colors and line styles (semantic tokens)
 
@@ -348,6 +355,7 @@ The palette is based on the colorblind-safe Okabe–Ito set. Define the tokens i
 | `--c-sample` | Monte Carlo samples / particles | `#CC79A7` | `#E09BC4` | small dots, low opacity |
 | `--c-bad` | error, outlier, divergence | `#D55E00` | `#FF7F3F` | thick, with a warning icon in the legend |
 | `--c-odom` | dead reckoning / odometry-only | `#8a8a8a` | `#9e9e9e` | dotted line |
+| `--c-rot-x`, `--c-rot-y`, `--c-rot-z` | x, y, z axes of a frame and rotations about them (Part 3) | `#D55E00`, `#009E73`, `#0072B2` | `#FF7F3F`, `#2EC4A0`, `#56B4E9` | always labelled or told apart by size |
 | `--c-grid`, `--c-axis`, `--c-bg`, `--c-fg`, `--c-muted` | chrome | | | |
 
 Heatmaps (covariance, information, sparsity) use a diverging scale for signed values (blue–white–vermillion) and a sequential scale for magnitudes, defined as tokens.

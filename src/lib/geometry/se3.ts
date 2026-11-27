@@ -1,8 +1,9 @@
 /**
  * Rigid motions in 3D, SE(3) (DESIGN §5.1; summarized in Post 21, used in Post 31). A pose is a rotation
  * C and a translation t, mapping body-frame points into the world: p_w = C p_b + t. Tangent vectors are
- * τ = (ρ, φ) ∈ ℝ⁶, translation part first. Closed forms follow Solà et al. (2018), App. D, and Barfoot
- * (2024), §7.1 (the block Q of the Jacobians).
+ * τ = (ρ, φ) ∈ ℝ⁶, translation part first. Closed forms follow Solà et al. (2018), appendix on SE(3),
+ * and Barfoot (2024), chapter on matrix Lie groups (the block Q of the Jacobians); all are checked
+ * against finite differences in the tests.
  */
 import { add, getBlock, mul, mulVec, scale, setBlock, sub, transpose, zeros, type Mat, type Vec } from '../math/matrix';
 import type { LieGroup } from './lie';
@@ -84,7 +85,7 @@ export function adjoint(T: Pose3): Mat {
 }
 
 /**
- * The 3 × 3 block Q(ρ, φ) of the SE(3) left Jacobian (Barfoot 2024, §7.1.5):
+ * The 3 × 3 block Q(ρ, φ) of the SE(3) left Jacobian (Barfoot 2024, chapter on matrix Lie groups):
  * Q = ½ρ^ + a(φ^ρ^ + ρ^φ^ + φ^ρ^φ^) + b(φ^φ^ρ^ + ρ^φ^φ^ − 3φ^ρ^φ^) + c(φ^ρ^φ^φ^ + φ^φ^ρ^φ^)
  * with a = (θ − sin θ)/θ³, b = (θ² + 2cos θ − 2)/(2θ⁴), c = (2θ − 3 sin θ + θ cos θ)/(2θ⁵).
  */

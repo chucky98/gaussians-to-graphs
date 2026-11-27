@@ -110,6 +110,19 @@ describe('quaternions', () => {
     const qNeg: quat.Quat = [-q[0], -q[1], -q[2], -q[3]];
     expect(qDist(quat.slerp(p, qNeg, 0.5), quat.fromRotationVector([0, 0, 0.4]))).toBeLessThan(1e-15);
   });
+  it('slerp with shortest: false turns the long way, 2π − θ, when q₀ · q₁ < 0', () => {
+    const p = quat.fromEulerZYX((170 * Math.PI) / 180, 0, 0);
+    const q = quat.fromEulerZYX((-170 * Math.PI) / 180, 0, 0);
+    expect(quat.dot(p, q)).toBeLessThan(0);
+    const mid = quat.slerp(p, q, 0.5, { shortest: false });
+    expect(quat.angleBetween(p, mid)).toBeCloseTo((170 * Math.PI) / 180, 12); // half of 340°
+    expect(qDist(quat.slerp(p, q, 1, { shortest: false }), q)).toBeLessThan(1e-14);
+    const short = quat.slerp(p, q, 0.5);
+    expect(quat.angleBetween(p, short)).toBeCloseTo((10 * Math.PI) / 180, 12);
+    // When q₀ · q₁ ≥ 0 both options agree.
+    const r = quat.fromRotationVector([0.2, 0.1, 0.3]);
+    expect(qDist(quat.slerp(p, r, 0.3, { shortest: false }), quat.slerp(p, r, 0.3))).toBeLessThan(1e-14);
+  });
   it('nlerp hits the ends and the midpoint, but is not constant-rate', () => {
     const p = quat.identity;
     const q = quat.fromRotationVector([0, 0, 3]);
